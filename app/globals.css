@@ -1,0 +1,73 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/*
+ * Soothing "living journal" theme. Colors are space-separated RGB triplets so
+ * Tailwind's rgb(var(--x) / <alpha>) can apply opacity. Warm paper by day,
+ * warm (never cold-black) dark mode at night.
+ */
+:root {
+  --font-serif: Georgia, "Iowan Old Style", "Palatino Linotype", "Book Antiqua", serif;
+  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, sans-serif;
+
+  --paper: 247 243 235;
+  --surface: 252 249 243;
+  --ink: 47 43 39;
+  --muted: 122 114 104;
+  --hairline: 228 221 209;
+
+  --sage: 122 142 116;
+  --lavender: 142 130 176;
+  --terracotta: 192 116 90;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --paper: 26 24 22;
+    --surface: 35 32 29;
+    --ink: 237 231 222;
+    --muted: 167 158 147;
+    --hairline: 58 53 48;
+
+    --sage: 150 170 142;
+    --lavender: 176 165 208;
+    --terracotta: 214 140 112;
+  }
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  background-color: rgb(var(--paper));
+  color: rgb(var(--ink));
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* Calm focus rings that match the palette. */
+:focus-visible {
+  outline: 2px solid rgb(var(--lavender) / 0.7);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+::selection {
+  background: rgb(var(--terracotta) / 0.22);
+}
+
+/* Respect reduced-motion: keep it still for those who want stillness. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}
