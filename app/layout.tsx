@@ -3,6 +3,8 @@ import Link from "next/link";
 import "./globals.css";
 import AmbientBackground from "@/components/AmbientBackground";
 import Nav from "@/components/Nav";
+import { Analytics } from "@vercel/analytics/next";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 
 export const metadata: Metadata = {
   title: "biblio — a living journal",
@@ -43,6 +45,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <Nav />
           {children}
         </main>
+        <Analytics />
+        <SpeedInsights />
       </body>
     </html>
   );

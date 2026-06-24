@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import type { StructureRequest } from "@/lib/types";
 import { structureEntry } from "@/lib/ai/claude";
+import { aiLive } from "@/lib/ai/mode";
+import { sampleStructure } from "@/lib/sample";
 
 export const runtime = "nodejs";
 
@@ -20,6 +22,11 @@ export async function POST(request: Request) {
 
   if (!body.raw || !body.raw.trim()) {
     return NextResponse.json({ error: "Nothing to shape — the thought is empty." }, { status: 400 });
+  }
+
+  // Sample mode (default): free local preview, no model call.
+  if (!aiLive()) {
+    return NextResponse.json(sampleStructure(body));
   }
 
   try {

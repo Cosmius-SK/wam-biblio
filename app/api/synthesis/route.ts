@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import type { SynthesisRequest } from "@/lib/types";
 import { synthesize } from "@/lib/ai/synthesis";
+import { aiLive } from "@/lib/ai/mode";
+import { sampleSynthesis } from "@/lib/sample";
 
 export const runtime = "nodejs";
 
@@ -21,6 +23,11 @@ export async function POST(request: Request) {
       { error: "Write a few entries first, then I can reflect with you." },
       { status: 400 },
     );
+  }
+
+  // Sample mode (default): free local reflection, no model call.
+  if (!aiLive()) {
+    return NextResponse.json(sampleSynthesis(body));
   }
 
   try {

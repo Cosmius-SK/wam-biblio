@@ -3,6 +3,7 @@
 import { motion } from "framer-motion";
 import type { JournalEntry } from "@/lib/types";
 import { formatDate, formatTime, modelLabel } from "@/lib/format";
+import SceneImage from "./SceneImage";
 
 /** A single entry in the living timeline — reading-first, book-like. */
 export default function EntryCard({
@@ -20,11 +21,10 @@ export default function EntryCard({
       className="group relative rounded-2xl border border-hairline/70 bg-surface/70 p-6 shadow-soft backdrop-blur-sm"
     >
       {entry.significant && (
-        <span
-          aria-hidden
-          className="absolute left-0 top-6 h-8 w-1 rounded-r-full bg-terracotta/80"
-          title="A significant moment"
-        />
+        <div className="relative -mx-6 -mt-6 mb-5 h-44 overflow-hidden rounded-t-2xl">
+          <SceneImage entry={entry} className="h-full w-full object-cover" />
+          <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-surface/85" />
+        </div>
       )}
 
       <div className="mb-2 flex items-center gap-2 text-xs text-muted">

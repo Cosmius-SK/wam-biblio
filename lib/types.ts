@@ -34,6 +34,8 @@ export interface JournalEntry extends StructuredEntry {
   model: string;
   /** How the raw input was captured. */
   source: "voice" | "text";
+  /** A generated scene image (data URL) — set in live mode; otherwise rendered on the fly. */
+  image?: string;
   /**
    * True for sample/demo entries seeded to preview the app. These are kept
    * separate so they can be erased in one action before real use.

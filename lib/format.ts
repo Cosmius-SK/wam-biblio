@@ -51,6 +51,7 @@ export function formatCost(usd: number): string {
 
 /** Short, human label for which model shaped an entry. */
 export function modelLabel(model: string): string {
+  if (model === "sample") return "Sample";
   if (model.includes("haiku")) return "Haiku";
   if (model.includes("sonnet")) return "Sonnet";
   if (model.includes("opus")) return "Opus";

@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import type { AskRequest } from "@/lib/types";
 import { answerQuestion } from "@/lib/ai/ask";
+import { aiLive } from "@/lib/ai/mode";
+import { sampleAsk } from "@/lib/sample";
 
 export const runtime = "nodejs";
 
@@ -25,6 +27,11 @@ export async function POST(request: Request) {
       { error: "There aren't any entries to look through yet." },
       { status: 400 },
     );
+  }
+
+  // Sample mode (default): free local answer, no model call.
+  if (!aiLive()) {
+    return NextResponse.json(sampleAsk(body));
   }
 
   try {
