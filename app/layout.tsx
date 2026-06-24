@@ -49,6 +49,14 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <Nav />
           {children}
         </main>
+        <footer className="mx-auto max-w-2xl px-5 pb-10 text-center">
+          <Link
+            href="/vault"
+            className="text-xs text-muted/70 transition-colors hover:text-ink"
+          >
+            Backup &amp; restore
+          </Link>
+        </footer>
         <Analytics />
         <SpeedInsights />
       </body>
