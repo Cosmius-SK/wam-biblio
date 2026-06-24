@@ -89,3 +89,16 @@ export function isEncryptedBlob(x: unknown): x is EncryptedBlob {
   const b = x as Partial<EncryptedBlob>;
   return !!b && b.v === 1 && typeof b.salt === "string" && typeof b.iv === "string" && typeof b.data === "string";
 }
+
+/**
+ * A stable, unguessable cloud location derived from the passphrase. Two devices
+ * with the same passphrase resolve to the same sync slot — and only ciphertext
+ * is ever stored there.
+ */
+export async function syncId(passphrase: string): Promise<string> {
+  const digest = await crypto.subtle.digest("SHA-256", bs(ENC.encode("biblio-sync:" + passphrase)));
+  return Array.from(new Uint8Array(digest))
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("")
+    .slice(0, 40);
+}

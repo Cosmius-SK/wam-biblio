@@ -4,7 +4,7 @@ import { useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { db } from "@/lib/db";
 import type { JournalEntry, Reflection } from "@/lib/types";
-import { encryptJSON, decryptJSON, isEncryptedBlob } from "@/lib/crypto";
+import { encryptJSON, decryptJSON, isEncryptedBlob, syncId } from "@/lib/crypto";
 
 interface BackupPayload {
   app: "wam-biblio";
@@ -103,6 +103,79 @@ export default function VaultPage() {
     }
   }
 
+  async function pushCloud() {
+    reset();
+    if (passphrase.length < 6) {
+      setError("Enter a passphrase of at least 6 characters first.");
+      return;
+    }
+    setBusy(true);
+    try {
+      const entries = (await db.entries.toArray()).filter((e) => !e.id.startsWith("demo-"));
+      const reflections = await db.reflections.toArray();
+      if (entries.length === 0 && reflections.length === 0) {
+        setError("Nothing real to sync yet (sample entries are skipped).");
+        setBusy(false);
+        return;
+      }
+      const payload: BackupPayload = { app: "wam-biblio", v: 1, exportedAt: Date.now(), entries, reflections };
+      const blob = await encryptJSON(payload, passphrase);
+      const id = await syncId(passphrase);
+      const res = await fetch("/api/sync", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, blob }),
+      });
+      if (!res.ok) {
+        const d = (await res.json().catch(() => ({}))) as { error?: string };
+        throw new Error(d.error || "Sync failed.");
+      }
+      setStatus(`Synced ${entries.length} ${entries.length === 1 ? "entry" : "entries"} to the cloud, encrypted.`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Couldn't sync.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function pullCloud() {
+    reset();
+    if (passphrase.length < 6) {
+      setError("Enter the passphrase you synced with.");
+      return;
+    }
+    setBusy(true);
+    try {
+      const id = await syncId(passphrase);
+      const res = await fetch(`/api/sync?id=${id}`);
+      if (!res.ok) {
+        const d = (await res.json().catch(() => ({}))) as { error?: string };
+        throw new Error(d.error || "Couldn't reach sync.");
+      }
+      const data = (await res.json()) as { found?: boolean; blob?: unknown };
+      if (!data.found || !isEncryptedBlob(data.blob)) {
+        setError("No cloud backup found for this passphrase yet — push from another device first.");
+        setBusy(false);
+        return;
+      }
+      let payload: BackupPayload;
+      try {
+        payload = await decryptJSON<BackupPayload>(data.blob, passphrase);
+      } catch {
+        setError("Wrong passphrase for this cloud backup.");
+        setBusy(false);
+        return;
+      }
+      await db.entries.bulkPut(payload.entries);
+      if (Array.isArray(payload.reflections)) await db.reflections.bulkPut(payload.reflections);
+      setStatus(`Pulled ${payload.entries.length} ${payload.entries.length === 1 ? "entry" : "entries"} from the cloud.`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Couldn't pull.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return (
     <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
       <div className="mb-7 mt-4">
@@ -171,9 +244,35 @@ export default function VaultPage() {
         </div>
       </div>
 
+      <div className="mt-4 rounded-2xl border border-hairline/70 bg-surface/60 p-5">
+        <h2 className="font-serif text-lg text-ink">Sync across devices</h2>
+        <p className="mt-1 text-sm text-muted">
+          Push an encrypted copy to the cloud, then pull it on another device with the
+          same passphrase. The server only ever sees ciphertext.
+        </p>
+        <div className="mt-4 flex gap-3">
+          <button
+            type="button"
+            onClick={pushCloud}
+            disabled={busy}
+            className="flex-1 rounded-full bg-ink/90 px-5 py-2.5 text-sm font-medium text-paper shadow-soft transition-transform enabled:hover:scale-[1.02] enabled:active:scale-95 disabled:opacity-40"
+          >
+            Push to cloud
+          </button>
+          <button
+            type="button"
+            onClick={pullCloud}
+            disabled={busy}
+            className="flex-1 rounded-full border border-hairline bg-paper/50 px-5 py-2.5 text-sm font-medium text-ink transition-transform enabled:hover:scale-[1.02] enabled:active:scale-95 disabled:opacity-40"
+          >
+            Pull &amp; merge
+          </button>
+        </div>
+      </div>
+
       <p className="mt-6 text-center text-xs text-muted/80">
-        Live multi-device sync is coming next. For now, this gives you a portable,
-        encrypted copy you control.
+        Your passphrase is the only key — to your file backups and your cloud sync alike.
+        Keep it somewhere safe; it can&rsquo;t be recovered.
       </p>
     </motion.div>
   );
