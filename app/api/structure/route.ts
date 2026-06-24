@@ -25,7 +25,7 @@ export async function POST(request: Request) {
   }
 
   // Sample mode (default): free local preview, no model call.
-  if (!aiLive()) {
+  if (!(await aiLive())) {
     return NextResponse.json(sampleStructure(body));
   }
 

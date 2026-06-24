@@ -26,7 +26,7 @@ export async function POST(request: Request) {
   }
 
   // Sample mode (default): free local reflection, no model call.
-  if (!aiLive()) {
+  if (!(await aiLive())) {
     return NextResponse.json(sampleSynthesis(body));
   }
 

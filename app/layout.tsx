@@ -3,6 +3,7 @@ import Link from "next/link";
 import "./globals.css";
 import AmbientBackground from "@/components/AmbientBackground";
 import Nav from "@/components/Nav";
+import ModeToggle from "@/components/ModeToggle";
 import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 
@@ -26,19 +27,22 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className="min-h-full font-sans">
         <AmbientBackground />
         <header className="sticky top-0 z-20 backdrop-blur-md">
-          <div className="mx-auto flex max-w-2xl items-center justify-between px-5 py-4">
+          <div className="mx-auto flex max-w-2xl items-center justify-between gap-3 px-5 py-4">
             <Link
               href="/"
               className="font-serif text-xl tracking-tight text-ink transition-opacity hover:opacity-70"
             >
               biblio
             </Link>
-            <Link
-              href="/capture"
-              className="rounded-full bg-ink/90 px-4 py-1.5 text-sm font-medium text-paper shadow-soft transition-transform hover:scale-[1.03] active:scale-95"
-            >
-              New thought
-            </Link>
+            <div className="flex items-center gap-2">
+              <ModeToggle />
+              <Link
+                href="/capture"
+                className="rounded-full bg-ink/90 px-4 py-1.5 text-sm font-medium text-paper shadow-soft transition-transform hover:scale-[1.03] active:scale-95"
+              >
+                New thought
+              </Link>
+            </div>
           </div>
         </header>
         <main className="mx-auto max-w-2xl px-5 pb-28 pt-2">

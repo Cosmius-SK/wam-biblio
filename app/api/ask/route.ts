@@ -30,7 +30,7 @@ export async function POST(request: Request) {
   }
 
   // Sample mode (default): free local answer, no model call.
-  if (!aiLive()) {
+  if (!(await aiLive())) {
     return NextResponse.json(sampleAsk(body));
   }
 

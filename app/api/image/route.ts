@@ -17,7 +17,7 @@ interface GeminiResponse {
 }
 
 export async function POST(request: Request) {
-  if (!aiLive()) {
+  if (!(await aiLive())) {
     return NextResponse.json({ error: "Image generation is in sample mode." }, { status: 503 });
   }
 
