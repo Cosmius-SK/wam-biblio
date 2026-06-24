@@ -11,6 +11,10 @@ const ENC = new TextEncoder();
 const DEC = new TextDecoder();
 const ITERATIONS = 210_000;
 
+// TS 5.7's generic typed arrays don't always unify with the DOM's BufferSource;
+// normalize at the Web Crypto boundary.
+const bs = (u: Uint8Array): BufferSource => u as BufferSource;
+
 export interface EncryptedBlob {
   v: 1;
   kdf: "PBKDF2-SHA256";
@@ -37,17 +41,17 @@ function fromB64(s: string): Uint8Array {
 async function deriveKey(passphrase: string, salt: Uint8Array, iterations: number): Promise<CryptoKey> {
   const baseKey = await crypto.subtle.importKey(
     "raw",
-    ENC.encode(passphrase),
+    bs(ENC.encode(passphrase)),
     "PBKDF2",
     false,
-    ["deriveKey"],
+    ["deriveKey"] as KeyUsage[],
   );
   return crypto.subtle.deriveKey(
-    { name: "PBKDF2", salt, iterations, hash: "SHA-256" },
+    { name: "PBKDF2", salt: bs(salt), iterations, hash: "SHA-256" },
     baseKey,
     { name: "AES-GCM", length: 256 },
     false,
-    ["encrypt", "decrypt"],
+    ["encrypt", "decrypt"] as KeyUsage[],
   );
 }
 
@@ -56,9 +60,9 @@ export async function encryptJSON(obj: unknown, passphrase: string): Promise<Enc
   const iv = crypto.getRandomValues(new Uint8Array(12));
   const key = await deriveKey(passphrase, salt, ITERATIONS);
   const cipher = await crypto.subtle.encrypt(
-    { name: "AES-GCM", iv },
+    { name: "AES-GCM", iv: bs(iv) },
     key,
-    ENC.encode(JSON.stringify(obj)),
+    bs(ENC.encode(JSON.stringify(obj))),
   );
   return {
     v: 1,
@@ -73,9 +77,9 @@ export async function encryptJSON(obj: unknown, passphrase: string): Promise<Enc
 export async function decryptJSON<T = unknown>(blob: EncryptedBlob, passphrase: string): Promise<T> {
   const key = await deriveKey(passphrase, fromB64(blob.salt), blob.iter || ITERATIONS);
   const plain = await crypto.subtle.decrypt(
-    { name: "AES-GCM", iv: fromB64(blob.iv) },
+    { name: "AES-GCM", iv: bs(fromB64(blob.iv)) },
     key,
-    fromB64(blob.data),
+    bs(fromB64(blob.data)),
   );
   return JSON.parse(DEC.decode(plain)) as T;
 }
