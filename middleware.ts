@@ -34,6 +34,6 @@ export async function middleware(req: NextRequest) {
 }
 
 export const config = {
-  // Run on everything except Next internals and a few static files.
-  matcher: ["/((?!_next/static|_next/image|favicon.ico|icon.svg|manifest.webmanifest).*)"],
+  // Run on everything except Next internals, Vercel instrumentation, and static files.
+  matcher: ["/((?!_next/static|_next/image|_vercel|favicon.ico|icon.svg|manifest.webmanifest).*)"],
 };
