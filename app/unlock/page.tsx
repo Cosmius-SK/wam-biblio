@@ -1,11 +1,10 @@
 "use client";
 
 import { Suspense, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
 
 function UnlockCard() {
-  const router = useRouter();
   const params = useSearchParams();
   const [value, setValue] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -19,6 +18,7 @@ function UnlockCard() {
       const res = await fetch("/api/unlock", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        credentials: "same-origin",
         body: JSON.stringify({ passcode: value }),
       });
       if (!res.ok) {
@@ -26,7 +26,10 @@ function UnlockCard() {
         throw new Error(data.error || "Couldn't unlock.");
       }
       const from = params.get("from");
-      router.replace(from && from.startsWith("/") ? from : "/");
+      const dest = from && from.startsWith("/") ? from : "/";
+      // Hard navigation so middleware re-runs with the freshly-set auth cookie
+      // (a client-side router.replace can loop back to /unlock).
+      window.location.replace(dest);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Couldn't unlock.");
       setBusy(false);
