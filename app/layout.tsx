@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import Link from "next/link";
 import "./globals.css";
 import AmbientBackground from "@/components/AmbientBackground";
+import Nav from "@/components/Nav";
 
 export const metadata: Metadata = {
   title: "biblio — a living journal",
@@ -38,7 +39,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             </Link>
           </div>
         </header>
-        <main className="mx-auto max-w-2xl px-5 pb-28 pt-2">{children}</main>
+        <main className="mx-auto max-w-2xl px-5 pb-28 pt-2">
+          <Nav />
+          {children}
+        </main>
       </body>
     </html>
   );

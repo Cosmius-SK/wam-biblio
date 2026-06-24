@@ -1,7 +1,7 @@
 "use client";
 
 import Dexie, { type Table } from "dexie";
-import type { JournalEntry, EntryContext } from "./types";
+import type { JournalEntry, EntryContext, Reflection } from "./types";
 
 /**
  * Local-first store. Entries live in the browser (IndexedDB) and are the
@@ -11,12 +11,17 @@ import type { JournalEntry, EntryContext } from "./types";
  */
 class JournalDB extends Dexie {
   entries!: Table<JournalEntry, string>;
+  reflections!: Table<Reflection, string>;
 
   constructor() {
     super("wam-biblio");
     this.version(1).stores({
-      // Indexed fields; `themes` is multi-entry for theme/thread views (Phase 2).
+      // Indexed fields; `themes` is multi-entry for theme/thread views.
       entries: "id, createdAt, mood, *themes",
+    });
+    // v2 adds saved "state of you" reflections (Phase 2).
+    this.version(2).stores({
+      reflections: "id, createdAt",
     });
   }
 }
@@ -50,4 +55,13 @@ export async function recentContext(n = 6): Promise<EntryContext[]> {
     mood: e.mood,
     createdAt: e.createdAt,
   }));
+}
+
+export async function saveReflection(reflection: Reflection): Promise<void> {
+  await db.reflections.put(reflection);
+}
+
+/** The most recent saved reflection, or undefined if none yet. */
+export async function latestReflection(): Promise<Reflection | undefined> {
+  return db.reflections.orderBy("createdAt").reverse().first();
 }

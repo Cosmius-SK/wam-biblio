@@ -67,3 +67,48 @@ export interface StructureResponse {
   /** Token usage, surfaced so the UI can show real cost transparency. */
   usage?: { inputTokens: number; outputTokens: number };
 }
+
+/** A compact entry the client sends to AI features that read across entries. */
+export interface EntryRef {
+  id: string;
+  title: string;
+  summary: string;
+  body: string;
+  themes: string[];
+  mood: string;
+  createdAt: number;
+}
+
+/** POST /api/ask — question your journal (RAG; retrieval happens on the client). */
+export interface AskRequest {
+  question: string;
+  entries: EntryRef[];
+}
+export interface AskResponse {
+  answer: string;
+  /** Entry ids the answer draws on. */
+  citations: string[];
+  model: string;
+  usage?: { inputTokens: number; outputTokens: number };
+}
+
+/** POST /api/synthesis — a gentle "state of you" reflection over recent entries. */
+export interface SynthesisRequest {
+  entries: EntryRef[];
+}
+export interface SynthesisResponse {
+  title: string;
+  reflection: string;
+  themes: string[];
+  model: string;
+  usage?: { inputTokens: number; outputTokens: number };
+}
+
+/** A persisted reflection (kept locally so the user can revisit it). */
+export interface Reflection {
+  id: string;
+  createdAt: number;
+  title: string;
+  reflection: string;
+  themes: string[];
+}
