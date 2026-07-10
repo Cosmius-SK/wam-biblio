@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useLiveQuery } from "dexie-react-hooks";
 import { AnimatePresence, motion } from "framer-motion";
-import { db } from "@/lib/db";
+import { db, getSetting } from "@/lib/db";
 import EntryCard from "@/components/EntryCard";
 import { DemoBanner, SeedButton } from "@/components/DemoControls";
 import { greeting } from "@/lib/format";
@@ -16,6 +16,7 @@ import { greeting } from "@/lib/format";
 export default function TimelinePage() {
   // `undefined` while loading; an array once IndexedDB has answered.
   const entries = useLiveQuery(() => db.entries.orderBy("createdAt").reverse().toArray());
+  const name = useLiveQuery(() => getSetting("displayName"));
 
   return (
     <div>
@@ -26,7 +27,8 @@ export default function TimelinePage() {
           transition={{ duration: 0.6 }}
           className="font-serif text-3xl text-ink"
         >
-          {greeting()}.
+          {greeting()}
+          {name ? `, ${name}` : ""}.
         </motion.h1>
         <p className="mt-1 text-muted">
           {entries && entries.length > 0
