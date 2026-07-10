@@ -28,18 +28,10 @@ export default function EntryCard({
         </div>
       )}
 
+      {/* Stamp order: [📍 place ·] date · time zone · mood — place omitted when not recorded. */}
       <div className="mb-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted">
-        <time dateTime={new Date(entry.createdAt).toISOString()}>
-          {formatDate(entry.createdAt, entry.timezone)} · {formatTime(entry.createdAt, entry.timezone)}
-          {zoneDiffers(entry.timezone) && entry.timezone
-            ? ` ${shortZone(entry.createdAt, entry.timezone)}`
-            : ""}
-        </time>
-        <span aria-hidden>·</span>
-        <span className="italic text-lavender">{entry.mood}</span>
         {entry.place && (
           <>
-            <span aria-hidden>·</span>
             <span className="flex items-center gap-1" title={placeLabel(entry.place)}>
               <svg
                 width="11"
@@ -58,8 +50,17 @@ export default function EntryCard({
               </svg>
               {entry.place.name}
             </span>
+            <span aria-hidden>·</span>
           </>
         )}
+        <time dateTime={new Date(entry.createdAt).toISOString()}>
+          {formatDate(entry.createdAt, entry.timezone)} · {formatTime(entry.createdAt, entry.timezone)}
+          {zoneDiffers(entry.timezone) && entry.timezone
+            ? ` ${shortZone(entry.createdAt, entry.timezone)}`
+            : ""}
+        </time>
+        <span aria-hidden>·</span>
+        <span className="italic text-lavender">{entry.mood}</span>
       </div>
 
       <h2 className="font-serif text-2xl leading-snug text-ink">{entry.title}</h2>

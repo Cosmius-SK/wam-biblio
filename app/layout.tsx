@@ -4,6 +4,7 @@ import "./globals.css";
 import AmbientBackground from "@/components/AmbientBackground";
 import Nav from "@/components/Nav";
 import ModeToggle from "@/components/ModeToggle";
+import MusicToggle from "@/components/MusicToggle";
 import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 
@@ -35,6 +36,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               biblio
             </Link>
             <div className="flex items-center gap-2">
+              <MusicToggle />
               <ModeToggle />
               <Link
                 href="/capture"

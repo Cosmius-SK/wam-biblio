@@ -57,7 +57,7 @@ export default function GalleryPage() {
               <figcaption className="absolute inset-x-0 bottom-0 p-4">
                 <p className="font-serif text-lg leading-tight text-white drop-shadow">{entry.title}</p>
                 <p className="mt-0.5 text-xs text-white/80">
-                  {formatDate(entry.createdAt)} · {entry.mood}
+                  {formatDate(entry.createdAt, entry.timezone)} · {entry.mood}
                 </p>
               </figcaption>
             </motion.figure>

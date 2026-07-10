@@ -189,13 +189,13 @@ export default function CaptureComposer() {
 
           <div className="mt-4 rounded-2xl border border-hairline/70 bg-surface/70 p-6 shadow-soft">
             <div className="mb-3 flex flex-wrap items-center gap-2 text-xs text-muted">
-              <span>{formatDate(whenToMs(when))}</span>
               {place && (
                 <>
+                  <span>📍 {placeLabel(place)}</span>
                   <span aria-hidden>·</span>
-                  <span>{placeLabel(place)}</span>
                 </>
               )}
+              <span>{formatDate(whenToMs(when))}</span>
               <span aria-hidden>·</span>
               <span className="italic text-lavender">{result.entry.mood}</span>
               {result.entry.significant && (

@@ -7,6 +7,7 @@ import {
   startDictation,
   type DictationHandle,
 } from "@/lib/transcribe";
+import { ambient } from "@/lib/ambient";
 
 /**
  * A calm mic button. While listening it emits the cumulative spoken transcript
@@ -27,16 +28,22 @@ export default function VoiceRecorder({
 
   useEffect(() => {
     setSupported(isTranscriptionSupported());
-    return () => handleRef.current?.stop();
+    return () => {
+      handleRef.current?.stop();
+      ambient.unduck();
+    };
   }, []);
 
   const stop = () => {
     handleRef.current?.stop();
     handleRef.current = null;
     setListening(false);
+    ambient.unduck();
   };
 
   const start = () => {
+    // Soften the ambient pad so it never bleeds into the recording.
+    ambient.duck();
     onStart();
     const handle = startDictation({
       onUpdate: onTranscript,
@@ -44,10 +51,14 @@ export default function VoiceRecorder({
         onError?.(msg);
         stop();
       },
-      onEnd: () => setListening(false),
+      onEnd: () => {
+        setListening(false);
+        ambient.unduck();
+      },
     });
     if (!handle) {
       setSupported(false);
+      ambient.unduck();
       return;
     }
     handleRef.current = handle;
