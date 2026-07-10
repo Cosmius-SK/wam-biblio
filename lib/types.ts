@@ -23,13 +23,28 @@ export interface StructuredEntry {
   imagePrompt: string;
 }
 
+/** A place picked from geocoding results (never free text). */
+export interface EntryPlace {
+  name: string;
+  region?: string;
+  country?: string;
+  latitude: number;
+  longitude: number;
+}
+
 /** A full entry as persisted locally (structured fields + bookkeeping). */
 export interface JournalEntry extends StructuredEntry {
   id: string;
   /** The original, unedited thought (voice transcript or typed). */
   raw: string;
-  /** Epoch millis the entry was captured. */
+  /** Epoch millis of the moment the entry is ABOUT (backdatable; drives ordering). */
   createdAt: number;
+  /** Epoch millis the entry was actually captured (bookkeeping). */
+  recordedAt?: number;
+  /** IANA time zone the entry was written in (e.g. "Asia/Tokyo") — preserves local wall-clock. */
+  timezone?: string;
+  /** Where this moment happened, if the writer chose a place. */
+  place?: EntryPlace;
   /** Which Claude model produced this entry (e.g. "claude-haiku-4-5"). */
   model: string;
   /** How the raw input was captured. */
@@ -60,6 +75,10 @@ export interface StructureRequest {
   recent?: EntryContext[];
   /** User hint that this moment matters — biases the router toward the deeper model. */
   markedSignificant?: boolean;
+  /** Human-readable date the thought is about (context only, e.g. "Sat Jun 14 2026"). */
+  occurredAt?: string;
+  /** Label of the chosen place (context only, e.g. "Lisbon, Portugal"). */
+  placeName?: string;
 }
 
 /** Response body for POST /api/structure. */

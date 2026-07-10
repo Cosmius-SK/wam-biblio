@@ -79,6 +79,8 @@ function makeDemoEntries(): JournalEntry[] {
       raw: "walked the long way home after the rain, streets all shiny, didn't think about anything for once",
       model: "claude-haiku-4-5",
       source: "voice",
+      timezone: "Europe/Lisbon",
+      place: { name: "Lisbon", country: "Portugal", latitude: 38.72, longitude: -9.14 },
       demo: true,
     },
     {
@@ -109,6 +111,8 @@ function makeDemoEntries(): JournalEntry[] {
       raw: "dinner with J, first time in a year, fell right back into it, laughed so much",
       model: "claude-sonnet-4-6",
       source: "voice",
+      timezone: "Asia/Kolkata",
+      place: { name: "Chennai", region: "Tamil Nadu", country: "India", latitude: 13.08, longitude: 80.27 },
       demo: true,
     },
     {

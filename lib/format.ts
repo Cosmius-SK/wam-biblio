@@ -1,18 +1,56 @@
 /** Small presentation helpers shared across the UI. */
 
-export function formatDate(ms: number): string {
-  return new Date(ms).toLocaleDateString(undefined, {
+/**
+ * Date/time formatters. Pass the entry's stamped IANA `timezone` to show the
+ * original wall-clock time no matter where the reader is now; an invalid or
+ * missing zone falls back to the viewer's local time. Backdated entries from
+ * earlier years include the year.
+ */
+export function formatDate(ms: number, tz?: string): string {
+  const d = new Date(ms);
+  const opts: Intl.DateTimeFormatOptions = {
     weekday: "long",
     month: "long",
     day: "numeric",
-  });
+    ...(d.getFullYear() !== new Date().getFullYear() ? { year: "numeric" as const } : {}),
+  };
+  try {
+    return d.toLocaleDateString(undefined, { ...opts, ...(tz ? { timeZone: tz } : {}) });
+  } catch {
+    return d.toLocaleDateString(undefined, opts);
+  }
 }
 
-export function formatTime(ms: number): string {
-  return new Date(ms).toLocaleTimeString(undefined, {
-    hour: "numeric",
-    minute: "2-digit",
-  });
+export function formatTime(ms: number, tz?: string): string {
+  const opts: Intl.DateTimeFormatOptions = { hour: "numeric", minute: "2-digit" };
+  try {
+    return new Date(ms).toLocaleTimeString(undefined, { ...opts, ...(tz ? { timeZone: tz } : {}) });
+  } catch {
+    return new Date(ms).toLocaleTimeString(undefined, opts);
+  }
+}
+
+/** True when the entry was written in a different time zone than the viewer's. */
+export function zoneDiffers(tz?: string): boolean {
+  if (!tz) return false;
+  try {
+    return tz !== Intl.DateTimeFormat().resolvedOptions().timeZone;
+  } catch {
+    return false;
+  }
+}
+
+/** Short zone label, e.g. "GMT+5:30" — shown only when zoneDiffers(). */
+export function shortZone(ms: number, tz: string): string {
+  try {
+    const parts = new Intl.DateTimeFormat(undefined, {
+      timeZone: tz,
+      timeZoneName: "short",
+    }).formatToParts(new Date(ms));
+    return parts.find((p) => p.type === "timeZoneName")?.value ?? "";
+  } catch {
+    return "";
+  }
 }
 
 /** A gentle greeting based on the local hour. */

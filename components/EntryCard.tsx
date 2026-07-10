@@ -2,7 +2,8 @@
 
 import { motion } from "framer-motion";
 import type { JournalEntry } from "@/lib/types";
-import { formatDate, formatTime, modelLabel } from "@/lib/format";
+import { formatDate, formatTime, modelLabel, shortZone, zoneDiffers } from "@/lib/format";
+import { placeLabel } from "@/lib/geo";
 import SceneImage from "./SceneImage";
 
 /** A single entry in the living timeline — reading-first, book-like. */
@@ -27,12 +28,38 @@ export default function EntryCard({
         </div>
       )}
 
-      <div className="mb-2 flex items-center gap-2 text-xs text-muted">
+      <div className="mb-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted">
         <time dateTime={new Date(entry.createdAt).toISOString()}>
-          {formatDate(entry.createdAt)} · {formatTime(entry.createdAt)}
+          {formatDate(entry.createdAt, entry.timezone)} · {formatTime(entry.createdAt, entry.timezone)}
+          {zoneDiffers(entry.timezone) && entry.timezone
+            ? ` ${shortZone(entry.createdAt, entry.timezone)}`
+            : ""}
         </time>
         <span aria-hidden>·</span>
         <span className="italic text-lavender">{entry.mood}</span>
+        {entry.place && (
+          <>
+            <span aria-hidden>·</span>
+            <span className="flex items-center gap-1" title={placeLabel(entry.place)}>
+              <svg
+                width="11"
+                height="11"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden
+                className="text-lavender"
+              >
+                <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z" />
+                <circle cx="12" cy="10" r="3" />
+              </svg>
+              {entry.place.name}
+            </span>
+          </>
+        )}
       </div>
 
       <h2 className="font-serif text-2xl leading-snug text-ink">{entry.title}</h2>

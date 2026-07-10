@@ -17,7 +17,7 @@ async function runPass(model: string, req: StructureRequest): Promise<PassResult
   const res = await structuredCall({
     model,
     system: STRUCTURE_SYSTEM,
-    user: buildUserContent(req.raw, req.recent),
+    user: buildUserContent(req.raw, req.recent, { when: req.occurredAt, place: req.placeName }),
     schema: STRUCTURE_SCHEMA,
   });
   return {

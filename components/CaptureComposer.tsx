@@ -4,17 +4,27 @@ import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 import VoiceRecorder from "./VoiceRecorder";
+import WhenWhere, { nowForInput } from "./WhenWhere";
 import { recentContext, saveEntry } from "@/lib/db";
-import type { JournalEntry, StructureResponse } from "@/lib/types";
-import { estimateCost, formatCost, modelLabel } from "@/lib/format";
+import type { EntryPlace, JournalEntry, StructureResponse } from "@/lib/types";
+import { estimateCost, formatCost, formatDate, modelLabel } from "@/lib/format";
+import { placeLabel } from "@/lib/geo";
 
 type Phase = "compose" | "shaping" | "review";
+
+/** The chosen "when", as epoch ms — falling back to now if the input is empty/invalid. */
+function whenToMs(when: string): number {
+  const ms = new Date(when).getTime();
+  return Number.isFinite(ms) ? Math.min(ms, Date.now()) : Date.now();
+}
 
 export default function CaptureComposer() {
   const router = useRouter();
   const [phase, setPhase] = useState<Phase>("compose");
   const [text, setText] = useState("");
   const [significant, setSignificant] = useState(false);
+  const [when, setWhen] = useState<string>(() => nowForInput());
+  const [place, setPlace] = useState<EntryPlace | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<StructureResponse | null>(null);
 
@@ -39,6 +49,8 @@ export default function CaptureComposer() {
           source: usedVoiceRef.current ? "voice" : "text",
           recent,
           markedSignificant: significant,
+          occurredAt: new Date(whenToMs(when)).toDateString(),
+          placeName: place ? placeLabel(place) : undefined,
         }),
       });
       if (!res.ok) {
@@ -64,7 +76,10 @@ export default function CaptureComposer() {
       body: body.trim() || result.entry.body,
       id: crypto.randomUUID(),
       raw: text.trim(),
-      createdAt: Date.now(),
+      createdAt: whenToMs(when),
+      recordedAt: Date.now(),
+      timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+      place: place ?? undefined,
       model: result.model,
       source: usedVoiceRef.current ? "voice" : "text",
       significant: significant || result.entry.significant,
@@ -119,6 +134,8 @@ export default function CaptureComposer() {
             />
           </div>
 
+          <WhenWhere when={when} onWhenChange={setWhen} place={place} onPlaceChange={setPlace} />
+
           <label className="mt-5 flex cursor-pointer items-center gap-3 text-sm text-muted">
             <input
               type="checkbox"
@@ -171,7 +188,15 @@ export default function CaptureComposer() {
           <p className="text-sm text-muted">Here&rsquo;s how it came back. Edit anything, then keep it.</p>
 
           <div className="mt-4 rounded-2xl border border-hairline/70 bg-surface/70 p-6 shadow-soft">
-            <div className="mb-3 flex items-center gap-2 text-xs text-muted">
+            <div className="mb-3 flex flex-wrap items-center gap-2 text-xs text-muted">
+              <span>{formatDate(whenToMs(when))}</span>
+              {place && (
+                <>
+                  <span aria-hidden>·</span>
+                  <span>{placeLabel(place)}</span>
+                </>
+              )}
+              <span aria-hidden>·</span>
               <span className="italic text-lavender">{result.entry.mood}</span>
               {result.entry.significant && (
                 <>

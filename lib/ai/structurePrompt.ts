@@ -20,7 +20,11 @@ Principles:
 Return only the structured object.`;
 
 /** Build the user-turn content: recent context (if any) + the new raw thought. */
-export function buildUserContent(raw: string, recent?: EntryContext[]): string {
+export function buildUserContent(
+  raw: string,
+  recent?: EntryContext[],
+  about?: { when?: string; place?: string },
+): string {
   let context = "";
   if (recent && recent.length > 0) {
     const lines = recent
@@ -28,7 +32,12 @@ export function buildUserContent(raw: string, recent?: EntryContext[]): string {
       .join("\n");
     context = `Recent entries, for continuity (do not repeat or merge them; use only to keep tone and threads consistent):\n${lines}\n\n`;
   }
-  return `${context}New raw thought to shape into an entry:\n"""\n${raw}\n"""`;
+  let situ = "";
+  if (about?.when || about?.place) {
+    const bits = [about?.when, about?.place].filter(Boolean).join(", in ");
+    situ = `This thought is about ${bits}. Use this only as quiet context (themes, tone) — do not state details the writer didn't mention.\n\n`;
+  }
+  return `${context}${situ}New raw thought to shape into an entry:\n"""\n${raw}\n"""`;
 }
 
 /**
