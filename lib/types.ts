@@ -35,6 +35,20 @@ export interface EntryPhoto {
   height: number;
 }
 
+/** A self-portrait for the profile timelapse: tiny local thumbnail (used for the
+ * avatar and the crossfade) + a pointer to the encrypted original in Drive. */
+export interface Portrait {
+  id: string;
+  /** Drive file id of the encrypted original ("portrait-<id>.enc"). */
+  driveFileId: string;
+  /** Small JPEG data URL kept locally — powers the instant, offline timelapse. */
+  thumb: string;
+  width: number;
+  height: number;
+  /** Epoch millis the portrait is dated to (drives order + the MM‑YY stamp). */
+  capturedAt: number;
+}
+
 /** A place picked from geocoding results (never free text). */
 export interface EntryPlace {
   name: string;

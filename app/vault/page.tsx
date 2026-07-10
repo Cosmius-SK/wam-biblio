@@ -3,7 +3,7 @@
 import { useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { db, getSetting, setSetting } from "@/lib/db";
-import type { JournalEntry, Reflection } from "@/lib/types";
+import type { JournalEntry, Portrait, Reflection } from "@/lib/types";
 import { encryptJSON, decryptJSON, isEncryptedBlob, syncId } from "@/lib/crypto";
 import DriveConnect from "@/components/DriveConnect";
 
@@ -13,6 +13,8 @@ interface BackupPayload {
   exportedAt: number;
   entries: JournalEntry[];
   reflections: Reflection[];
+  /** Profile self-portraits (thumbnails + Drive pointers) for the timelapse. */
+  portraits?: Portrait[];
   /** The photo encryption key, so other devices can open Drive photos. */
   mediaKey?: string;
 }
@@ -46,7 +48,8 @@ export default function VaultPage() {
     try {
       const entries = (await db.entries.toArray()).filter((e) => !e.id.startsWith("demo-"));
       const reflections = await db.reflections.toArray();
-      if (entries.length === 0 && reflections.length === 0) {
+      const portraits = await db.portraits.toArray();
+      if (entries.length === 0 && reflections.length === 0 && portraits.length === 0) {
         setError("Nothing real to back up yet (sample entries are skipped).");
         setBusy(false);
         return;
@@ -57,6 +60,7 @@ export default function VaultPage() {
         exportedAt: Date.now(),
         entries,
         reflections,
+        portraits,
         mediaKey: await getSetting("mediaKey"),
       };
       const blob = await encryptJSON(payload, passphrase);
@@ -105,6 +109,7 @@ export default function VaultPage() {
       }
       await db.entries.bulkPut(payload.entries);
       if (Array.isArray(payload.reflections)) await db.reflections.bulkPut(payload.reflections);
+      if (Array.isArray(payload.portraits)) await db.portraits.bulkPut(payload.portraits);
       await adoptMediaKey(payload.mediaKey);
       setStatus(`Restored ${payload.entries.length} ${payload.entries.length === 1 ? "entry" : "entries"}. They're on your timeline now.`);
     } catch {
@@ -125,7 +130,8 @@ export default function VaultPage() {
     try {
       const entries = (await db.entries.toArray()).filter((e) => !e.id.startsWith("demo-"));
       const reflections = await db.reflections.toArray();
-      if (entries.length === 0 && reflections.length === 0) {
+      const portraits = await db.portraits.toArray();
+      if (entries.length === 0 && reflections.length === 0 && portraits.length === 0) {
         setError("Nothing real to sync yet (sample entries are skipped).");
         setBusy(false);
         return;
@@ -136,6 +142,7 @@ export default function VaultPage() {
         exportedAt: Date.now(),
         entries,
         reflections,
+        portraits,
         mediaKey: await getSetting("mediaKey"),
       };
       const blob = await encryptJSON(payload, passphrase);
@@ -187,6 +194,7 @@ export default function VaultPage() {
       }
       await db.entries.bulkPut(payload.entries);
       if (Array.isArray(payload.reflections)) await db.reflections.bulkPut(payload.reflections);
+      if (Array.isArray(payload.portraits)) await db.portraits.bulkPut(payload.portraits);
       await adoptMediaKey(payload.mediaKey);
       setStatus(`Pulled ${payload.entries.length} ${payload.entries.length === 1 ? "entry" : "entries"} from the cloud.`);
     } catch (err) {

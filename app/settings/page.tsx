@@ -5,6 +5,7 @@ import Link from "next/link";
 import { motion } from "framer-motion";
 import { getSetting, setSetting } from "@/lib/db";
 import { ambient } from "@/lib/ambient";
+import PortraitStudio from "@/components/PortraitStudio";
 
 /**
  * Settings hub. Real sections today: your name, and a gateway to backup /
@@ -106,6 +107,8 @@ function ProfileCard() {
           {saved ? "Saved" : "Save"}
         </button>
       </div>
+
+      <PortraitStudio />
     </div>
   );
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import type { EntryPhoto } from "./types";
+import type { EntryPhoto, Portrait } from "./types";
 import { getSetting, setSetting } from "./db";
 import { decryptBytes, encryptBytes, generateMediaKey, importMediaKey } from "./crypto";
 import { RECONNECT, downloadEncrypted, ensureFolder, getAccessToken, uploadEncrypted } from "./drive";
@@ -106,6 +106,30 @@ export async function uploadPhotos(
   }
   onProgress?.(pending.length, pending.length);
   return photos;
+}
+
+/** Encrypt + upload one self-portrait; returns the metadata to store locally.
+ * The thumbnail lives on-device (fast, offline timelapse); only the encrypted
+ * full-size original leaves for the writer's own Drive. */
+export async function uploadPortrait(pending: PendingPhoto, capturedAt: number): Promise<Portrait> {
+  let token: string;
+  try {
+    token = await getAccessToken(false);
+  } catch {
+    throw new Error(FRIENDLY_RECONNECT);
+  }
+  const folderId = await ensureFolder(token);
+  const key = await mediaCryptoKey();
+  const packed = await encryptBytes(key, await pending.blob.arrayBuffer());
+  const driveFileId = await uploadEncrypted(token, folderId, `portrait-${pending.id}.enc`, packed);
+  return {
+    id: pending.id,
+    driveFileId,
+    thumb: pending.thumb,
+    width: pending.width,
+    height: pending.height,
+    capturedAt,
+  };
 }
 
 /** Download + decrypt a photo; returns an object URL (caller revokes it). */

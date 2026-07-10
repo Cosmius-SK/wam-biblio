@@ -1,7 +1,7 @@
 "use client";
 
 import Dexie, { type Table } from "dexie";
-import type { JournalEntry, EntryContext, Reflection } from "./types";
+import type { JournalEntry, EntryContext, Portrait, Reflection } from "./types";
 
 /**
  * Local-first store. Entries live in the browser (IndexedDB) and are the
@@ -18,6 +18,7 @@ class JournalDB extends Dexie {
   entries!: Table<JournalEntry, string>;
   reflections!: Table<Reflection, string>;
   settings!: Table<Setting, string>;
+  portraits!: Table<Portrait, string>;
 
   constructor() {
     super("wam-biblio");
@@ -32,6 +33,10 @@ class JournalDB extends Dexie {
     // v3 adds key-value settings (photo media key, Drive connection state).
     this.version(3).stores({
       settings: "key",
+    });
+    // v4 adds profile self-portraits for the timelapse.
+    this.version(4).stores({
+      portraits: "id, capturedAt",
     });
   }
 }
@@ -74,6 +79,19 @@ export async function saveReflection(reflection: Reflection): Promise<void> {
 /** The most recent saved reflection, or undefined if none yet. */
 export async function latestReflection(): Promise<Reflection | undefined> {
   return db.reflections.orderBy("createdAt").reverse().first();
+}
+
+/** Self-portraits, oldest-first — the order the timelapse plays through. */
+export async function listPortraits(): Promise<Portrait[]> {
+  return db.portraits.orderBy("capturedAt").toArray();
+}
+
+export async function savePortrait(portrait: Portrait): Promise<void> {
+  await db.portraits.put(portrait);
+}
+
+export async function deletePortrait(id: string): Promise<void> {
+  await db.portraits.delete(id);
 }
 
 export async function getSetting(key: string): Promise<string | undefined> {
