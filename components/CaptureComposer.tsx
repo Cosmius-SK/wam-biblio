@@ -5,10 +5,12 @@ import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 import VoiceRecorder from "./VoiceRecorder";
 import WhenWhere, { nowForInput } from "./WhenWhere";
+import PhotoAttach from "./PhotoAttach";
 import { recentContext, saveEntry } from "@/lib/db";
-import type { EntryPlace, JournalEntry, StructureResponse } from "@/lib/types";
+import type { EntryPhoto, EntryPlace, JournalEntry, StructureResponse } from "@/lib/types";
 import { estimateCost, formatCost, formatDate, modelLabel } from "@/lib/format";
 import { placeLabel } from "@/lib/geo";
+import { uploadPhotos, type PendingPhoto } from "@/lib/media";
 
 type Phase = "compose" | "shaping" | "review";
 
@@ -25,6 +27,8 @@ export default function CaptureComposer() {
   const [significant, setSignificant] = useState(false);
   const [when, setWhen] = useState<string>(() => nowForInput());
   const [place, setPlace] = useState<EntryPlace | null>(null);
+  const [photos, setPhotos] = useState<PendingPhoto[]>([]);
+  const [saveProgress, setSaveProgress] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<StructureResponse | null>(null);
 
@@ -70,6 +74,20 @@ export default function CaptureComposer() {
 
   async function accept() {
     if (!result) return;
+    setError(null);
+    let entryPhotos: EntryPhoto[] | undefined;
+    if (photos.length > 0) {
+      try {
+        setSaveProgress(`Securing photo 1 of ${photos.length}…`);
+        entryPhotos = await uploadPhotos(photos, (done, total) => {
+          setSaveProgress(done < total ? `Securing photo ${done + 1} of ${total}…` : "Keeping…");
+        });
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Couldn't upload the photos.");
+        setSaveProgress(null);
+        return;
+      }
+    }
     const entry: JournalEntry = {
       ...result.entry,
       title: title.trim() || result.entry.title,
@@ -80,6 +98,7 @@ export default function CaptureComposer() {
       recordedAt: Date.now(),
       timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
       place: place ?? undefined,
+      photos: entryPhotos,
       model: result.model,
       source: usedVoiceRef.current ? "voice" : "text",
       significant: significant || result.entry.significant,
@@ -135,6 +154,8 @@ export default function CaptureComposer() {
           </div>
 
           <WhenWhere when={when} onWhenChange={setWhen} place={place} onPlaceChange={setPlace} />
+
+          <PhotoAttach photos={photos} onChange={setPhotos} />
 
           <label className="mt-5 flex cursor-pointer items-center gap-3 text-sm text-muted">
             <input
@@ -233,6 +254,21 @@ export default function CaptureComposer() {
                 ))}
               </ul>
             )}
+
+            {photos.length > 0 && (
+              <ul className="mt-4 flex flex-wrap gap-2">
+                {photos.map((p) => (
+                  <li key={p.id}>
+                    {/* eslint-disable-next-line @next/next/no-img-element -- local data-URL thumbnail */}
+                    <img
+                      src={p.thumb}
+                      alt=""
+                      className="h-16 w-16 rounded-xl border border-hairline/60 object-cover"
+                    />
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
 
           <p className="mt-3 text-center text-xs text-muted/80">
@@ -244,20 +280,28 @@ export default function CaptureComposer() {
               : ""}
           </p>
 
+          {error && (
+            <p className="mt-4 rounded-xl bg-terracotta/10 px-4 py-3 text-sm text-terracotta">
+              {error}
+            </p>
+          )}
+
           <div className="mt-5 flex gap-3">
             <button
               type="button"
               onClick={discard}
-              className="flex-1 rounded-full border border-hairline bg-surface/60 px-6 py-3 font-medium text-ink transition-transform hover:scale-[1.02] active:scale-95"
+              disabled={saveProgress !== null}
+              className="flex-1 rounded-full border border-hairline bg-surface/60 px-6 py-3 font-medium text-ink transition-transform enabled:hover:scale-[1.02] enabled:active:scale-95 disabled:opacity-40"
             >
               Start over
             </button>
             <button
               type="button"
               onClick={accept}
-              className="flex-1 rounded-full bg-ink/90 px-6 py-3 font-medium text-paper shadow-soft transition-transform hover:scale-[1.02] active:scale-95"
+              disabled={saveProgress !== null}
+              className="flex-1 rounded-full bg-ink/90 px-6 py-3 font-medium text-paper shadow-soft transition-transform enabled:hover:scale-[1.02] enabled:active:scale-95 disabled:opacity-40"
             >
-              Keep it
+              {saveProgress ?? "Keep it"}
             </button>
           </div>
         </motion.div>

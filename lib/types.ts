@@ -23,6 +23,18 @@ export interface StructuredEntry {
   imagePrompt: string;
 }
 
+/** An attached photo: tiny local thumbnail + a pointer to the encrypted
+ * original in the user's own Google Drive. */
+export interface EntryPhoto {
+  id: string;
+  /** Drive file id of the encrypted original ("photo-<id>.enc"). */
+  driveFileId: string;
+  /** Small JPEG data URL kept locally (and in encrypted backups) for fast lists. */
+  thumb: string;
+  width: number;
+  height: number;
+}
+
 /** A place picked from geocoding results (never free text). */
 export interface EntryPlace {
   name: string;
@@ -45,6 +57,8 @@ export interface JournalEntry extends StructuredEntry {
   timezone?: string;
   /** Where this moment happened, if the writer chose a place. */
   place?: EntryPlace;
+  /** Attached photos (encrypted originals live in the writer's Google Drive). */
+  photos?: EntryPhoto[];
   /** Which Claude model produced this entry (e.g. "claude-haiku-4-5"). */
   model: string;
   /** How the raw input was captured. */

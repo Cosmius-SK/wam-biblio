@@ -9,9 +9,15 @@ import type { JournalEntry, EntryContext, Reflection } from "./types";
  * except the AI calls the user explicitly triggers. Encrypted cloud sync is
  * a later phase (see plan, Phase 4).
  */
+interface Setting {
+  key: string;
+  value: string;
+}
+
 class JournalDB extends Dexie {
   entries!: Table<JournalEntry, string>;
   reflections!: Table<Reflection, string>;
+  settings!: Table<Setting, string>;
 
   constructor() {
     super("wam-biblio");
@@ -22,6 +28,10 @@ class JournalDB extends Dexie {
     // v2 adds saved "state of you" reflections (Phase 2).
     this.version(2).stores({
       reflections: "id, createdAt",
+    });
+    // v3 adds key-value settings (photo media key, Drive connection state).
+    this.version(3).stores({
+      settings: "key",
     });
   }
 }
@@ -64,4 +74,12 @@ export async function saveReflection(reflection: Reflection): Promise<void> {
 /** The most recent saved reflection, or undefined if none yet. */
 export async function latestReflection(): Promise<Reflection | undefined> {
   return db.reflections.orderBy("createdAt").reverse().first();
+}
+
+export async function getSetting(key: string): Promise<string | undefined> {
+  return (await db.settings.get(key))?.value;
+}
+
+export async function setSetting(key: string, value: string): Promise<void> {
+  await db.settings.put({ key, value });
 }

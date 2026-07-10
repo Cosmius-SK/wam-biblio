@@ -97,6 +97,7 @@ sample entries"** to explore. Use Chrome/Edge/Safari for voice capture.
 | `GEMINI_API_KEY` | for live images | Free‑tier scene image generation (sanitized prompts only). |
 | `APP_PASSCODE` | no | Set to lock the public URL. Unset → gate is off. |
 | `BLOB_READ_WRITE_TOKEN` | for sync | Auto‑added when you connect a Vercel Blob store. |
+| `NEXT_PUBLIC_GOOGLE_CLIENT_ID` | for photos | OAuth Web client ID for Drive photo attachments (an identifier, not a secret). |
 
 ## Access gate (passcode)
 
@@ -115,6 +116,28 @@ encrypted with a passphrase that never leaves the browser:
   **Blob** store → **Connect** it to the project (adds `BLOB_READ_WRITE_TOKEN`) →
   redeploy. The same passphrase on another device resolves the same encrypted
   slot. The server stores and returns only ciphertext.
+
+## Photos on Google Drive
+
+Entries can carry photo attachments. Each photo is **compressed and encrypted
+on-device** (AES‑GCM with a per-journal media key), then uploaded to a
+`biblio-journal` folder in **your own Google Drive** — Google only ever sees
+ciphertext, and the `drive.file` scope means the app can only touch files it
+created. A tiny local thumbnail keeps the timeline fast; tapping it fetches and
+decrypts the original. The media key travels inside your encrypted backups and
+cloud sync, so other devices can open the same photos after a Pull & merge.
+
+One-time setup:
+
+1. In [Google Cloud Console](https://console.cloud.google.com/) create a project
+   → **APIs & Services → Enable APIs** → enable the **Google Drive API**.
+2. **OAuth consent screen**: External → fill the app name/email → **Publish** to
+   production (the `drive.file` scope is non-sensitive; no verification needed).
+3. **Credentials → Create credentials → OAuth client ID → Web application**;
+   add your app origins (e.g. `https://your-app.vercel.app` and
+   `http://localhost:3000`) under **Authorized JavaScript origins**.
+4. Put the client ID in `NEXT_PUBLIC_GOOGLE_CLIENT_ID` (Vercel env var) and
+   redeploy, then tap **Connect Google Drive** in the vault.
 
 ## Deploy
 

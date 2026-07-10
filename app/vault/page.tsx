@@ -2,9 +2,10 @@
 
 import { useRef, useState } from "react";
 import { motion } from "framer-motion";
-import { db } from "@/lib/db";
+import { db, getSetting, setSetting } from "@/lib/db";
 import type { JournalEntry, Reflection } from "@/lib/types";
 import { encryptJSON, decryptJSON, isEncryptedBlob, syncId } from "@/lib/crypto";
+import DriveConnect from "@/components/DriveConnect";
 
 interface BackupPayload {
   app: "wam-biblio";
@@ -12,6 +13,15 @@ interface BackupPayload {
   exportedAt: number;
   entries: JournalEntry[];
   reflections: Reflection[];
+  /** The photo encryption key, so other devices can open Drive photos. */
+  mediaKey?: string;
+}
+
+/** Adopt an incoming photo key only when this device doesn't have one yet. */
+async function adoptMediaKey(incoming?: string): Promise<void> {
+  if (!incoming) return;
+  const existing = await getSetting("mediaKey");
+  if (!existing) await setSetting("mediaKey", incoming);
 }
 
 export default function VaultPage() {
@@ -47,6 +57,7 @@ export default function VaultPage() {
         exportedAt: Date.now(),
         entries,
         reflections,
+        mediaKey: await getSetting("mediaKey"),
       };
       const blob = await encryptJSON(payload, passphrase);
       const date = new Date().toISOString().slice(0, 10);
@@ -94,6 +105,7 @@ export default function VaultPage() {
       }
       await db.entries.bulkPut(payload.entries);
       if (Array.isArray(payload.reflections)) await db.reflections.bulkPut(payload.reflections);
+      await adoptMediaKey(payload.mediaKey);
       setStatus(`Restored ${payload.entries.length} ${payload.entries.length === 1 ? "entry" : "entries"}. They're on your timeline now.`);
     } catch {
       setError("Couldn't read that file.");
@@ -118,7 +130,14 @@ export default function VaultPage() {
         setBusy(false);
         return;
       }
-      const payload: BackupPayload = { app: "wam-biblio", v: 1, exportedAt: Date.now(), entries, reflections };
+      const payload: BackupPayload = {
+        app: "wam-biblio",
+        v: 1,
+        exportedAt: Date.now(),
+        entries,
+        reflections,
+        mediaKey: await getSetting("mediaKey"),
+      };
       const blob = await encryptJSON(payload, passphrase);
       const id = await syncId(passphrase);
       const res = await fetch("/api/sync", {
@@ -168,6 +187,7 @@ export default function VaultPage() {
       }
       await db.entries.bulkPut(payload.entries);
       if (Array.isArray(payload.reflections)) await db.reflections.bulkPut(payload.reflections);
+      await adoptMediaKey(payload.mediaKey);
       setStatus(`Pulled ${payload.entries.length} ${payload.entries.length === 1 ? "entry" : "entries"} from the cloud.`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Couldn't pull.");
@@ -269,6 +289,8 @@ export default function VaultPage() {
           </button>
         </div>
       </div>
+
+      <DriveConnect />
 
       <p className="mt-6 text-center text-xs text-muted/80">
         Your passphrase is the only key — to your file backups and your cloud sync alike.

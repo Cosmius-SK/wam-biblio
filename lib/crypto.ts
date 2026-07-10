@@ -90,6 +90,35 @@ export function isEncryptedBlob(x: unknown): x is EncryptedBlob {
   return !!b && b.v === 1 && typeof b.salt === "string" && typeof b.iv === "string" && typeof b.data === "string";
 }
 
+/** Random 256-bit media key (base64) — generated once per journal and carried
+ * inside encrypted backups/sync so other devices can open the same photos. */
+export function generateMediaKey(): string {
+  return toB64(crypto.getRandomValues(new Uint8Array(32)));
+}
+
+export function importMediaKey(b64: string): Promise<CryptoKey> {
+  return crypto.subtle.importKey("raw", bs(fromB64(b64)), "AES-GCM", false, [
+    "encrypt",
+    "decrypt",
+  ] as KeyUsage[]);
+}
+
+/** Encrypt raw bytes → packed [version:1][iv:12][ciphertext]. */
+export async function encryptBytes(key: CryptoKey, data: ArrayBuffer): Promise<Uint8Array> {
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const ct = new Uint8Array(await crypto.subtle.encrypt({ name: "AES-GCM", iv: bs(iv) }, key, data));
+  const packed = new Uint8Array(13 + ct.length);
+  packed[0] = 1;
+  packed.set(iv, 1);
+  packed.set(ct, 13);
+  return packed;
+}
+
+export async function decryptBytes(key: CryptoKey, packed: Uint8Array): Promise<ArrayBuffer> {
+  if (packed.length < 14 || packed[0] !== 1) throw new Error("Unrecognized encrypted media format.");
+  return crypto.subtle.decrypt({ name: "AES-GCM", iv: bs(packed.slice(1, 13)) }, key, bs(packed.slice(13)));
+}
+
 /**
  * A stable, unguessable cloud location derived from the passphrase. Two devices
  * with the same passphrase resolve to the same sync slot — and only ciphertext

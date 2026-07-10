@@ -5,6 +5,7 @@ import type { JournalEntry } from "@/lib/types";
 import { formatDate, formatTime, modelLabel, shortZone, zoneDiffers } from "@/lib/format";
 import { placeLabel } from "@/lib/geo";
 import SceneImage from "./SceneImage";
+import PhotoStrip from "./PhotoStrip";
 
 /** A single entry in the living timeline — reading-first, book-like. */
 export default function EntryCard({
@@ -81,6 +82,8 @@ export default function EntryCard({
           ))}
         </ul>
       )}
+
+      {entry.photos && entry.photos.length > 0 && <PhotoStrip photos={entry.photos} />}
 
       <div className="mt-4 text-[0.7rem] uppercase tracking-wide text-muted/70">
         shaped by {modelLabel(entry.model)}
