@@ -15,7 +15,7 @@ interface Voice {
   gain: GainNode;
 }
 
-const VOLUME = 0.05; // intentionally very soft
+const VOLUME = 0.22; // soft, but present in a quiet room (tamed by a compressor)
 const ATTACK = 5; // seconds
 const HOLD = 14;
 const RELEASE = 8;
@@ -113,6 +113,19 @@ class Ambient {
     this.master.gain.setTargetAtTime(VOLUME, this.ctx.currentTime, 1.0);
   }
 
+  /**
+   * Resume after the tab returns to the foreground. Browsers suspend the audio
+   * context when a tab is backgrounded (aggressively on mobile), which is why
+   * the pad would go silent and not come back — resuming here fixes that.
+   */
+  resume() {
+    if (!this.ctx || !this.playing) return;
+    if (this.ctx.state === "suspended") void this.ctx.resume();
+    if (!this.ducked && this.master) {
+      this.master.gain.setTargetAtTime(VOLUME, this.ctx.currentTime, 0.6);
+    }
+  }
+
   private setup() {
     const w = window as unknown as {
       AudioContext?: typeof AudioContext;
@@ -127,18 +140,26 @@ class Ambient {
 
     const filter = ctx.createBiquadFilter();
     filter.type = "lowpass";
-    filter.frequency.value = 900;
+    filter.frequency.value = 1050;
     filter.Q.value = 0.4;
 
     // A very slow LFO makes the filter "breathe".
     const lfo = ctx.createOscillator();
     lfo.frequency.value = 1 / 26;
     const lfoGain = ctx.createGain();
-    lfoGain.gain.value = 260;
+    lfoGain.gain.value = 300;
     lfo.connect(lfoGain).connect(filter.frequency);
     lfo.start();
 
-    filter.connect(master).connect(ctx.destination);
+    // Gentle compression lets the pad sit at an audible level without clipping.
+    const comp = ctx.createDynamicsCompressor();
+    comp.threshold.value = -18;
+    comp.knee.value = 20;
+    comp.ratio.value = 3;
+    comp.attack.value = 0.05;
+    comp.release.value = 0.4;
+
+    filter.connect(comp).connect(master).connect(ctx.destination);
     this.ctx = ctx;
     this.master = master;
     this.filter = filter;

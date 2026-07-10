@@ -14,9 +14,10 @@ export default function MusicToggle() {
   useEffect(() => {
     setPlaying(ambient.isPlaying());
     const unsubscribe = ambient.subscribe(setPlaying);
+    // Don't mute on hide (the browser suspends the audio context anyway) — just
+    // resume reliably when the tab comes back to the foreground.
     const onVisibility = () => {
-      if (document.hidden) ambient.duck();
-      else ambient.unduck();
+      if (!document.hidden) ambient.resume();
     };
     document.addEventListener("visibilitychange", onVisibility);
     return () => {
