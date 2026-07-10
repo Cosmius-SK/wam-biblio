@@ -14,15 +14,20 @@ export default function MusicToggle() {
   useEffect(() => {
     setPlaying(ambient.isPlaying());
     const unsubscribe = ambient.subscribe(setPlaying);
-    // Don't mute on hide (the browser suspends the audio context anyway) — just
-    // resume reliably when the tab comes back to the foreground.
+    // The browser suspends audio when backgrounded (and iOS only resumes inside
+    // a user gesture), so resume on focus AND on the next tap after waking.
+    const resume = () => ambient.resume();
     const onVisibility = () => {
-      if (!document.hidden) ambient.resume();
+      if (!document.hidden) resume();
     };
     document.addEventListener("visibilitychange", onVisibility);
+    window.addEventListener("focus", resume);
+    window.addEventListener("pointerdown", resume);
     return () => {
       unsubscribe();
       document.removeEventListener("visibilitychange", onVisibility);
+      window.removeEventListener("focus", resume);
+      window.removeEventListener("pointerdown", resume);
     };
   }, []);
 

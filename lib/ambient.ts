@@ -5,8 +5,12 @@
  * licensing, no network, no cost: soft detuned sine pads drifting through a
  * slow chord cycle behind a breathing low-pass filter.
  *
- * A singleton so any component can duck it: the voice recorder (and later the
- * camera) calls duck()/unduck() so music never bleeds into a recording.
+ * Gain staging: notes → filter → master (the volume knob) → limiter (safety
+ * ceiling) → out. The master is the user-controlled volume; the limiter only
+ * catches peaks that would clip, so raising the volume actually gets louder.
+ *
+ * A singleton so any component can control it — the voice recorder ducks it
+ * during capture, and MusicToggle resumes it after the tab/phone wakes.
  */
 type Listener = (playing: boolean) => void;
 
@@ -15,10 +19,12 @@ interface Voice {
   gain: GainNode;
 }
 
-const VOLUME = 0.22; // soft, but present in a quiet room (tamed by a compressor)
+const DEFAULT_VOLUME = 0.7;
+const VOL_KEY = "biblio_music_vol";
 const ATTACK = 5; // seconds
 const HOLD = 14;
 const RELEASE = 8;
+const NOTE_GAIN = 0.36; // per note (split across its two oscillators); limiter tames the sum
 
 // Gentle, hopeful pads cycling around Am7 / Fmaj7 / G / C.
 const CHORDS: number[][] = [
@@ -27,6 +33,19 @@ const CHORDS: number[][] = [
   [196.0, 246.94, 293.66, 392.0],
   [130.81, 196.0, 261.63, 329.63],
 ];
+
+function readStoredVolume(): number {
+  try {
+    const raw = localStorage.getItem(VOL_KEY);
+    if (raw != null) {
+      const n = parseFloat(raw);
+      if (Number.isFinite(n) && n >= 0 && n <= 1) return n;
+    }
+  } catch {
+    /* SSR / private mode */
+  }
+  return DEFAULT_VOLUME;
+}
 
 class Ambient {
   private ctx: AudioContext | null = null;
@@ -38,9 +57,14 @@ class Ambient {
   private ducked = false;
   private chordIndex = 0;
   private listeners = new Set<Listener>();
+  private userVolume = readStoredVolume();
 
   isPlaying(): boolean {
     return this.playing;
+  }
+
+  getVolume(): number {
+    return this.userVolume;
   }
 
   subscribe(fn: Listener): () => void {
@@ -69,7 +93,7 @@ class Ambient {
     this.playing = true;
     this.ducked = false;
     this.master.gain.cancelScheduledValues(ctx.currentTime);
-    this.master.gain.setTargetAtTime(VOLUME, ctx.currentTime, 1.5);
+    this.master.gain.setTargetAtTime(this.userVolume, ctx.currentTime, 1.5);
     this.playChord();
     this.emit();
   }
@@ -110,19 +134,32 @@ class Ambient {
   unduck() {
     if (!this.ctx || !this.master || !this.playing || !this.ducked) return;
     this.ducked = false;
-    this.master.gain.setTargetAtTime(VOLUME, this.ctx.currentTime, 1.0);
+    this.master.gain.setTargetAtTime(this.userVolume, this.ctx.currentTime, 1.0);
   }
 
   /**
-   * Resume after the tab returns to the foreground. Browsers suspend the audio
-   * context when a tab is backgrounded (aggressively on mobile), which is why
-   * the pad would go silent and not come back — resuming here fixes that.
+   * Resume after the tab/phone wakes. Browsers suspend the audio context when
+   * backgrounded (and iOS refuses to resume outside a user gesture) — so this
+   * is called on focus and on the next tap, not just visibilitychange.
    */
   resume() {
     if (!this.ctx || !this.playing) return;
     if (this.ctx.state === "suspended") void this.ctx.resume();
     if (!this.ducked && this.master) {
-      this.master.gain.setTargetAtTime(VOLUME, this.ctx.currentTime, 0.6);
+      this.master.gain.setTargetAtTime(this.userVolume, this.ctx.currentTime, 0.6);
+    }
+  }
+
+  /** Set the volume (0–1); applies live if playing and persists per-device. */
+  setVolume(v: number) {
+    this.userVolume = Math.max(0, Math.min(1, v));
+    try {
+      localStorage.setItem(VOL_KEY, String(this.userVolume));
+    } catch {
+      /* private mode */
+    }
+    if (this.playing && !this.ducked && this.master && this.ctx) {
+      this.master.gain.setTargetAtTime(this.userVolume, this.ctx.currentTime, 0.15);
     }
   }
 
@@ -140,26 +177,28 @@ class Ambient {
 
     const filter = ctx.createBiquadFilter();
     filter.type = "lowpass";
-    filter.frequency.value = 1050;
+    filter.frequency.value = 1100;
     filter.Q.value = 0.4;
 
     // A very slow LFO makes the filter "breathe".
     const lfo = ctx.createOscillator();
     lfo.frequency.value = 1 / 26;
     const lfoGain = ctx.createGain();
-    lfoGain.gain.value = 300;
+    lfoGain.gain.value = 320;
     lfo.connect(lfoGain).connect(filter.frequency);
     lfo.start();
 
-    // Gentle compression lets the pad sit at an audible level without clipping.
-    const comp = ctx.createDynamicsCompressor();
-    comp.threshold.value = -18;
-    comp.knee.value = 20;
-    comp.ratio.value = 3;
-    comp.attack.value = 0.05;
-    comp.release.value = 0.4;
+    // Final safety limiter — only catches peaks near clipping, so the volume
+    // knob keeps its full range.
+    const limiter = ctx.createDynamicsCompressor();
+    limiter.threshold.value = -1.5;
+    limiter.knee.value = 0;
+    limiter.ratio.value = 20;
+    limiter.attack.value = 0.003;
+    limiter.release.value = 0.25;
 
-    filter.connect(comp).connect(master).connect(ctx.destination);
+    // notes → filter → master (volume) → limiter → out
+    filter.connect(master).connect(limiter).connect(ctx.destination);
     this.ctx = ctx;
     this.master = master;
     this.filter = filter;
@@ -195,7 +234,7 @@ class Ambient {
         osc.detune.value = detune;
         const gain = ctx.createGain();
         gain.gain.value = 0;
-        gain.gain.setTargetAtTime(0.16 / chord.length, now, ATTACK / 3);
+        gain.gain.setTargetAtTime(NOTE_GAIN / chord.length / 2, now, ATTACK / 3);
         osc.connect(gain).connect(this.filter);
         osc.start(now);
         this.active.push({ osc, gain });
