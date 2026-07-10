@@ -5,7 +5,7 @@ import type { JournalEntry } from "@/lib/types";
 import { formatDate, formatTime, modelLabel, shortZone, zoneDiffers } from "@/lib/format";
 import { placeLabel } from "@/lib/geo";
 import SceneImage from "./SceneImage";
-import PhotoStrip from "./PhotoStrip";
+import PhotoHeader from "./PhotoHeader";
 
 /** A single entry in the living timeline — reading-first, book-like. */
 export default function EntryCard({
@@ -22,12 +22,15 @@ export default function EntryCard({
       transition={{ duration: 0.5, delay: Math.min(index * 0.04, 0.3), ease: "easeOut" }}
       className="group relative rounded-2xl border border-hairline/70 bg-surface/70 p-6 shadow-soft backdrop-blur-sm"
     >
-      {entry.significant && (
+      {/* Real photos take the top; the generated scene is only a stand-in when there are none. */}
+      {entry.photos && entry.photos.length > 0 ? (
+        <PhotoHeader photos={entry.photos} />
+      ) : entry.significant ? (
         <div className="relative -mx-6 -mt-6 mb-5 h-44 overflow-hidden rounded-t-2xl">
           <SceneImage entry={entry} className="h-full w-full object-cover" />
           <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-surface/85" />
         </div>
-      )}
+      ) : null}
 
       {/* Stamp order: [📍 place ·] date · time zone · mood — place omitted when not recorded. */}
       <div className="mb-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted">
@@ -83,10 +86,8 @@ export default function EntryCard({
         </ul>
       )}
 
-      {entry.photos && entry.photos.length > 0 && <PhotoStrip photos={entry.photos} />}
-
       <div className="mt-4 text-[0.7rem] uppercase tracking-wide text-muted/70">
-        shaped by {modelLabel(entry.model)}
+        {entry.model === "self" ? "your words" : `shaped by ${modelLabel(entry.model)}`}
         {entry.source === "voice" ? " · spoken" : ""}
       </div>
     </motion.article>

@@ -6,33 +6,45 @@ import type { EntryPhoto } from "@/lib/types";
 import { loadPhotoUrl } from "@/lib/media";
 
 /**
- * Thumbnails on an entry card; tapping one opens the full photo — fetched
- * from Drive and decrypted on-device in a soft lightbox.
+ * Full-bleed photo header at the top of an entry card. The first photo spans
+ * the card width; any others sit in a small strip beneath it. Tapping any of
+ * them opens a lightbox that decrypts the original on-device — and tapping
+ * anywhere (or Esc) closes it.
+ *
+ * Note: the negative margins assume the parent card uses p-6 (see EntryCard).
  */
-export default function PhotoStrip({ photos }: { photos: EntryPhoto[] }) {
-  const [openPhoto, setOpenPhoto] = useState<EntryPhoto | null>(null);
+export default function PhotoHeader({ photos }: { photos: EntryPhoto[] }) {
+  const [open, setOpen] = useState<EntryPhoto | null>(null);
+  const hero = photos[0];
+  const rest = photos.slice(1);
 
   return (
-    <>
-      <ul className="mt-4 flex flex-wrap gap-2">
-        {photos.map((p) => (
-          <li key={p.id}>
-            <button
-              type="button"
-              onClick={() => setOpenPhoto(p)}
-              aria-label="View photo"
-              className="block overflow-hidden rounded-xl border border-hairline/60 transition-transform hover:scale-[1.03] active:scale-95"
-            >
+    <div className="-mx-6 -mt-6 mb-5 overflow-hidden rounded-t-2xl">
+      <button
+        type="button"
+        onClick={() => setOpen(hero)}
+        aria-label="View photo"
+        className="block w-full"
+      >
+        {/* eslint-disable-next-line @next/next/no-img-element -- local data-URL thumbnail */}
+        <img src={hero.thumb} alt="" className="h-60 w-full object-cover" />
+      </button>
+
+      {rest.length > 0 && (
+        <div className="grid grid-cols-4 gap-1 bg-surface p-1">
+          {rest.map((p) => (
+            <button key={p.id} type="button" onClick={() => setOpen(p)} aria-label="View photo">
               {/* eslint-disable-next-line @next/next/no-img-element -- local data-URL thumbnail */}
-              <img src={p.thumb} alt="" className="h-20 w-20 object-cover" />
+              <img src={p.thumb} alt="" className="aspect-square w-full rounded-md object-cover" />
             </button>
-          </li>
-        ))}
-      </ul>
+          ))}
+        </div>
+      )}
+
       <AnimatePresence>
-        {openPhoto && <Lightbox photo={openPhoto} onClose={() => setOpenPhoto(null)} />}
+        {open && <Lightbox photo={open} onClose={() => setOpen(null)} />}
       </AnimatePresence>
-    </>
+    </div>
   );
 }
 
@@ -62,6 +74,7 @@ function Lightbox({ photo, onClose }: { photo: EntryPhoto; onClose: () => void }
     };
   }, [photo, onClose]);
 
+  // The whole overlay — image included — closes on tap (no stopPropagation).
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -70,15 +83,20 @@ function Lightbox({ photo, onClose }: { photo: EntryPhoto; onClose: () => void }
       onClick={onClose}
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-4 backdrop-blur-sm"
       role="dialog"
-      aria-label="Photo"
+      aria-label="Photo — tap to close"
     >
+      <span
+        aria-hidden
+        className="absolute right-4 top-4 flex h-9 w-9 items-center justify-center rounded-full bg-white/15 text-white"
+      >
+        ✕
+      </span>
       {url ? (
         <motion.img
           initial={{ scale: 0.96 }}
           animate={{ scale: 1 }}
           src={url}
           alt=""
-          onClick={(e) => e.stopPropagation()}
           className="max-h-[88vh] max-w-full rounded-2xl shadow-lift"
         />
       ) : error ? (

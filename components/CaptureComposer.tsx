@@ -7,7 +7,13 @@ import VoiceRecorder from "./VoiceRecorder";
 import WhenWhere, { nowForInput } from "./WhenWhere";
 import PhotoAttach from "./PhotoAttach";
 import { recentContext, saveEntry } from "@/lib/db";
-import type { EntryPhoto, EntryPlace, JournalEntry, StructureResponse } from "@/lib/types";
+import type {
+  EntryPhoto,
+  EntryPlace,
+  JournalEntry,
+  StructuredEntry,
+  StructureResponse,
+} from "@/lib/types";
 import { estimateCost, formatCost, formatDate, modelLabel } from "@/lib/format";
 import { placeLabel } from "@/lib/geo";
 import { uploadPhotos, type PendingPhoto } from "@/lib/media";
@@ -18,6 +24,13 @@ type Phase = "compose" | "shaping" | "review";
 function whenToMs(when: string): number {
   const ms = new Date(when).getTime();
   return Number.isFinite(ms) ? Math.min(ms, Date.now()) : Date.now();
+}
+
+/** A short title from the first words, for entries saved without AI. */
+function deriveTitle(text: string): string {
+  const first = text.trim().replace(/\s+/g, " ").split(/[.!?\n]/)[0] || text;
+  const words = first.split(" ").slice(0, 6).join(" ").trim();
+  return words ? words.charAt(0).toUpperCase() + words.slice(1) : "Untitled";
 }
 
 export default function CaptureComposer() {
@@ -72,8 +85,8 @@ export default function CaptureComposer() {
     }
   }
 
-  async function accept() {
-    if (!result) return;
+  /** Upload any photos, build the entry, persist it, and go to the timeline. */
+  async function commit(structured: StructuredEntry, model: string) {
     setError(null);
     let entryPhotos: EntryPhoto[] | undefined;
     if (photos.length > 0) {
@@ -89,9 +102,7 @@ export default function CaptureComposer() {
       }
     }
     const entry: JournalEntry = {
-      ...result.entry,
-      title: title.trim() || result.entry.title,
-      body: body.trim() || result.entry.body,
+      ...structured,
       id: crypto.randomUUID(),
       raw: text.trim(),
       createdAt: whenToMs(when),
@@ -99,12 +110,44 @@ export default function CaptureComposer() {
       timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
       place: place ?? undefined,
       photos: entryPhotos,
-      model: result.model,
+      model,
       source: usedVoiceRef.current ? "voice" : "text",
-      significant: significant || result.entry.significant,
+      significant: structured.significant,
     };
     await saveEntry(entry);
     router.push("/");
+  }
+
+  async function accept() {
+    if (!result) return;
+    await commit(
+      {
+        ...result.entry,
+        title: title.trim() || result.entry.title,
+        body: body.trim() || result.entry.body,
+        significant: significant || result.entry.significant,
+      },
+      result.model,
+    );
+  }
+
+  /** Save exactly what was typed — no AI shaping, no spend. */
+  async function saveDirect() {
+    const t = text.trim();
+    if (!t) return;
+    await commit(
+      {
+        title: deriveTitle(t),
+        body: t,
+        summary: t.replace(/\s+/g, " ").slice(0, 140),
+        themes: [],
+        mood: "neutral",
+        entities: [],
+        significant,
+        imagePrompt: "A soft, calm scene in warm dusk light.",
+      },
+      "self",
+    );
   }
 
   function discard() {
@@ -176,10 +219,18 @@ export default function CaptureComposer() {
           <button
             type="button"
             onClick={shape}
-            disabled={!text.trim()}
+            disabled={!text.trim() || saveProgress !== null}
             className="mt-6 w-full rounded-full bg-ink/90 px-6 py-3 font-medium text-paper shadow-soft transition-transform enabled:hover:scale-[1.02] enabled:active:scale-95 disabled:opacity-40"
           >
             Shape this into an entry
+          </button>
+          <button
+            type="button"
+            onClick={saveDirect}
+            disabled={!text.trim() || saveProgress !== null}
+            className="mt-3 w-full rounded-full border border-hairline bg-surface/60 px-6 py-3 font-medium text-ink transition-transform enabled:hover:scale-[1.02] enabled:active:scale-95 disabled:opacity-40"
+          >
+            {saveProgress ?? "Save as is — my words, no AI"}
           </button>
         </motion.div>
       )}
