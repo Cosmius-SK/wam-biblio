@@ -140,14 +140,52 @@ class Ambient {
   /**
    * Resume after the tab/phone wakes. Browsers suspend the audio context when
    * backgrounded (and iOS refuses to resume outside a user gesture) — so this
-   * is called on focus and on the next tap, not just visibilitychange.
+   * is called on focus and on the next tap, not just visibilitychange. If the
+   * context is wedged (iOS often kills it after a long lock/interruption), it
+   * is rebuilt from scratch on the next tap.
    */
   resume() {
-    if (!this.ctx || !this.playing) return;
-    if (this.ctx.state === "suspended") void this.ctx.resume();
-    if (!this.ducked && this.master) {
-      this.master.gain.setTargetAtTime(this.userVolume, this.ctx.currentTime, 0.6);
+    if (!this.playing) return;
+    if (!this.ctx || !this.master) {
+      this.playing = false;
+      this.start();
+      return;
     }
+    const ctx = this.ctx;
+    if (ctx.state === "running") {
+      this.restoreGain();
+      return;
+    }
+    ctx.resume().then(
+      () => (ctx.state === "running" ? this.restoreGain() : this.hardRestart()),
+      () => this.hardRestart(),
+    );
+  }
+
+  /** Ease the volume back to where the user set it (after a duck or a wake). */
+  private restoreGain() {
+    if (!this.ctx || !this.master || this.ducked) return;
+    this.master.gain.setTargetAtTime(this.userVolume, this.ctx.currentTime, 0.6);
+  }
+
+  /** Tear down a dead context and start a fresh one (best effort, from a tap). */
+  private hardRestart() {
+    if (this.chordTimer !== null) {
+      clearTimeout(this.chordTimer);
+      this.chordTimer = null;
+    }
+    this.active = [];
+    const dead = this.ctx;
+    this.ctx = null;
+    this.master = null;
+    this.filter = null;
+    try {
+      void dead?.close();
+    } catch {
+      /* already closed */
+    }
+    this.playing = false;
+    this.start();
   }
 
   /** Set the volume (0–1); applies live if playing and persists per-device. */

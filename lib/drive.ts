@@ -22,8 +22,13 @@ interface TokenResponse {
   expires_in?: number;
   error?: string;
 }
+interface TokenError {
+  type?: string;
+  message?: string;
+}
 interface TokenClient {
   callback: (r: TokenResponse) => void;
+  error_callback?: (e: TokenError) => void;
   requestAccessToken: (cfg?: { prompt?: string }) => void;
 }
 interface GoogleOAuth2 {
@@ -31,6 +36,7 @@ interface GoogleOAuth2 {
     client_id: string;
     scope: string;
     callback: (r: TokenResponse) => void;
+    error_callback?: (e: TokenError) => void;
   }) => TokenClient;
 }
 
@@ -96,8 +102,18 @@ export async function getAccessToken(interactive: boolean): Promise<string> {
   const o = oauth2();
   if (!o) throw new Error("Google sign-in didn't load.");
   return new Promise<string>((resolve, reject) => {
+    // A single settle guard: GIS can fire callback, error_callback, throw, or —
+    // on a silent refresh it can't complete — go quiet. Any of these must
+    // resolve or reject exactly once, so the caller never hangs.
+    let settled = false;
+    const fail = () =>
+      !settled &&
+      ((settled = true), reject(new Error(interactive ? "Google auth failed." : RECONNECT)));
+
     const callback = (r: TokenResponse) => {
+      if (settled) return;
       if (!r.access_token) {
+        settled = true;
         reject(
           new Error(interactive ? `Google auth failed${r.error ? ` (${r.error})` : ""}.` : RECONNECT),
         );
@@ -111,17 +127,28 @@ export async function getAccessToken(interactive: boolean): Promise<string> {
       } catch {
         /* private mode — token stays in-memory via GIS */
       }
+      settled = true;
       resolve(r.access_token);
     };
+
     if (!tokenClient) {
-      tokenClient = o.initTokenClient({ client_id: driveClientId(), scope: SCOPE, callback });
+      tokenClient = o.initTokenClient({
+        client_id: driveClientId(),
+        scope: SCOPE,
+        callback,
+        error_callback: fail,
+      });
     } else {
       tokenClient.callback = callback;
+      tokenClient.error_callback = fail;
     }
+    // A silent refresh should return in a second or two; if GIS stays quiet
+    // (common in an installed PWA with no Google session), stop waiting.
+    if (!interactive) window.setTimeout(fail, 8000);
     try {
       tokenClient.requestAccessToken(interactive ? undefined : { prompt: "" });
     } catch {
-      reject(new Error(interactive ? "Google auth failed." : RECONNECT));
+      fail();
     }
   });
 }

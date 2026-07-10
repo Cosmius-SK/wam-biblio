@@ -75,6 +75,23 @@ export async function prepareImage(file: File): Promise<PendingPhoto> {
   }
 }
 
+/**
+ * A Drive token for an upload the user just initiated: try a silent refresh
+ * first, and if that fails (an expired token, no Google session in a PWA) fall
+ * back to the interactive consent popup while their tap is still fresh.
+ */
+async function driveUploadToken(): Promise<string> {
+  try {
+    return await getAccessToken(false);
+  } catch {
+    try {
+      return await getAccessToken(true);
+    } catch {
+      throw new Error(FRIENDLY_RECONNECT);
+    }
+  }
+}
+
 /** The journal's media key — created once, then carried inside encrypted backups/sync. */
 async function mediaCryptoKey(): Promise<CryptoKey> {
   let b64 = await getSetting("mediaKey");
@@ -90,12 +107,7 @@ export async function uploadPhotos(
   pending: PendingPhoto[],
   onProgress?: (done: number, total: number) => void,
 ): Promise<EntryPhoto[]> {
-  let token: string;
-  try {
-    token = await getAccessToken(false);
-  } catch {
-    throw new Error(FRIENDLY_RECONNECT);
-  }
+  const token = await driveUploadToken();
   const folderId = await ensureFolder(token);
   const key = await mediaCryptoKey();
   const photos: EntryPhoto[] = [];
@@ -114,12 +126,7 @@ export async function uploadPhotos(
  * The thumbnail lives on-device (fast, offline timelapse); only the encrypted
  * full-size original leaves for the writer's own Drive. */
 export async function uploadPortrait(pending: PendingPhoto, capturedAt: number): Promise<Portrait> {
-  let token: string;
-  try {
-    token = await getAccessToken(false);
-  } catch {
-    throw new Error(FRIENDLY_RECONNECT);
-  }
+  const token = await driveUploadToken();
   const folderId = await ensureFolder(token);
   const key = await mediaCryptoKey();
   const packed = await encryptBytes(key, await pending.blob.arrayBuffer());

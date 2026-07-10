@@ -5,8 +5,8 @@ import Link from "next/link";
 import { AnimatePresence } from "framer-motion";
 import type { Portrait } from "@/lib/types";
 import { deletePortrait, listPortraits, savePortrait } from "@/lib/db";
-import { driveConfigured, isDriveConnected } from "@/lib/drive";
-import { prepareImage, uploadPortrait } from "@/lib/media";
+import { connectDrive, driveConfigured, isDriveConnected } from "@/lib/drive";
+import { prepareImage, uploadPortrait, type PendingPhoto } from "@/lib/media";
 import PortraitTimelapse from "./PortraitTimelapse";
 
 /** "YYYY-MM" ↔ epoch millis (first of the month, local time). */
@@ -34,6 +34,9 @@ export default function PortraitStudio() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [playing, setPlaying] = useState(false);
+  // A prepared portrait held back when Drive auth failed, so a fresh tap on
+  // "Reconnect" can finish it without re-picking the file.
+  const [retry, setRetry] = useState<{ pending: PendingPhoto; at: number } | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -65,14 +68,42 @@ export default function PortraitStudio() {
     setBusy(true);
     try {
       const pending = await prepareImage(file);
-      const portrait = await uploadPortrait(pending, monthToMs(month));
-      await savePortrait(portrait);
-      setPortraits((prev) => [...prev, portrait]);
+      await commit(pending, monthToMs(month));
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Couldn't add that portrait.");
+      setError(err instanceof Error ? err.message : "Couldn't read that image.");
     } finally {
       setBusy(false);
       if (inputRef.current) inputRef.current.value = "";
+    }
+  }
+
+  /** Encrypt + upload + save; on a Drive auth failure, hold the image for retry. */
+  async function commit(pending: PendingPhoto, at: number) {
+    try {
+      const portrait = await uploadPortrait(pending, at);
+      await savePortrait(portrait);
+      setPortraits((prev) => [...prev, portrait]);
+      setRetry(null);
+      setError(null);
+    } catch (err) {
+      setRetry({ pending, at });
+      setError(err instanceof Error ? err.message : "Couldn't add that portrait.");
+    }
+  }
+
+  /** From a real tap: (re)connect Drive, then finish the held-back portrait. */
+  async function reconnectAndFinish() {
+    if (!retry) return;
+    setError(null);
+    setBusy(true);
+    try {
+      await connectDrive();
+      setReady("ready");
+      await commit(retry.pending, retry.at);
+    } catch {
+      setError("Couldn't connect to Google Drive. Try again, or reconnect in Backup & restore.");
+    } finally {
+      setBusy(false);
     }
   }
 
@@ -190,6 +221,17 @@ export default function PortraitStudio() {
           )}
 
           {error && <p className="mt-2 text-xs text-terracotta">{error}</p>}
+
+          {retry && (
+            <button
+              type="button"
+              onClick={reconnectAndFinish}
+              disabled={busy}
+              className="mt-2 rounded-full bg-ink/90 px-4 py-2 text-sm font-medium text-paper shadow-soft transition-transform enabled:hover:scale-[1.02] enabled:active:scale-95 disabled:opacity-50"
+            >
+              {busy ? "Reconnecting…" : "Reconnect Google Drive & finish"}
+            </button>
+          )}
         </>
       )}
 
