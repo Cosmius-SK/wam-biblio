@@ -99,7 +99,7 @@ export default function EntryCard({
           )}
 
           <div className="mt-4 text-[0.7rem] uppercase tracking-wide text-muted/70">
-            {entry.model === "self" ? "saved" : `shaped by ${modelLabel(entry.model)}`}
+            {entry.model === "self" ? "your words" : `shaped by ${modelLabel(entry.model)}`}
             {entry.source === "voice" ? " · spoken" : ""}
           </div>
         </>

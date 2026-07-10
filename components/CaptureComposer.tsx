@@ -230,7 +230,7 @@ export default function CaptureComposer() {
             disabled={!text.trim() || saveProgress !== null}
             className="mt-3 w-full rounded-full border border-hairline bg-surface/60 px-6 py-3 font-medium text-ink transition-transform enabled:hover:scale-[1.02] enabled:active:scale-95 disabled:opacity-40"
           >
-            {saveProgress ?? "Save as is — my words, no AI"}
+            {saveProgress ?? "Save"}
           </button>
         </motion.div>
       )}
