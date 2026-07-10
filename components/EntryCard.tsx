@@ -99,7 +99,7 @@ export default function EntryCard({
           )}
 
           <div className="mt-4 text-[0.7rem] uppercase tracking-wide text-muted/70">
-            {entry.model === "self" ? "your words" : `shaped by ${modelLabel(entry.model)}`}
+            {entry.model === "self" ? "saved" : `shaped by ${modelLabel(entry.model)}`}
             {entry.source === "voice" ? " · spoken" : ""}
           </div>
         </>
@@ -198,15 +198,18 @@ function EntryEditor({ entry, onDone }: { entry: JournalEntry; onDone: () => voi
   const [title, setTitle] = useState(entry.title);
   const [body, setBody] = useState(entry.body);
   const [mood, setMood] = useState(entry.mood);
+  const [themesText, setThemesText] = useState(entry.themes.join(", "));
   const [saving, setSaving] = useState(false);
 
   async function save() {
     setSaving(true);
+    const themes = [...new Set(themesText.split(",").map((t) => t.trim()).filter(Boolean))];
     await saveEntry({
       ...entry,
       title: title.trim() || entry.title,
       body: body.trim() || entry.body,
       mood: mood.trim() || entry.mood,
+      themes,
     });
     setSaving(false);
     onDone();
@@ -235,6 +238,18 @@ function EntryEditor({ entry, onDone }: { entry: JournalEntry; onDone: () => voi
           aria-label="Entry mood"
           className="w-40 rounded-lg border border-hairline bg-paper/40 px-2 py-1 text-sm italic text-lavender focus:border-lavender/60 focus:outline-none"
         />
+      </label>
+
+      <label className="mt-3 flex flex-col gap-1 text-xs text-muted">
+        Themes
+        <input
+          value={themesText}
+          onChange={(e) => setThemesText(e.target.value)}
+          placeholder="work, family, quiet mornings"
+          aria-label="Entry themes"
+          className="w-full rounded-lg border border-hairline bg-paper/40 px-2 py-1.5 text-sm text-sage focus:border-lavender/60 focus:outline-none"
+        />
+        <span className="text-[0.7rem] text-muted/70">Separate with commas.</span>
       </label>
 
       <div className="mt-4 flex gap-3">

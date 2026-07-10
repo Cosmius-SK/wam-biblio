@@ -18,6 +18,17 @@ export default function PhotoHeader({ photos }: { photos: EntryPhoto[] }) {
   const hero = photos[0];
   const rest = photos.slice(1);
 
+  // The extra photos fill the full card width — one wide, or an even grid.
+  const cols =
+    rest.length === 1
+      ? "grid-cols-1"
+      : rest.length === 2
+        ? "grid-cols-2"
+        : rest.length === 3
+          ? "grid-cols-3"
+          : "grid-cols-4";
+  const tileAspect = rest.length === 1 ? "aspect-[16/10]" : "aspect-square";
+
   return (
     <div className="-mx-6 -mt-6 mb-5 overflow-hidden rounded-t-2xl">
       <button
@@ -27,15 +38,21 @@ export default function PhotoHeader({ photos }: { photos: EntryPhoto[] }) {
         className="block w-full"
       >
         {/* eslint-disable-next-line @next/next/no-img-element -- local data-URL thumbnail */}
-        <img src={hero.thumb} alt="" className="h-60 w-full object-cover" />
+        <img src={hero.thumb} alt="" className="h-64 w-full object-cover" />
       </button>
 
       {rest.length > 0 && (
-        <div className="grid grid-cols-4 gap-1 bg-surface p-1">
+        <div className={`mt-1 grid gap-1 ${cols}`}>
           {rest.map((p) => (
-            <button key={p.id} type="button" onClick={() => setOpen(p)} aria-label="View photo">
+            <button
+              key={p.id}
+              type="button"
+              onClick={() => setOpen(p)}
+              aria-label="View photo"
+              className="block"
+            >
               {/* eslint-disable-next-line @next/next/no-img-element -- local data-URL thumbnail */}
-              <img src={p.thumb} alt="" className="aspect-square w-full rounded-md object-cover" />
+              <img src={p.thumb} alt="" className={`${tileAspect} w-full object-cover`} />
             </button>
           ))}
         </div>

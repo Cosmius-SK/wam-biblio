@@ -20,8 +20,10 @@ export interface PendingPhoto {
 
 const FULL_DIM = 1600;
 const FULL_QUALITY = 0.85;
-const THUMB_DIM = 360;
-const THUMB_QUALITY = 0.7;
+// The thumbnail is what the timeline actually shows — including the full-width
+// hero — so it needs enough resolution to stay crisp on high-DPI phones.
+const THUMB_DIM = 900;
+const THUMB_QUALITY = 0.82;
 
 const FRIENDLY_RECONNECT =
   "Google Drive needs (re)connecting — open Backup & restore and tap Connect.";
