@@ -1,6 +1,5 @@
 "use client";
 
-import { upload } from "@vercel/blob/client";
 import { db, getSetting, setSetting, suppressSync } from "./db";
 import type { JournalEntry, Portrait, Reflection } from "./types";
 import { decryptJSON, encryptJSON, isEncryptedBlob, syncId } from "./crypto";
@@ -102,35 +101,38 @@ function parsePath(pathname: string): { type: RecType; id: string } | null {
   return m ? { type: m[1] as RecType, id: m[2] } : null;
 }
 
-/** Upload one blob with a stall watchdog: if no byte progress for 45s, reject
- * (rather than hang forever) — the delta ledger resumes it on the next sync. */
-function uploadWithWatchdog(path: string, body: string, onByte?: (frac: number) => void): Promise<void> {
+/** POST one small encrypted record through our own server (which writes it to
+ * Blob server-side — reliable, unlike a browser→Blob direct upload). XHR gives
+ * real byte progress for the client→server leg, with a 60s timeout so a bad
+ * connection errors (and the delta ledger resumes) instead of hanging. */
+function postRecord(id: string, key: string, blob: unknown, onByte?: (frac: number) => void): Promise<void> {
   return new Promise((resolve, reject) => {
-    let last = Date.now();
-    const iv = window.setInterval(() => {
-      if (Date.now() - last > 45000) {
-        window.clearInterval(iv);
-        reject(new Error("Upload stalled — it'll resume on the next sync."));
-      }
-    }, 5000);
-    upload(path, body, {
-      access: "public",
-      contentType: "application/json",
-      handleUploadUrl: "/api/sync/upload",
-      onUploadProgress: (e) => {
-        last = Date.now();
-        onByte?.(e.percentage / 100);
-      },
-    }).then(
-      () => {
-        window.clearInterval(iv);
+    const xhr = new XMLHttpRequest();
+    xhr.open("POST", "/api/sync");
+    xhr.setRequestHeader("Content-Type", "application/json");
+    xhr.timeout = 60000;
+    if (xhr.upload) {
+      xhr.upload.onprogress = (e) => {
+        if (e.lengthComputable) onByte?.(e.loaded / e.total);
+      };
+    }
+    xhr.onload = () => {
+      if (xhr.status >= 200 && xhr.status < 300) {
         resolve();
-      },
-      (e) => {
-        window.clearInterval(iv);
-        reject(e instanceof Error ? e : new Error("Upload failed."));
-      },
-    );
+        return;
+      }
+      let msg = `Sync push failed (${xhr.status}).`;
+      try {
+        const d = JSON.parse(xhr.responseText) as { error?: string };
+        if (d?.error) msg = d.error;
+      } catch {
+        /* non-JSON error body */
+      }
+      reject(new Error(msg));
+    };
+    xhr.onerror = () => reject(new Error("Network error during sync."));
+    xhr.ontimeout = () => reject(new Error("Sync push timed out — it'll resume on the next sync."));
+    xhr.send(JSON.stringify({ id, key, blob }));
   });
 }
 
@@ -142,8 +144,8 @@ async function uploadRecord(
   secret: string,
   onByte?: (frac: number) => void,
 ) {
-  const packed = JSON.stringify(await encryptJSON(data, secret));
-  await uploadWithWatchdog(`sync/${id}/${type}/${recordId}.json`, packed, onByte);
+  const blob = await encryptJSON(data, secret);
+  await postRecord(id, `${type}/${recordId}`, blob, onByte);
 }
 
 /** Push only the records that changed since the last push; tombstone deletions. */

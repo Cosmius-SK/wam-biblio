@@ -57,9 +57,9 @@ export async function POST(request: Request) {
   const token = blobToken();
   if (!token) return notConfigured();
 
-  let body: { id?: unknown; blob?: unknown };
+  let body: { id?: unknown; blob?: unknown; key?: unknown };
   try {
-    body = (await request.json()) as { id?: unknown; blob?: unknown };
+    body = (await request.json()) as { id?: unknown; blob?: unknown; key?: unknown };
   } catch {
     return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
   }
@@ -68,8 +68,18 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Missing encrypted data." }, { status: 400 });
   }
 
+  // Optional per-record key for differential sync (e.g. "e/<uuid>"); without it
+  // this writes the legacy single-blob snapshot.
+  let path = `sync/${body.id}.json`;
+  if (typeof body.key === "string" && body.key) {
+    if (!/^[eprk]\/[A-Za-z0-9._-]{1,200}$/.test(body.key)) {
+      return NextResponse.json({ error: "Bad record key." }, { status: 400 });
+    }
+    path = `sync/${body.id}/${body.key}.json`;
+  }
+
   try {
-    await put(`sync/${body.id}.json`, JSON.stringify(body.blob), {
+    await put(path, JSON.stringify(body.blob), {
       access: "public",
       addRandomSuffix: false,
       allowOverwrite: true,
