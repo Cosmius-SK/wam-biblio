@@ -23,8 +23,8 @@ of confusion.
 
 ### Scopes
 - `https://www.googleapis.com/auth/drive.file` — app-created media (photos, portraits). **[built]**
-- `https://www.googleapis.com/auth/drive.appdata` — hidden app-only folder for the sync key. **[planned]**
-- `openid email profile` — identity (name/email/avatar) via the userinfo endpoint. **[planned]**
+- `https://www.googleapis.com/auth/drive.appdata` — hidden app-only folder for the sync key. **[built]**
+- `openid email profile` — identity (name/email/avatar) via the userinfo endpoint. **[built]**
 
 ### Token model (GIS token flow, no client secret) **[built]**
 - Access token cached in `localStorage` as `{ t, exp }`, `exp = now + (expires_in - 120s)` (~58 min).
@@ -36,7 +36,7 @@ of confusion.
 ### Lifecycle stages
 1. **Enrollment (first sign-in)** — consent once → access token → read profile →
    generate a random **sync secret** → write it to `appDataFolder/biblio-sync.json`
-   → cache secret locally. **[planned]**
+   → cache secret locally. **[built]**
 2. **Steady state** — token valid ~58 min; pull/push run silently with the cached
    token + cached secret (no Drive round-trip for the key).
 3. **Token expiry → re-auth**
@@ -46,12 +46,12 @@ of confusion.
      with no Google session), the next user-initiated Drive action shows the
      Google popup. Uploads try silent → interactive automatically. **[built]**
 4. **New device** — sign in with the same account → read the secret back from
-   `appDataFolder` → derive the same sync slot → **pull & merge**. **[planned]**
+   `appDataFolder` → derive the same sync slot → **pull & merge**. **[built]**
 5. **Sign-out** — clear local token, cached secret, stored profile. The Drive key
    file stays (so re-sign-in works); a "forget on this device" wipe removes the
    local copies.
 
-### How the secret drives sync (reuses existing crypto) **[built crypto, planned wiring]**
+### How the secret drives sync (reuses existing crypto) **[built]**
 - `syncId(secret)` → the cloud slot locator (SHA-256 derived).
 - `encryptJSON(payload, secret)` / `decryptJSON` → AES-GCM via PBKDF2.
 - The **media key** rides inside the encrypted payload, so photos/portraits
@@ -94,6 +94,30 @@ fully private, no-Google-in-the-loop backup/sync is wanted.
 - **Google sync** = *convenient-private*: the key lives in your Drive
   `appDataFolder` (safe from the blob host, app-scoped in Drive, but reachable
   by Google). Accepted in exchange for effortless multi-device.
+
+## Multi-user isolation (shared testing) **[built]**
+
+Each Google account is naturally its own island — no server-side user table
+needed:
+
+- The sync **secret is per-account** (each account's own `appDataFolder`), so
+  `syncId(secret)` resolves to a **different cloud slot** per user, and each
+  payload is encrypted under a different key.
+- Result: user B **cannot read** user A's journal, and vice versa. Everyone
+  builds their own entries.
+- The deployment owner sees only **ciphertext** blobs in the shared Vercel Blob
+  store — unreadable without each user's secret.
+- Photos go to **each user's own Drive** (`drive.file`).
+
+Caveats to remember when sharing for testing:
+- **AI cost is the owner's.** `/api/structure` (Claude) and `/api/image`
+  (Gemini) use the deployment's keys, so testers' Live-AI actions spend the
+  owner's credit.
+- **Same browser profile = shared local data.** IndexedDB is per-origin, so two
+  people on the *same* browser profile share the local journal. Isolation holds
+  across *different* devices/browsers/profiles.
+- **Consent screen access:** while in "Testing" status, each tester's Google
+  email must be added as a Test user (or publish the app).
 
 ## Roadmap → Option C
 
