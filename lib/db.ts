@@ -43,6 +43,46 @@ class JournalDB extends Dexie {
 
 export const db = new JournalDB();
 
+/**
+ * A lightweight local-change signal so auto-sync can push after any create,
+ * update, or delete (counts alone miss edits). Pulls wrap their writes in
+ * `suppressSync` so merging a pulled payload doesn't immediately re-push.
+ */
+type ChangeListener = () => void;
+const changeListeners = new Set<ChangeListener>();
+let suppressDepth = 0;
+
+function emitChange() {
+  if (suppressDepth === 0) changeListeners.forEach((l) => l());
+}
+
+export function onDataChange(cb: ChangeListener): () => void {
+  changeListeners.add(cb);
+  return () => changeListeners.delete(cb);
+}
+
+/** Run writes without emitting change events (used while merging a pull). */
+export async function suppressSync<T>(fn: () => Promise<T>): Promise<T> {
+  suppressDepth++;
+  try {
+    return await fn();
+  } finally {
+    suppressDepth--;
+  }
+}
+
+for (const table of [db.entries, db.reflections, db.portraits]) {
+  table.hook("creating", () => {
+    emitChange();
+  });
+  table.hook("updating", () => {
+    emitChange();
+  });
+  table.hook("deleting", () => {
+    emitChange();
+  });
+}
+
 export async function saveEntry(entry: JournalEntry): Promise<void> {
   await db.entries.put(entry);
 }

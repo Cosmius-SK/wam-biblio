@@ -10,9 +10,18 @@ import { getSetting, setSetting } from "./db";
  * created, never the rest of the Drive. Uploads/downloads are encrypted blobs
  * (see lib/media.ts) inside a "biblio-journal" folder the app creates.
  */
-const SCOPE = "https://www.googleapis.com/auth/drive.file";
+// drive.file: app-created media. drive.appdata: a hidden app-only folder that
+// holds the sync key. openid/email/profile: identity for the account UI.
+const SCOPE = [
+  "https://www.googleapis.com/auth/drive.file",
+  "https://www.googleapis.com/auth/drive.appdata",
+  "openid",
+  "https://www.googleapis.com/auth/userinfo.email",
+  "https://www.googleapis.com/auth/userinfo.profile",
+].join(" ");
 const FOLDER_NAME = "biblio-journal";
 const TOKEN_KEY = "biblio_drive_token";
+const APPDATA = "appDataFolder";
 
 /** Sentinel error message: the user needs to (re)connect interactively. */
 export const RECONNECT = "DRIVE_RECONNECT";
@@ -161,12 +170,18 @@ export async function connectDrive(): Promise<void> {
 }
 
 export async function disconnectDrive(): Promise<void> {
+  clearCachedToken();
+  await setSetting("driveConnected", "0");
+}
+
+/** Drop the cached access token so the next request re-consents (e.g. after a
+ * scope change, or when connecting the Google account). */
+export function clearCachedToken(): void {
   try {
     localStorage.removeItem(TOKEN_KEY);
   } catch {
     /* ignore */
   }
-  await setSetting("driveConnected", "0");
 }
 
 function auth(token: string): Record<string, string> {
@@ -241,4 +256,62 @@ export async function downloadEncrypted(token: string, fileId: string): Promise<
   });
   if (!res.ok) throw new Error(`Download failed (${res.status}).`);
   return new Uint8Array(await res.arrayBuffer());
+}
+
+export interface GoogleIdentity {
+  sub: string;
+  email?: string;
+  name?: string;
+  picture?: string;
+}
+
+/** Read the signed-in user's profile from the OpenID userinfo endpoint. */
+export async function getIdentity(token: string): Promise<GoogleIdentity> {
+  const res = await fetch("https://openidconnect.googleapis.com/v1/userinfo", {
+    headers: auth(token),
+  });
+  if (!res.ok) throw new Error(`Couldn't read your Google profile (${res.status}).`);
+  const d = (await res.json()) as GoogleIdentity;
+  return { sub: d.sub, email: d.email, name: d.name, picture: d.picture };
+}
+
+/** Find a file by name in the hidden app-only appDataFolder space. */
+export async function findAppDataFile(token: string, name: string): Promise<string | null> {
+  const q = encodeURIComponent(`name='${name}'`);
+  const res = await fetch(
+    `https://www.googleapis.com/drive/v3/files?spaces=${APPDATA}&q=${q}&fields=files(id)`,
+    { headers: auth(token) },
+  );
+  if (!res.ok) return null;
+  const d = (await res.json()) as { files?: { id: string }[] };
+  return d.files?.[0]?.id ?? null;
+}
+
+export async function readAppDataFile<T>(token: string, fileId: string): Promise<T | null> {
+  const res = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`, {
+    headers: auth(token),
+  });
+  if (!res.ok) return null;
+  return (await res.json()) as T;
+}
+
+/** Create a small JSON file in the appDataFolder; returns its id. */
+export async function createAppDataFile(token: string, name: string, obj: unknown): Promise<string> {
+  const boundary = "biblio" + Math.random().toString(36).slice(2);
+  const body =
+    `--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n` +
+    JSON.stringify({ name, parents: [APPDATA] }) +
+    `\r\n--${boundary}\r\nContent-Type: application/json\r\n\r\n` +
+    JSON.stringify(obj) +
+    `\r\n--${boundary}--`;
+  const res = await fetch(
+    "https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id",
+    {
+      method: "POST",
+      headers: { ...auth(token), "Content-Type": `multipart/related; boundary=${boundary}` },
+      body,
+    },
+  );
+  if (!res.ok) throw new Error(`Couldn't write app data (${res.status}).`);
+  return ((await res.json()) as { id: string }).id;
 }

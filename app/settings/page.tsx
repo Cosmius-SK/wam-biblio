@@ -8,6 +8,7 @@ import { ambient } from "@/lib/ambient";
 import PortraitStudio from "@/components/PortraitStudio";
 import ModelChooser from "@/components/ModelChooser";
 import StylePicker from "@/components/StylePicker";
+import GoogleAccount from "@/components/GoogleAccount";
 
 /**
  * Settings hub. Real sections today: your name, and a gateway to backup /
@@ -22,6 +23,10 @@ export default function SettingsPage() {
       </div>
 
       <ProfileCard />
+
+      <div className="mt-4">
+        <GoogleAccount />
+      </div>
 
       <AmbientCard />
 
