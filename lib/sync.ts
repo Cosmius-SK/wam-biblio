@@ -21,6 +21,34 @@ export interface BackupPayload {
   mediaKey?: string;
 }
 
+/** What's being synced, for a human-readable summary. */
+export interface SyncCounts {
+  entries: number;
+  reflections: number;
+  portraits: number;
+  photos: number;
+}
+
+/** Progress a UI can render: a phase, a % (or null = indeterminate), + counts. */
+export interface SyncProgress {
+  phase: "prepare" | "encrypt" | "upload" | "download" | "merge" | "done";
+  percent: number | null;
+  counts: SyncCounts;
+}
+
+export type OnSyncProgress = (p: SyncProgress) => void;
+
+const ZERO: SyncCounts = { entries: 0, reflections: 0, portraits: 0, photos: 0 };
+
+function countOf(p: BackupPayload): SyncCounts {
+  return {
+    entries: p.entries.length,
+    reflections: p.reflections.length,
+    portraits: p.portraits?.length ?? 0,
+    photos: p.entries.reduce((n, e) => n + (e.photos?.length ?? 0), 0),
+  };
+}
+
 /** Adopt an incoming photo key only when this device doesn't have one yet. */
 async function adoptMediaKey(incoming?: string): Promise<void> {
   if (!incoming) return;
@@ -54,25 +82,36 @@ function isEmpty(p: BackupPayload): boolean {
  * token) so a large journal — photo/portrait thumbnails, illustrations — isn't
  * capped by the serverless request-body limit.
  */
-export async function pushSync(secret: string): Promise<number> {
+export async function pushSync(secret: string, onProgress?: OnSyncProgress): Promise<number> {
+  onProgress?.({ phase: "prepare", percent: null, counts: ZERO });
   const payload = await buildPayload();
-  if (isEmpty(payload)) return 0;
+  const counts = countOf(payload);
+  if (isEmpty(payload)) {
+    onProgress?.({ phase: "done", percent: 100, counts });
+    return 0;
+  }
+  onProgress?.({ phase: "encrypt", percent: null, counts });
   const blob = await encryptJSON(payload, secret);
   const id = await syncId(secret);
+  onProgress?.({ phase: "upload", percent: 0, counts });
   try {
     await upload(`sync/${id}.json`, JSON.stringify(blob), {
       access: "public",
       contentType: "application/json",
       handleUploadUrl: "/api/sync/upload",
+      onUploadProgress: (e) =>
+        onProgress?.({ phase: "upload", percent: Math.round(e.percentage), counts }),
     });
   } catch (e) {
     throw new Error(e instanceof Error ? e.message : "Sync push failed.");
   }
+  onProgress?.({ phase: "done", percent: 100, counts });
   return payload.entries.length;
 }
 
 /** Pull the cloud slot for `secret`, decrypt, and merge into the local store. */
-export async function pullSync(secret: string): Promise<number> {
+export async function pullSync(secret: string, onProgress?: OnSyncProgress): Promise<number> {
+  onProgress?.({ phase: "download", percent: null, counts: ZERO });
   const id = await syncId(secret);
   const res = await fetch(`/api/sync?id=${id}`);
   if (!res.ok) {
@@ -80,11 +119,16 @@ export async function pullSync(secret: string): Promise<number> {
     throw new Error(d.error || "Sync pull failed.");
   }
   const data = (await res.json()) as { found?: boolean; blob?: unknown };
-  if (!data.found || !isEncryptedBlob(data.blob)) return 0;
+  if (!data.found || !isEncryptedBlob(data.blob)) {
+    onProgress?.({ phase: "done", percent: 100, counts: ZERO });
+    return 0;
+  }
   const payload = await decryptJSON<BackupPayload>(data.blob, secret);
   if (payload.app !== "wam-biblio" || !Array.isArray(payload.entries)) {
     throw new Error("This sync payload is missing its journal data.");
   }
+  const counts = countOf(payload);
+  onProgress?.({ phase: "merge", percent: null, counts });
   // Merge without re-triggering an auto-push of what we just pulled.
   await suppressSync(async () => {
     await db.entries.bulkPut(payload.entries);
@@ -92,5 +136,6 @@ export async function pullSync(secret: string): Promise<number> {
     if (Array.isArray(payload.portraits)) await db.portraits.bulkPut(payload.portraits);
   });
   await adoptMediaKey(payload.mediaKey);
+  onProgress?.({ phase: "done", percent: 100, counts });
   return payload.entries.length;
 }

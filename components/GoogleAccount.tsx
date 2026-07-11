@@ -12,6 +12,7 @@ import {
   syncNow,
   type Profile,
 } from "@/lib/googleAccount";
+import type { SyncCounts, SyncProgress } from "@/lib/sync";
 
 function ago(ms: number | null): string {
   if (!ms) return "not yet";
@@ -20,6 +21,26 @@ function ago(ms: number | null): string {
   if (s < 3600) return `${Math.floor(s / 60)} min ago`;
   if (s < 86400) return `${Math.floor(s / 3600)} h ago`;
   return `${Math.floor(s / 86400)} d ago`;
+}
+
+const PHASE_LABEL: Record<SyncProgress["phase"], string> = {
+  prepare: "Preparing…",
+  encrypt: "Encrypting…",
+  upload: "Uploading",
+  download: "Fetching…",
+  merge: "Merging…",
+  done: "Synced",
+};
+
+/** "12 entries · 3 portraits · 8 photos" — omits the zero categories. */
+function itemsLabel(c: SyncCounts): string {
+  const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
+  const parts: string[] = [];
+  if (c.entries) parts.push(plural(c.entries, "entry", "entries"));
+  if (c.portraits) parts.push(plural(c.portraits, "portrait"));
+  if (c.photos) parts.push(plural(c.photos, "photo"));
+  if (c.reflections) parts.push(plural(c.reflections, "reflection"));
+  return parts.length ? parts.join(" · ") : "nothing yet";
 }
 
 /**
@@ -34,6 +55,7 @@ export default function GoogleAccount() {
   const [status, setStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [synced, setSynced] = useState<number | null>(null);
+  const [progress, setProgress] = useState<SyncProgress | null>(null);
 
   useEffect(() => {
     setConfigured(googleConfigured());
@@ -47,16 +69,21 @@ export default function GoogleAccount() {
     setError(null);
     setStatus(null);
     setBusy(true);
+    let last: SyncCounts | null = null;
     try {
-      const { profile: p, syncError } = await signInWithGoogle();
+      const { profile: p, syncError } = await signInWithGoogle((prog) => {
+        setProgress(prog);
+        last = prog.counts;
+      });
       setProfile(p);
       setSynced(await lastSyncedAt());
       if (syncError) setError(syncError);
-      else setStatus("Signed in — your journal is syncing.");
+      else setStatus(last ? `Signed in — synced ${itemsLabel(last)}.` : "Signed in — your journal is syncing.");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Couldn't sign in with Google.");
     } finally {
       setBusy(false);
+      setTimeout(() => setProgress(null), 900);
     }
   }
 
@@ -64,14 +91,19 @@ export default function GoogleAccount() {
     setError(null);
     setStatus(null);
     setBusy(true);
+    let last: SyncCounts | null = null;
     try {
-      await syncNow();
+      await syncNow((prog) => {
+        setProgress(prog);
+        last = prog.counts;
+      });
       setSynced(await lastSyncedAt());
-      setStatus("Synced.");
+      setStatus(last ? `Synced ${itemsLabel(last)}.` : "Synced.");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Couldn't sync.");
     } finally {
       setBusy(false);
+      setTimeout(() => setProgress(null), 900);
     }
   }
 
@@ -165,8 +197,36 @@ export default function GoogleAccount() {
         </>
       )}
 
-      {status && <p className="mt-3 rounded-xl bg-sage/15 px-3 py-2 text-xs text-sage">{status}</p>}
+      {progress && <SyncBar progress={progress} />}
+
+      {status && !progress && (
+        <p className="mt-3 rounded-xl bg-sage/15 px-3 py-2 text-xs text-sage">{status}</p>
+      )}
       {error && <p className="mt-3 rounded-xl bg-terracotta/10 px-3 py-2 text-xs text-terracotta">{error}</p>}
+    </div>
+  );
+}
+
+/** A determinate bar for the upload, indeterminate for the other phases, with a
+ * one-line summary of what's moving. */
+function SyncBar({ progress }: { progress: SyncProgress }) {
+  const { phase, percent, counts } = progress;
+  const indeterminate = percent === null;
+  const label = PHASE_LABEL[phase] + (phase === "upload" && percent !== null ? ` ${percent}%` : "");
+  return (
+    <div className="mt-3">
+      <div className="flex items-center justify-between text-xs text-muted">
+        <span>{label}</span>
+        <span className="tabular-nums">{itemsLabel(counts)}</span>
+      </div>
+      <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-hairline/40">
+        <div
+          className={`h-full rounded-full bg-lavender transition-[width] duration-200 ${
+            indeterminate ? "w-1/3 animate-pulse" : ""
+          }`}
+          style={indeterminate ? undefined : { width: `${percent}%` }}
+        />
+      </div>
     </div>
   );
 }

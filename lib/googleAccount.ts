@@ -11,7 +11,7 @@ import {
   getIdentity,
   readAppDataFile,
 } from "./drive";
-import { pullSync, pushSync } from "./sync";
+import { pullSync, pushSync, type OnSyncProgress } from "./sync";
 
 /**
  * Google-account sync (Option B). Signing in recovers — or creates — a random
@@ -79,7 +79,9 @@ async function ensureSecret(token: string): Promise<string> {
  * profile, recover/create the sync secret, then pull cloud → push local so both
  * ends merge. Returns the profile; throws with a friendly message on failure.
  */
-export async function signInWithGoogle(): Promise<{ profile: Profile; syncError: string | null }> {
+export async function signInWithGoogle(
+  onProgress?: OnSyncProgress,
+): Promise<{ profile: Profile; syncError: string | null }> {
   clearCachedToken(); // force consent so the new scopes are actually granted
   const token = await getAccessToken(true);
   const id = await getIdentity(token);
@@ -95,8 +97,8 @@ export async function signInWithGoogle(): Promise<{ profile: Profile; syncError:
   // account stays signed in and auto-sync will pick it up once storage exists.
   let syncError: string | null = null;
   try {
-    await pullSync(secret);
-    await pushSync(secret);
+    await pullSync(secret, onProgress);
+    await pushSync(secret, onProgress);
     await setSetting("lastSyncAt", String(Date.now()));
   } catch (e) {
     syncError = e instanceof Error ? e.message : "Sync couldn't start yet.";
@@ -113,17 +115,17 @@ export async function signOutGoogle(): Promise<void> {
 }
 
 /** Pull cloud → local (called on app open when connected). */
-export async function autoPull(): Promise<void> {
+export async function autoPull(onProgress?: OnSyncProgress): Promise<void> {
   const secret = await syncSecret();
   if (!secret) return;
-  await pullSync(secret);
+  await pullSync(secret, onProgress);
   await setSetting("lastSyncAt", String(Date.now()));
 }
 
 /** Push local → cloud (called debounced after changes, and by "Sync now"). */
-export async function syncNow(): Promise<void> {
+export async function syncNow(onProgress?: OnSyncProgress): Promise<void> {
   const secret = await syncSecret();
   if (!secret) return;
-  await pushSync(secret);
+  await pushSync(secret, onProgress);
   await setSetting("lastSyncAt", String(Date.now()));
 }
