@@ -47,8 +47,10 @@ export async function GET(request: Request) {
     const res = await fetch(`${blobs[0].url}?t=${Date.now()}`, { cache: "no-store" });
     const blob = (await res.json()) as unknown;
     return NextResponse.json({ found: true, blob });
-  } catch {
-    return NextResponse.json({ error: "Couldn't read from sync." }, { status: 502 });
+  } catch (e) {
+    const reason = e instanceof Error ? e.message : String(e);
+    console.error("sync read failed:", reason);
+    return NextResponse.json({ error: `Couldn't read from sync — ${reason}` }, { status: 502 });
   }
 }
 
@@ -87,7 +89,9 @@ export async function POST(request: Request) {
       token,
     });
     return NextResponse.json({ ok: true });
-  } catch {
-    return NextResponse.json({ error: "Couldn't write to sync." }, { status: 502 });
+  } catch (e) {
+    const reason = e instanceof Error ? e.message : String(e);
+    console.error("sync write failed:", reason);
+    return NextResponse.json({ error: `Couldn't write to sync — ${reason}` }, { status: 502 });
   }
 }

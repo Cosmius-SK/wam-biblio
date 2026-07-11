@@ -37,7 +37,9 @@ export async function GET(request: Request) {
       cursor = page.hasMore ? page.cursor : undefined;
     } while (cursor);
     return NextResponse.json({ items });
-  } catch {
-    return NextResponse.json({ error: "Couldn't list sync.", items: [] }, { status: 502 });
+  } catch (e) {
+    const reason = e instanceof Error ? e.message : String(e);
+    console.error("sync list failed:", reason);
+    return NextResponse.json({ error: `Couldn't list sync — ${reason}`, items: [] }, { status: 502 });
   }
 }

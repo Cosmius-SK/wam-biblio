@@ -56,6 +56,7 @@ export default function GoogleAccount() {
   const [error, setError] = useState<string | null>(null);
   const [synced, setSynced] = useState<number | null>(null);
   const [progress, setProgress] = useState<SyncProgress | null>(null);
+  const [diag, setDiag] = useState<string[] | null>(null);
 
   useEffect(() => {
     setConfigured(googleConfigured());
@@ -77,8 +78,12 @@ export default function GoogleAccount() {
       });
       setProfile(p);
       setSynced(await lastSyncedAt());
-      if (syncError) setError(syncError);
-      else setStatus(last ? `Signed in — synced ${itemsLabel(last)}.` : "Signed in — your journal is syncing.");
+      if (syncError) {
+        setError(syncError);
+        await diagnose();
+      } else {
+        setStatus(last ? `Signed in — synced ${itemsLabel(last)}.` : "Signed in — your journal is syncing.");
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Couldn't sign in with Google.");
     } finally {
@@ -87,9 +92,23 @@ export default function GoogleAccount() {
     }
   }
 
+  /** Ask the server to test its own storage links and report what failed. */
+  async function diagnose() {
+    try {
+      const res = await fetch("/api/sync/health", { cache: "no-store" });
+      const d = (await res.json()) as { ok?: boolean; report?: Record<string, string> };
+      if (d.report) {
+        setDiag(Object.entries(d.report).map(([step, result]) => `${step}: ${result}`));
+      }
+    } catch {
+      setDiag(["health check unreachable — the deployment may still be building"]);
+    }
+  }
+
   async function sync() {
     setError(null);
     setStatus(null);
+    setDiag(null);
     setBusy(true);
     let last: SyncCounts | null = null;
     try {
@@ -101,6 +120,7 @@ export default function GoogleAccount() {
       setStatus(last ? `Synced ${itemsLabel(last)}.` : "Synced.");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Couldn't sync.");
+      await diagnose();
     } finally {
       setBusy(false);
       setTimeout(() => setProgress(null), 900);
@@ -203,6 +223,21 @@ export default function GoogleAccount() {
         <p className="mt-3 rounded-xl bg-sage/15 px-3 py-2 text-xs text-sage">{status}</p>
       )}
       {error && <p className="mt-3 rounded-xl bg-terracotta/10 px-3 py-2 text-xs text-terracotta">{error}</p>}
+
+      {diag && (
+        <div className="mt-2 rounded-xl border border-hairline/60 bg-paper/40 px-3 py-2">
+          <p className="text-[0.7rem] font-medium uppercase tracking-wide text-muted/80">
+            Sync self-check
+          </p>
+          <ul className="mt-1 space-y-1">
+            {diag.map((line) => (
+              <li key={line} className="select-text break-words font-mono text-[0.7rem] leading-snug text-muted">
+                {line}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
     </div>
   );
 }
