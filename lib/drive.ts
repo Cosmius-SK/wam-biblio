@@ -11,11 +11,11 @@ import { getSetting, setSetting } from "./db";
  * (see lib/media.ts) inside a "biblio-journal" folder the app creates.
  */
 // drive.file: app-created media. drive.appdata: a hidden app-only folder that
-// holds the sync key. openid/email/profile: identity for the account UI.
+// holds the sync key. userinfo.email/profile: identity for the account UI.
+// (No `openid` — that's for the ID-token flow, not this access-token client.)
 const SCOPE = [
   "https://www.googleapis.com/auth/drive.file",
   "https://www.googleapis.com/auth/drive.appdata",
-  "openid",
   "https://www.googleapis.com/auth/userinfo.email",
   "https://www.googleapis.com/auth/userinfo.profile",
 ].join(" ");
@@ -113,19 +113,26 @@ export async function getAccessToken(interactive: boolean): Promise<string> {
   return new Promise<string>((resolve, reject) => {
     // A single settle guard: GIS can fire callback, error_callback, throw, or —
     // on a silent refresh it can't complete — go quiet. Any of these must
-    // resolve or reject exactly once, so the caller never hangs.
+    // resolve or reject exactly once, so the caller never hangs. On interactive
+    // failure we surface Google's actual reason (e.g. access_denied,
+    // popup_closed, invalid_client) instead of a bare "auth failed".
     let settled = false;
-    const fail = () =>
-      !settled &&
-      ((settled = true), reject(new Error(interactive ? "Google auth failed." : RECONNECT)));
+    let detail = "";
+    const fail = () => {
+      if (settled) return;
+      settled = true;
+      reject(new Error(interactive ? `Google auth failed${detail ? ` — ${detail}` : ""}.` : RECONNECT));
+    };
+    const onError = (e?: TokenError) => {
+      detail = e?.type || e?.message || "";
+      fail();
+    };
 
     const callback = (r: TokenResponse) => {
       if (settled) return;
       if (!r.access_token) {
-        settled = true;
-        reject(
-          new Error(interactive ? `Google auth failed${r.error ? ` (${r.error})` : ""}.` : RECONNECT),
-        );
+        detail = r.error || "";
+        fail();
         return;
       }
       try {
@@ -145,18 +152,19 @@ export async function getAccessToken(interactive: boolean): Promise<string> {
         client_id: driveClientId(),
         scope: SCOPE,
         callback,
-        error_callback: fail,
+        error_callback: onError,
       });
     } else {
       tokenClient.callback = callback;
-      tokenClient.error_callback = fail;
+      tokenClient.error_callback = onError;
     }
     // A silent refresh should return in a second or two; if GIS stays quiet
     // (common in an installed PWA with no Google session), stop waiting.
     if (!interactive) window.setTimeout(fail, 8000);
     try {
       tokenClient.requestAccessToken(interactive ? undefined : { prompt: "" });
-    } catch {
+    } catch (e) {
+      detail = e instanceof Error ? e.message : "";
       fail();
     }
   });
@@ -265,9 +273,9 @@ export interface GoogleIdentity {
   picture?: string;
 }
 
-/** Read the signed-in user's profile from the OpenID userinfo endpoint. */
+/** Read the signed-in user's profile (works with the userinfo.* scopes). */
 export async function getIdentity(token: string): Promise<GoogleIdentity> {
-  const res = await fetch("https://openidconnect.googleapis.com/v1/userinfo", {
+  const res = await fetch("https://www.googleapis.com/oauth2/v3/userinfo", {
     headers: auth(token),
   });
   if (!res.ok) throw new Error(`Couldn't read your Google profile (${res.status}).`);
