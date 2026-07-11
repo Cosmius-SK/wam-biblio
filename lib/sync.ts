@@ -49,6 +49,21 @@ function countOf(p: BackupPayload): SyncCounts {
   };
 }
 
+/** A stable hash of the meaningful content (excludes the changing timestamp),
+ * so an unchanged journal isn't re-uploaded. */
+async function contentHash(p: BackupPayload): Promise<string> {
+  const stable = JSON.stringify({
+    e: p.entries,
+    r: p.reflections,
+    p: p.portraits ?? [],
+    m: p.mediaKey ?? "",
+  });
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(stable));
+  return Array.from(new Uint8Array(digest))
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
+}
+
 /** Adopt an incoming photo key only when this device doesn't have one yet. */
 async function adoptMediaKey(incoming?: string): Promise<void> {
   if (!incoming) return;
@@ -90,6 +105,13 @@ export async function pushSync(secret: string, onProgress?: OnSyncProgress): Pro
     onProgress?.({ phase: "done", percent: 100, counts });
     return 0;
   }
+  // Skip re-uploading an unchanged journal (the hash is only stored after a
+  // successful push, so a failed/stuck upload is always retried).
+  const hash = await contentHash(payload);
+  if ((await getSetting("lastSyncHash")) === hash) {
+    onProgress?.({ phase: "done", percent: 100, counts });
+    return payload.entries.length;
+  }
   onProgress?.({ phase: "encrypt", percent: null, counts });
   const blob = await encryptJSON(payload, secret);
   const id = await syncId(secret);
@@ -105,6 +127,7 @@ export async function pushSync(secret: string, onProgress?: OnSyncProgress): Pro
   } catch (e) {
     throw new Error(e instanceof Error ? e.message : "Sync push failed.");
   }
+  await setSetting("lastSyncHash", hash);
   onProgress?.({ phase: "done", percent: 100, counts });
   return payload.entries.length;
 }
