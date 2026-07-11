@@ -7,6 +7,8 @@
  * so it stores comfortably inline on the entry.
  */
 
+import { getPreferredModel } from "./models";
+
 // The card banner shape (2× the on-screen header for crispness on retina).
 const BANNER_W = 960;
 const BANNER_H = 430;
@@ -25,12 +27,13 @@ export class IllustrateError extends Error {
 }
 
 export async function generateIllustration(prompt: string): Promise<string> {
+  const model = (await getPreferredModel()) || undefined; // empty ⇒ let the server auto-pick
   let res: Response;
   try {
     res = await fetch("/api/image", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ prompt }),
+      body: JSON.stringify({ prompt, model }),
     });
   } catch {
     throw new IllustrateError("Couldn't reach the illustration service.", "Check your connection and try again.");

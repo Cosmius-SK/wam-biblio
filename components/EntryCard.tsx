@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { motion } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
 import type { JournalEntry } from "@/lib/types";
 import { deleteEntry, saveEntry } from "@/lib/db";
 import { formatDate, formatTime, modelLabel, shortZone, zoneDiffers } from "@/lib/format";
@@ -9,6 +9,7 @@ import { placeLabel } from "@/lib/geo";
 import { generateIllustration, IllustrateError } from "@/lib/illustrate";
 import SceneImage from "./SceneImage";
 import PhotoHeader from "./PhotoHeader";
+import ModelChooser from "./ModelChooser";
 
 /** A single entry in the living timeline — reading-first, book-like. */
 export default function EntryCard({
@@ -87,12 +88,19 @@ export default function EntryCard({
           Illustrating this moment…
         </div>
       )}
-      {illustrateError && !illustrating && (
-        <div className="mb-3 rounded-xl bg-terracotta/10 px-3 py-2 text-xs text-terracotta">
-          <p>{illustrateError.msg}</p>
-          {illustrateError.hint && <p className="mt-1 text-terracotta/80">{illustrateError.hint}</p>}
-        </div>
-      )}
+
+      <AnimatePresence>
+        {illustrateError && !illustrating && (
+          <IllustrationErrorDialog
+            error={illustrateError}
+            onClose={() => setIllustrateError(null)}
+            onRetry={() => {
+              setIllustrateError(null);
+              void illustrate();
+            }}
+          />
+        )}
+      </AnimatePresence>
 
       {/* Stamp order: [📍 place ·] date · time zone · mood — place omitted when not recorded. */}
       <div className="mb-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted">
@@ -282,6 +290,70 @@ function EntryMenu({
         </div>
       )}
     </div>
+  );
+}
+
+/**
+ * Shown when an illustration fails: the captured error + fix, an embedded model
+ * picker (refresh + choose + update) so you can switch models and retry on the
+ * spot, and selectable error text you can copy to work through a fix with me.
+ */
+function IllustrationErrorDialog({
+  error,
+  onClose,
+  onRetry,
+}: {
+  error: { msg: string; hint?: string };
+  onClose: () => void;
+  onRetry: () => void;
+}) {
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      onClick={onClose}
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
+      role="dialog"
+      aria-label="Illustration failed"
+    >
+      <motion.div
+        initial={{ scale: 0.97, y: 6 }}
+        animate={{ scale: 1, y: 0 }}
+        exit={{ scale: 0.98, opacity: 0 }}
+        onClick={(e) => e.stopPropagation()}
+        className="w-full max-w-sm rounded-2xl border border-hairline/70 bg-surface p-5 shadow-lift"
+      >
+        <h3 className="font-serif text-lg text-ink">Couldn&rsquo;t create the illustration</h3>
+        <p className="mt-2 select-text text-sm text-terracotta">{error.msg}</p>
+        {error.hint && <p className="mt-1 select-text text-sm text-muted">{error.hint}</p>}
+
+        <div className="mt-4 border-t border-hairline/50 pt-4">
+          <p className="text-xs font-medium text-ink">Try a different model</p>
+          <p className="mt-1 text-xs text-muted">Refresh, pick one, Update — then it retries.</p>
+          <div className="mt-3">
+            <ModelChooser onUpdated={onRetry} />
+          </div>
+        </div>
+
+        <div className="mt-5 flex justify-end gap-2">
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-full border border-hairline bg-surface/60 px-4 py-2 text-sm font-medium text-ink transition-transform active:scale-95"
+          >
+            Close
+          </button>
+          <button
+            type="button"
+            onClick={onRetry}
+            className="rounded-full bg-ink/90 px-4 py-2 text-sm font-medium text-paper shadow-soft transition-transform hover:scale-[1.02] active:scale-95"
+          >
+            Retry
+          </button>
+        </div>
+      </motion.div>
+    </motion.div>
   );
 }
 

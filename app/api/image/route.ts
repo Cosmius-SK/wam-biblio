@@ -230,15 +230,17 @@ export async function POST(request: Request) {
     );
   }
 
-  let prompt: unknown;
+  let reqBody: { prompt?: unknown; model?: unknown };
   try {
-    prompt = ((await request.json()) as { prompt?: unknown }).prompt;
+    reqBody = (await request.json()) as { prompt?: unknown; model?: unknown };
   } catch {
     return NextResponse.json({ error: "Invalid request.", code: "bad_request", hint: "" }, { status: 400 });
   }
+  const prompt = reqBody.prompt;
   if (typeof prompt !== "string" || !prompt.trim()) {
     return NextResponse.json({ error: "No scene prompt.", code: "bad_request", hint: "" }, { status: 400 });
   }
+  const chosen = typeof reqBody.model === "string" && reqBody.model.trim() ? reqBody.model.trim() : null;
 
   const key = process.env.GEMINI_API_KEY;
   if (!key) {
@@ -249,6 +251,19 @@ export async function POST(request: Request) {
         hint: "Add GEMINI_API_KEY (from Google AI Studio) to your Vercel env and redeploy.",
       },
       { status: 503 },
+    );
+  }
+
+  // An explicit user choice is honoured as-is: it is tried on its own, and a
+  // failure is reported (not silently swapped) so the picker can prompt for
+  // another. Auto mode (no choice) falls through to best-available discovery.
+  if (chosen) {
+    const result = await generateWith(key, chosen, prompt);
+    if (result.ok) return NextResponse.json({ image: result.image, model: chosen });
+    if (result.code === "model_unavailable") modelCache = null;
+    return NextResponse.json(
+      { error: result.error, code: result.code, hint: result.hint },
+      { status: result.status >= 400 ? result.status : 502 },
     );
   }
 
@@ -288,4 +303,48 @@ export async function POST(request: Request) {
     { error: err.error, code: err.code, hint: err.hint },
     { status: err.status >= 400 ? err.status : 502 },
   );
+}
+
+/**
+ * GET /api/image — list the image models currently available to this key,
+ * newest-and-stable first, for the Settings picker. Listing costs no image
+ * quota. On any failure it still returns the built-in fallbacks plus the
+ * captured error, so the picker can show both.
+ */
+export async function GET() {
+  const key = process.env.GEMINI_API_KEY;
+  if (!key) {
+    return NextResponse.json({
+      models: [],
+      error: "Image generation isn't configured.",
+      code: "missing_key",
+      hint: "Add GEMINI_API_KEY (from Google AI Studio) to your Vercel env and redeploy.",
+    });
+  }
+  try {
+    const res = await fetch(`${BASE}/models?pageSize=1000&key=${key}`);
+    if (!res.ok) {
+      let body: GeminiResponse = {};
+      try {
+        body = (await res.json()) as GeminiResponse;
+      } catch {
+        /* non-JSON */
+      }
+      const err = classify(res.status, body);
+      return NextResponse.json({ models: FALLBACK_MODELS, error: err.error, code: err.code, hint: err.hint });
+    }
+    const data = (await res.json()) as { models?: ModelInfo[] };
+    const models = (data.models ?? [])
+      .filter(isImageModel)
+      .map((m) => bare(m.name!))
+      .sort((a, b) => rankModel(b) - rankModel(a));
+    return NextResponse.json({ models });
+  } catch {
+    return NextResponse.json({
+      models: FALLBACK_MODELS,
+      error: "Couldn't reach Gemini to list models.",
+      code: "network",
+      hint: "Check the connection and retry.",
+    });
+  }
 }

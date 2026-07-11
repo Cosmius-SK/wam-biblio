@@ -6,6 +6,7 @@ import { motion } from "framer-motion";
 import { getSetting, setSetting } from "@/lib/db";
 import { ambient } from "@/lib/ambient";
 import PortraitStudio from "@/components/PortraitStudio";
+import ModelChooser from "@/components/ModelChooser";
 
 /**
  * Settings hub. Real sections today: your name, and a gateway to backup /
@@ -22,6 +23,17 @@ export default function SettingsPage() {
       <ProfileCard />
 
       <AmbientCard />
+
+      <div className="mt-4 rounded-2xl border border-hairline/70 bg-surface/60 p-5">
+        <h2 className="font-serif text-lg text-ink">Illustration model</h2>
+        <p className="mt-1 text-sm text-muted">
+          Which Gemini model draws your card illustrations. Refresh to pull the latest,
+          pick one, and Update — or leave it on Auto.
+        </p>
+        <div className="mt-4">
+          <ModelChooser />
+        </div>
+      </div>
 
       <Link
         href="/vault"
