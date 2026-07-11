@@ -49,12 +49,22 @@ const MODEL_TTL = 6 * 60 * 60 * 1000;
 
 const bare = (name: string) => name.replace(/^models\//, "");
 
-/** Rank a Gemini image model: newer version wins; stable beats preview/exp. */
+/**
+ * Rank a Gemini image model for auto-selection. Flash is preferred over Pro
+ * (cheaper, faster, far more generous free tier — the right tool for simple
+ * illustrations; Pro's deep reasoning is costly overkill here). Within that,
+ * newer wins and stable beats preview/exp. An explicit choice in Settings
+ * always overrides this.
+ */
 function rankModel(id: string): number {
-  const v = id.match(/(\d+)\.(\d+)/);
-  const version = v ? parseInt(v[1], 10) * 10 + parseInt(v[2], 10) : 0;
+  // Match "2.5", "3.1" AND major-only "3" so a next-gen model outranks 2.5
+  // instead of parsing to 0 and losing.
+  const v = id.match(/(\d+)(?:\.(\d+))?/);
+  const version = v ? parseInt(v[1], 10) * 10 + (v[2] ? parseInt(v[2], 10) : 0) : 0;
+  const flash = /flash/i.test(id) ? 100 : 0;
+  const pro = /pro/i.test(id) ? 50 : 0;
   const unstable = /(preview|exp|experimental)/i.test(id) ? 0.5 : 0;
-  return version - unstable;
+  return flash + version - pro - unstable;
 }
 
 /** Gemini models that emit images via generateContent (excludes Imagen/predict). */
