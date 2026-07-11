@@ -1,5 +1,6 @@
 "use client";
 
+import { upload } from "@vercel/blob/client";
 import { db, getSetting, setSetting, suppressSync } from "./db";
 import type { JournalEntry, Portrait, Reflection } from "./types";
 import { encryptJSON, decryptJSON, isEncryptedBlob, syncId } from "./crypto";
@@ -47,20 +48,25 @@ function isEmpty(p: BackupPayload): boolean {
   return p.entries.length === 0 && p.reflections.length === 0 && (p.portraits?.length ?? 0) === 0;
 }
 
-/** Encrypt the local journal under `secret` and push it to the cloud slot. */
+/**
+ * Encrypt the local journal under `secret` and push it to the cloud slot.
+ * Uploads the ciphertext DIRECTLY to Vercel Blob (via a short-lived authorized
+ * token) so a large journal — photo/portrait thumbnails, illustrations — isn't
+ * capped by the serverless request-body limit.
+ */
 export async function pushSync(secret: string): Promise<number> {
   const payload = await buildPayload();
   if (isEmpty(payload)) return 0;
   const blob = await encryptJSON(payload, secret);
   const id = await syncId(secret);
-  const res = await fetch("/api/sync", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ id, blob }),
-  });
-  if (!res.ok) {
-    const d = (await res.json().catch(() => ({}))) as { error?: string };
-    throw new Error(d.error || "Sync push failed.");
+  try {
+    await upload(`sync/${id}.json`, JSON.stringify(blob), {
+      access: "public",
+      contentType: "application/json",
+      handleUploadUrl: "/api/sync/upload",
+    });
+  } catch (e) {
+    throw new Error(e instanceof Error ? e.message : "Sync push failed.");
   }
   return payload.entries.length;
 }
