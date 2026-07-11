@@ -6,6 +6,7 @@ import type { JournalEntry } from "@/lib/types";
 import { deleteEntry, saveEntry } from "@/lib/db";
 import { formatDate, formatTime, modelLabel, shortZone, zoneDiffers } from "@/lib/format";
 import { placeLabel } from "@/lib/geo";
+import { generateIllustration, IllustrateError } from "@/lib/illustrate";
 import SceneImage from "./SceneImage";
 import PhotoHeader from "./PhotoHeader";
 
@@ -18,6 +19,35 @@ export default function EntryCard({
   index?: number;
 }) {
   const [editing, setEditing] = useState(false);
+  const [illustrating, setIllustrating] = useState(false);
+  const [illustrateError, setIllustrateError] = useState<{ msg: string; hint?: string } | null>(null);
+
+  const hasPhotos = !!entry.photos && entry.photos.length > 0;
+
+  /** Generate (or replace) the card's illustration on demand. */
+  async function illustrate() {
+    setIllustrateError(null);
+    setIllustrating(true);
+    try {
+      // Only the sanitized scene prompt leaves the device — never the title/body.
+      const scenePrompt = entry.imagePrompt?.trim() || `a calm, simple scene evoking a ${entry.mood} mood`;
+      const image = await generateIllustration(scenePrompt);
+      await saveEntry({ ...entry, image });
+    } catch (err) {
+      const hint = err instanceof IllustrateError ? err.hint : undefined;
+      setIllustrateError({
+        msg: err instanceof Error ? err.message : "Couldn't create the illustration.",
+        hint,
+      });
+    } finally {
+      setIllustrating(false);
+    }
+  }
+
+  async function removeIllustration() {
+    setIllustrateError(null);
+    await saveEntry({ ...entry, image: undefined });
+  }
 
   return (
     <motion.article
@@ -28,17 +58,41 @@ export default function EntryCard({
       transition={{ duration: 0.5, delay: Math.min(index * 0.04, 0.3), ease: "easeOut" }}
       className="group relative rounded-2xl border border-hairline/70 bg-surface/70 p-6 shadow-soft backdrop-blur-sm"
     >
-      {/* Real photos take the top; the generated scene is only a stand-in when there are none. */}
-      {entry.photos && entry.photos.length > 0 ? (
-        <PhotoHeader photos={entry.photos} />
-      ) : entry.significant ? (
+      {/* Photos lead when present; otherwise a real illustration (if made) or the
+          local mood-scene stand-in for significant entries. */}
+      {hasPhotos ? (
+        <PhotoHeader photos={entry.photos!} />
+      ) : entry.image || entry.significant ? (
         <div className="relative -mx-6 -mt-6 mb-5 h-44 overflow-hidden rounded-t-2xl">
           <SceneImage entry={entry} className="h-full w-full object-cover" />
           <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-surface/85" />
         </div>
       ) : null}
 
-      {!editing && <EntryMenu onEdit={() => setEditing(true)} entry={entry} />}
+      {!editing && (
+        <EntryMenu
+          entry={entry}
+          onEdit={() => setEditing(true)}
+          onIllustrate={illustrate}
+          onRemoveIllustration={removeIllustration}
+          canIllustrate={!hasPhotos}
+          hasImage={!!entry.image}
+          busy={illustrating}
+        />
+      )}
+
+      {illustrating && (
+        <div className="mb-3 flex items-center gap-2 rounded-xl bg-lavender/10 px-3 py-2 text-xs text-lavender">
+          <span className="h-3.5 w-3.5 animate-breathe rounded-full bg-gradient-to-br from-terracotta/60 via-lavender/60 to-sage/60" />
+          Illustrating this moment…
+        </div>
+      )}
+      {illustrateError && !illustrating && (
+        <div className="mb-3 rounded-xl bg-terracotta/10 px-3 py-2 text-xs text-terracotta">
+          <p>{illustrateError.msg}</p>
+          {illustrateError.hint && <p className="mt-1 text-terracotta/80">{illustrateError.hint}</p>}
+        </div>
+      )}
 
       {/* Stamp order: [📍 place ·] date · time zone · mood — place omitted when not recorded. */}
       <div className="mb-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted">
@@ -108,14 +162,36 @@ export default function EntryCard({
   );
 }
 
-/** The ⋯ menu in the corner: edit, or delete with an inline confirm. */
-function EntryMenu({ entry, onEdit }: { entry: JournalEntry; onEdit: () => void }) {
+/** The ⋯ menu in the corner: edit, illustrate, or delete with an inline confirm. */
+function EntryMenu({
+  entry,
+  onEdit,
+  onIllustrate,
+  onRemoveIllustration,
+  canIllustrate,
+  hasImage,
+  busy,
+}: {
+  entry: JournalEntry;
+  onEdit: () => void;
+  onIllustrate: () => void;
+  onRemoveIllustration: () => void;
+  /** False when photos already own the header slot. */
+  canIllustrate: boolean;
+  hasImage: boolean;
+  busy: boolean;
+}) {
   const [open, setOpen] = useState(false);
   const [confirming, setConfirming] = useState(false);
 
   function close() {
     setOpen(false);
     setConfirming(false);
+  }
+
+  function run(fn: () => void) {
+    fn();
+    close();
   }
 
   return (
@@ -170,14 +246,30 @@ function EntryMenu({ entry, onEdit }: { entry: JournalEntry; onEdit: () => void 
             <>
               <button
                 type="button"
-                onClick={() => {
-                  onEdit();
-                  close();
-                }}
+                onClick={() => run(onEdit)}
                 className="block w-full px-4 py-2.5 text-left text-sm text-ink transition-colors hover:bg-paper/60"
               >
                 Edit
               </button>
+              {canIllustrate && (
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={() => run(onIllustrate)}
+                  className="block w-full border-t border-hairline/50 px-4 py-2.5 text-left text-sm text-ink transition-colors hover:bg-paper/60 disabled:opacity-50"
+                >
+                  {hasImage ? "Regenerate illustration" : "Illustrate this entry"}
+                </button>
+              )}
+              {canIllustrate && hasImage && (
+                <button
+                  type="button"
+                  onClick={() => run(onRemoveIllustration)}
+                  className="block w-full border-t border-hairline/50 px-4 py-2.5 text-left text-sm text-ink transition-colors hover:bg-paper/60"
+                >
+                  Remove illustration
+                </button>
+              )}
               <button
                 type="button"
                 onClick={() => setConfirming(true)}
