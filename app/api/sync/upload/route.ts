@@ -42,7 +42,10 @@ export async function POST(request: Request): Promise<Response> {
       request,
       token,
       onBeforeGenerateToken: async (pathname) => {
-        if (!/^sync\/[a-f0-9]{8,64}\.json$/.test(pathname)) {
+        // The old single-blob snapshot, or a per-record delta blob.
+        const okMonolith = /^sync\/[a-f0-9]{8,64}\.json$/.test(pathname);
+        const okRecord = /^sync\/[a-f0-9]{8,64}\/[eprk]\/[A-Za-z0-9._-]{1,200}\.json$/.test(pathname);
+        if (!okMonolith && !okRecord) {
           throw new Error("Only sync snapshots may be uploaded.");
         }
         return {

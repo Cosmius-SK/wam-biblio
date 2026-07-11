@@ -210,14 +210,14 @@ export default function GoogleAccount() {
 /** A determinate bar for the upload, indeterminate for the other phases, with a
  * one-line summary of what's moving. */
 function SyncBar({ progress }: { progress: SyncProgress }) {
-  const { phase, percent, counts } = progress;
+  const { phase, percent, counts, item } = progress;
   const indeterminate = percent === null;
-  const label = PHASE_LABEL[phase] + (phase === "upload" && percent !== null ? ` ${percent}%` : "");
+  const right = item ? `${item.done}/${item.total} items` : itemsLabel(counts);
   return (
     <div className="mt-3">
       <div className="flex items-center justify-between text-xs text-muted">
-        <span>{label}</span>
-        <span className="tabular-nums">{itemsLabel(counts)}</span>
+        <span>{PHASE_LABEL[phase]}</span>
+        <span className="tabular-nums">{right}</span>
       </div>
       <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-hairline/40">
         <div

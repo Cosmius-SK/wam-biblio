@@ -14,11 +14,22 @@ interface Setting {
   value: string;
 }
 
+/** Per-record sync bookkeeping for differential (delta) sync. `hash` is the
+ * last content hash we pushed (or a tombstone marker); `pulledUp` is the remote
+ * uploadedAt (ms) we last pulled, so unchanged records aren't re-fetched. */
+export interface SyncLedgerRow {
+  key: string; // record id
+  type: "e" | "p" | "r" | "k";
+  hash: string;
+  pulledUp: number;
+}
+
 class JournalDB extends Dexie {
   entries!: Table<JournalEntry, string>;
   reflections!: Table<Reflection, string>;
   settings!: Table<Setting, string>;
   portraits!: Table<Portrait, string>;
+  syncled!: Table<SyncLedgerRow, string>;
 
   constructor() {
     super("wam-biblio");
@@ -37,6 +48,10 @@ class JournalDB extends Dexie {
     // v4 adds profile self-portraits for the timelapse.
     this.version(4).stores({
       portraits: "id, capturedAt",
+    });
+    // v5 adds the per-record sync ledger for differential sync.
+    this.version(5).stores({
+      syncled: "key",
     });
   }
 }

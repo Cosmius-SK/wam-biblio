@@ -1,6 +1,6 @@
 "use client";
 
-import { getSetting, setSetting } from "./db";
+import { db, getSetting, setSetting } from "./db";
 import { generateMediaKey } from "./crypto";
 import {
   clearCachedToken,
@@ -111,6 +111,8 @@ export async function signOutGoogle(): Promise<void> {
   await setSetting("googleConnected", "0");
   await setSetting("googleProfile", "");
   await setSetting("googleSyncSecret", "");
+  // Clear the delta ledger so a different account re-syncs cleanly here.
+  await db.syncled.clear();
   clearCachedToken();
 }
 
