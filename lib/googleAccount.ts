@@ -79,7 +79,7 @@ async function ensureSecret(token: string): Promise<string> {
  * profile, recover/create the sync secret, then pull cloud → push local so both
  * ends merge. Returns the profile; throws with a friendly message on failure.
  */
-export async function signInWithGoogle(): Promise<Profile> {
+export async function signInWithGoogle(): Promise<{ profile: Profile; syncError: string | null }> {
   clearCachedToken(); // force consent so the new scopes are actually granted
   const token = await getAccessToken(true);
   const id = await getIdentity(token);
@@ -90,10 +90,18 @@ export async function signInWithGoogle(): Promise<Profile> {
   if (id.name && !(await getSetting("displayName"))) await setSetting("displayName", id.name);
 
   const secret = await ensureSecret(token);
-  await pullSync(secret);
-  await pushSync(secret);
-  await setSetting("lastSyncAt", String(Date.now()));
-  return profile;
+  // Sign-in + key escrow have succeeded here. The first sync can still fail
+  // (e.g. no Blob store connected yet) without undoing the connection — the
+  // account stays signed in and auto-sync will pick it up once storage exists.
+  let syncError: string | null = null;
+  try {
+    await pullSync(secret);
+    await pushSync(secret);
+    await setSetting("lastSyncAt", String(Date.now()));
+  } catch (e) {
+    syncError = e instanceof Error ? e.message : "Sync couldn't start yet.";
+  }
+  return { profile, syncError };
 }
 
 /** Forget the account on this device (keeps the Drive key file for re-sign-in). */

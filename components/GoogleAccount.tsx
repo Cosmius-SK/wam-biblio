@@ -48,10 +48,11 @@ export default function GoogleAccount() {
     setStatus(null);
     setBusy(true);
     try {
-      const p = await signInWithGoogle();
+      const { profile: p, syncError } = await signInWithGoogle();
       setProfile(p);
       setSynced(await lastSyncedAt());
-      setStatus("Signed in — your journal is syncing.");
+      if (syncError) setError(syncError);
+      else setStatus("Signed in — your journal is syncing.");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Couldn't sign in with Google.");
     } finally {
