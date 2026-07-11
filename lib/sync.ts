@@ -102,13 +102,48 @@ function parsePath(pathname: string): { type: RecType; id: string } | null {
   return m ? { type: m[1] as RecType, id: m[2] } : null;
 }
 
-async function uploadRecord(id: string, type: RecType, recordId: string, data: unknown, secret: string) {
-  const packed = JSON.stringify(await encryptJSON(data, secret));
-  await upload(`sync/${id}/${type}/${recordId}.json`, packed, {
-    access: "public",
-    contentType: "application/json",
-    handleUploadUrl: "/api/sync/upload",
+/** Upload one blob with a stall watchdog: if no byte progress for 45s, reject
+ * (rather than hang forever) — the delta ledger resumes it on the next sync. */
+function uploadWithWatchdog(path: string, body: string, onByte?: (frac: number) => void): Promise<void> {
+  return new Promise((resolve, reject) => {
+    let last = Date.now();
+    const iv = window.setInterval(() => {
+      if (Date.now() - last > 45000) {
+        window.clearInterval(iv);
+        reject(new Error("Upload stalled — it'll resume on the next sync."));
+      }
+    }, 5000);
+    upload(path, body, {
+      access: "public",
+      contentType: "application/json",
+      handleUploadUrl: "/api/sync/upload",
+      onUploadProgress: (e) => {
+        last = Date.now();
+        onByte?.(e.percentage / 100);
+      },
+    }).then(
+      () => {
+        window.clearInterval(iv);
+        resolve();
+      },
+      (e) => {
+        window.clearInterval(iv);
+        reject(e instanceof Error ? e : new Error("Upload failed."));
+      },
+    );
   });
+}
+
+async function uploadRecord(
+  id: string,
+  type: RecType,
+  recordId: string,
+  data: unknown,
+  secret: string,
+  onByte?: (frac: number) => void,
+) {
+  const packed = JSON.stringify(await encryptJSON(data, secret));
+  await uploadWithWatchdog(`sync/${id}/${type}/${recordId}.json`, packed, onByte);
 }
 
 /** Push only the records that changed since the last push; tombstone deletions. */
@@ -136,22 +171,22 @@ export async function pushSync(secret: string, onProgress?: OnSyncProgress): Pro
   }
 
   let done = 0;
-  const tick = () =>
-    onProgress?.({ phase: "upload", percent: Math.round((done / total) * 100), counts, item: { done, total } });
-  tick();
+  const report = (frac: number) =>
+    onProgress?.({ phase: "upload", percent: Math.round(((done + frac) / total) * 100), counts, item: { done, total } });
+  report(0);
 
   for (const { rec, hash } of changed) {
-    await uploadRecord(id, rec.type, rec.id, rec.data, secret);
+    await uploadRecord(id, rec.type, rec.id, rec.data, secret, report);
     const prev = ledger.get(rec.id);
     await db.syncled.put({ key: rec.id, type: rec.type, hash, pulledUp: prev?.pulledUp ?? 0 });
     done++;
-    tick();
+    report(0);
   }
   for (const del of deletions) {
-    await uploadRecord(id, del.type, del.key, { __deleted: true }, secret);
+    await uploadRecord(id, del.type, del.key, { __deleted: true }, secret, report);
     await db.syncled.put({ key: del.key, type: del.type, hash: TOMBSTONE, pulledUp: del.pulledUp });
     done++;
-    tick();
+    report(0);
   }
 
   onProgress?.({ phase: "done", percent: 100, counts });
