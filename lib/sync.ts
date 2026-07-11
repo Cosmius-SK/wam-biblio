@@ -244,16 +244,15 @@ export async function pullSync(secret: string, onProgress?: OnSyncProgress): Pro
     }
   }
 
-  let items: { pathname: string; url: string; uploadedAt: number }[] = [];
+  let items: { pathname: string; uploadedAt: number }[] = [];
   try {
     const res = await fetch(`/api/sync/list?id=${id}`);
     if (res.ok) {
       const d = (await res.json()) as {
-        items?: { pathname: string; url: string; uploadedAt: string | number }[];
+        items?: { pathname: string; uploadedAt: string | number }[];
       };
       items = (d.items ?? []).map((i) => ({
         pathname: i.pathname,
-        url: i.url,
         uploadedAt: new Date(i.uploadedAt).getTime(),
       }));
     }
@@ -283,10 +282,14 @@ export async function pullSync(secret: string, onProgress?: OnSyncProgress): Pro
       continue;
     }
     try {
-      const r = await fetch(`${it.url}?t=${Date.now()}`, { cache: "no-store" });
-      const blobJson = (await r.json()) as unknown;
-      if (isEncryptedBlob(blobJson)) {
-        const data = await decryptJSON(blobJson, secret);
+      // Through our server — a private store's blobs aren't browser-fetchable.
+      const r = await fetch(
+        `/api/sync/get?id=${id}&key=${parsed.type}/${encodeURIComponent(parsed.id)}`,
+        { cache: "no-store" },
+      );
+      const d = (await r.json()) as { found?: boolean; blob?: unknown };
+      if (r.ok && d.found && isEncryptedBlob(d.blob)) {
+        const data = await decryptJSON(d.blob, secret);
         await applyRecord(parsed.type, parsed.id, data, it.uploadedAt);
       }
     } catch {
