@@ -7,6 +7,7 @@ import { getSetting, setSetting } from "@/lib/db";
 import { ambient } from "@/lib/ambient";
 import PortraitStudio from "@/components/PortraitStudio";
 import ModelChooser from "@/components/ModelChooser";
+import StylePicker from "@/components/StylePicker";
 
 /**
  * Settings hub. Real sections today: your name, and a gateway to backup /
@@ -32,6 +33,17 @@ export default function SettingsPage() {
         </p>
         <div className="mt-4">
           <ModelChooser />
+        </div>
+      </div>
+
+      <div className="mt-4 rounded-2xl border border-hairline/70 bg-surface/60 p-5">
+        <h2 className="font-serif text-lg text-ink">Illustration style</h2>
+        <p className="mt-1 text-sm text-muted">
+          The look of your card illustrations. Three calm styles in biblio&rsquo;s palette —
+          applies to new illustrations.
+        </p>
+        <div className="mt-4">
+          <StylePicker />
         </div>
       </div>
 

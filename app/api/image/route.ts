@@ -17,14 +17,28 @@ export const runtime = "nodejs";
  */
 const BASE = "https://generativelanguage.googleapis.com/v1beta";
 
-// One place for the look: a calm, flat, textbook-style illustration in biblio's
-// palette. No text, no photorealism — small on disk, gentle on the eye.
-const STYLE_PREFIX =
-  "A simple, friendly editorial line illustration in a calm storybook / textbook style: " +
-  "clean thick outlines, flat shapes, generous negative space, and a limited warm palette of " +
-  "soft sage green, dusty lavender, warm terracotta and cream paper. Soothing and understated, " +
-  "not photorealistic, no 3D, no heavy shading or gradients. No text, letters, words, numbers, " +
-  "or watermarks anywhere in the image. The scene to illustrate: ";
+// Three curated looks, all in biblio's calm warm palette so switching never
+// wanders off-brand. The client sends a style key; unknown/missing falls back
+// to the default. No text, no photorealism — small on disk, gentle on the eye.
+const PALETTE =
+  "a limited warm palette of soft sage green, dusty lavender, warm terracotta and cream paper";
+const NO_TEXT = "No text, letters, words, numbers, or watermarks anywhere. The scene to illustrate: ";
+
+const STYLES: Record<string, string> = {
+  line:
+    `A simple, friendly editorial line illustration in a calm storybook / textbook style: ` +
+    `clean thick outlines, flat shapes, generous negative space, and ${PALETTE}. Soothing and ` +
+    `understated, not photorealistic, no 3D, no heavy shading or gradients. ${NO_TEXT}`,
+  watercolor:
+    `A soft watercolor-and-ink illustration in a calm storybook style: loose organic ink ` +
+    `linework with gentle translucent watercolor washes, ${PALETTE}, generous negative space, ` +
+    `soothing and quiet. Not photorealistic, no 3D, no harsh contrast. ${NO_TEXT}`,
+  pencil:
+    `A delicate pencil-sketch illustration with a light warm wash, calm sketchbook style: soft ` +
+    `graphite linework, subtle hand-drawn texture, gentle tints from ${PALETTE}, generous ` +
+    `negative space, quiet and understated. Not photorealistic, no 3D. ${NO_TEXT}`,
+};
+const DEFAULT_STYLE = "line";
 
 // Last-resort ids if model discovery is ever unavailable; discovery normally
 // supersedes these. Ordered best-first.
@@ -183,13 +197,13 @@ function classify(status: number, body: GeminiResponse): GenErr {
   };
 }
 
-async function generateWith(key: string, model: string, prompt: string): Promise<GenResult> {
+async function generateWith(key: string, model: string, text: string): Promise<GenResult> {
   let res: Response;
   try {
     res = await fetch(`${BASE}/models/${model}:generateContent?key=${key}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ contents: [{ parts: [{ text: STYLE_PREFIX + prompt }] }] }),
+      body: JSON.stringify({ contents: [{ parts: [{ text }] }] }),
     });
   } catch {
     return {
@@ -240,9 +254,9 @@ export async function POST(request: Request) {
     );
   }
 
-  let reqBody: { prompt?: unknown; model?: unknown };
+  let reqBody: { prompt?: unknown; model?: unknown; style?: unknown };
   try {
-    reqBody = (await request.json()) as { prompt?: unknown; model?: unknown };
+    reqBody = (await request.json()) as { prompt?: unknown; model?: unknown; style?: unknown };
   } catch {
     return NextResponse.json({ error: "Invalid request.", code: "bad_request", hint: "" }, { status: 400 });
   }
@@ -251,6 +265,9 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "No scene prompt.", code: "bad_request", hint: "" }, { status: 400 });
   }
   const chosen = typeof reqBody.model === "string" && reqBody.model.trim() ? reqBody.model.trim() : null;
+  // One of the 3 curated styles (server-owned so the look can't wander off-brand).
+  const styleKey = typeof reqBody.style === "string" ? reqBody.style : DEFAULT_STYLE;
+  const text = (STYLES[styleKey] ?? STYLES[DEFAULT_STYLE]) + prompt;
 
   const key = process.env.GEMINI_API_KEY;
   if (!key) {
@@ -268,7 +285,7 @@ export async function POST(request: Request) {
   // failure is reported (not silently swapped) so the picker can prompt for
   // another. Auto mode (no choice) falls through to best-available discovery.
   if (chosen) {
-    const result = await generateWith(key, chosen, prompt);
+    const result = await generateWith(key, chosen, text);
     if (result.ok) return NextResponse.json({ image: result.image, model: chosen });
     if (result.code === "model_unavailable") modelCache = null;
     return NextResponse.json(
@@ -293,7 +310,7 @@ export async function POST(request: Request) {
   // errors — a quota/key/safety failure won't be helped by a different model.
   let last: GenErr | null = null;
   for (const model of models.slice(0, 4)) {
-    const result = await generateWith(key, model, prompt);
+    const result = await generateWith(key, model, text);
     if (result.ok) {
       modelCache = { ids: [model, ...models.filter((m) => m !== model)], at: Date.now() };
       return NextResponse.json({ image: result.image, model });
