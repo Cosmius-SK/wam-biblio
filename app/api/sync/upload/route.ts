@@ -33,6 +33,10 @@ export async function POST(request: Request): Promise<Response> {
   }
 
   try {
+    // No onUploadCompleted: the encrypted blob IS the record, so we don't need
+    // a completion webhook — and Blob's cookie-less callback would be 401'd by
+    // the passcode middleware, hanging the upload. Omitting it means the client
+    // upload resolves as soon as the bytes land.
     const result = await handleUpload({
       body,
       request,
@@ -47,9 +51,6 @@ export async function POST(request: Request): Promise<Response> {
           allowOverwrite: true,
           maximumSizeInBytes: 100 * 1024 * 1024,
         };
-      },
-      onUploadCompleted: async () => {
-        /* the encrypted blob is the record; no post-processing needed */
       },
     });
     return NextResponse.json(result);
