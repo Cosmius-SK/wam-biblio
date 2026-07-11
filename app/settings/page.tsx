@@ -9,6 +9,7 @@ import PortraitStudio from "@/components/PortraitStudio";
 import ModelChooser from "@/components/ModelChooser";
 import StylePicker from "@/components/StylePicker";
 import GoogleAccount from "@/components/GoogleAccount";
+import AppLockCard from "@/components/AppLockCard";
 
 /**
  * Settings hub. Real sections today: your name, and a gateway to backup /
@@ -27,6 +28,8 @@ export default function SettingsPage() {
       <div className="mt-4">
         <GoogleAccount />
       </div>
+
+      <AppLockCard />
 
       <AmbientCard />
 

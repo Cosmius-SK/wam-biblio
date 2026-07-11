@@ -51,28 +51,36 @@ of confusion.
    file stays (so re-sign-in works); a "forget on this device" wipe removes the
    local copies.
 
-### How the secret drives sync (reuses existing crypto) **[built]**
-- `syncId(secret)` → the cloud slot locator (SHA-256 derived).
-- `encryptJSON(payload, secret)` / `decryptJSON` → AES-GCM via PBKDF2.
-- The **media key** rides inside the encrypted payload, so photos/portraits
-  decrypt on other devices after a pull (`adoptMediaKey`).
-- Net effect: the `appDataFolder` secret is an **auto-managed passphrase** — the
-  entire tested sync pipeline is reused; Google just removes the "remember a
-  passphrase" chore.
+### How the secret drives sync (differential, per-record) **[built]**
+- `syncId(secret)` → the account's cloud namespace (SHA-256 derived).
+- **Delta sync** (`lib/sync.ts`): each entry/portrait/reflection (and the media
+  key) is its own encrypted blob at `sync/<id>/<type>/<recordId>.json`. A local
+  ledger (Dexie `syncled`) tracks content hashes + pulled timestamps, so push
+  uploads only changed records (tombstones propagate deletes) and pull fetches
+  only newer ones. Interrupted first syncs resume where they left off.
+- The Blob store may be **private or public** — the server adapts
+  (`lib/blobStore.ts`) and proxies record reads (`/api/sync/get`) since private
+  blobs aren't browser-fetchable. `/api/sync/health` self-diagnoses the chain.
+- The **media key** rides as its own record, so photos/portraits decrypt on
+  other devices after a pull.
+- Net effect: the `appDataFolder` secret is an **auto-managed passphrase**;
+  Google removes the "remember a passphrase" chore.
 
 ---
 
-## App lock (biometric) — opening the app on this device **[planned]**
+## App lock (biometric) — opening the app on this device **[built]**
 
-Independent of the network and of Google.
+Independent of the network and of Google. (`lib/biometric.ts`,
+`components/BioLock.tsx`, Settings › App lock.)
 
 1. **Enroll** — `navigator.credentials.create()` registers a platform
-   authenticator (Face ID / fingerprint); store only the credential handle
-   locally.
-2. **Unlock** — on app open and after an inactivity timeout,
-   `navigator.credentials.get()` prompts the biometric. Success unlocks.
-3. **Fallback** — if biometrics are unavailable or fail, fall back to the
-   existing **passcode** gate. Biometric never becomes a lockout.
+   authenticator (Face ID / fingerprint); only the credential id is stored
+   locally. A localStorage hint lets the lock engage before IndexedDB wakes.
+2. **Unlock** — on app open (per browser session) and after **5+ minutes in
+   the background**, `navigator.credentials.get()` prompts the biometric.
+   Success unlocks the session.
+3. **Fallback** — "Use passcode instead" verifies against the existing
+   `/api/unlock` passcode gate. Biometric never becomes a lockout.
 4. **Scope of protection** — with no backend (until Option C) this is a strong
    **device-bound local lock** (proves user-presence on the device), not a
    server-verified identity. That is the correct role for it.

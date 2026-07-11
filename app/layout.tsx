@@ -3,6 +3,7 @@ import Link from "next/link";
 import "./globals.css";
 import AmbientBackground from "@/components/AmbientBackground";
 import AutoSync from "@/components/AutoSync";
+import BioLock from "@/components/BioLock";
 import Nav from "@/components/Nav";
 import ModeToggle from "@/components/ModeToggle";
 import MusicToggle from "@/components/MusicToggle";
@@ -29,6 +30,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className="min-h-full font-sans">
         <AmbientBackground />
         <AutoSync />
+        <BioLock />
         <header className="sticky top-0 z-20 backdrop-blur-md">
           <div className="mx-auto flex max-w-2xl items-center justify-between gap-3 px-5 py-4">
             <Link
