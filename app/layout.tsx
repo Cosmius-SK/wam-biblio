@@ -5,8 +5,8 @@ import AmbientBackground from "@/components/AmbientBackground";
 import AutoSync from "@/components/AutoSync";
 import BioLock from "@/components/BioLock";
 import Nav from "@/components/Nav";
-import ModeToggle from "@/components/ModeToggle";
 import MusicToggle from "@/components/MusicToggle";
+import FooterQuote from "@/components/FooterQuote";
 import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 
@@ -39,9 +39,30 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             >
               biblio
             </Link>
-            <div className="flex flex-wrap items-center justify-end gap-2">
+            <div className="flex items-center gap-2">
               <MusicToggle />
-              <ModeToggle />
+              <Link
+                href="/capture"
+                aria-label="New thought"
+                title="New thought"
+                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-ink/90 text-paper shadow-soft transition-transform hover:scale-105 active:scale-95"
+              >
+                <svg
+                  width="15"
+                  height="15"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.8"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  aria-hidden
+                >
+                  <path d="M12 4c4.4 0 8 2.5 8 5.7s-3.6 5.7-8 5.7c-.9 0-1.8-.1-2.6-.3-1 .8-2.4 1.3-3.9 1.4.7-.8 1.1-1.7 1.2-2.5C5 12.9 4 11.4 4 9.7 4 6.5 7.6 4 12 4Z" />
+                  <circle cx="6.8" cy="19.2" r="1.1" fill="currentColor" stroke="none" />
+                  <circle cx="4.4" cy="21.6" r="0.65" fill="currentColor" stroke="none" />
+                </svg>
+              </Link>
               <Link
                 href="/settings"
                 aria-label="Settings"
@@ -62,12 +83,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                   <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z" />
                 </svg>
               </Link>
-              <Link
-                href="/capture"
-                className="rounded-full bg-ink/90 px-4 py-1.5 text-sm font-medium text-paper shadow-soft transition-transform hover:scale-[1.03] active:scale-95"
-              >
-                New thought
-              </Link>
             </div>
           </div>
         </header>
@@ -76,12 +91,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           {children}
         </main>
         <footer className="mx-auto max-w-2xl px-5 pb-10 text-center">
-          <Link
-            href="/settings"
-            className="text-xs text-muted/70 transition-colors hover:text-ink"
-          >
-            Settings
-          </Link>
+          <FooterQuote />
         </footer>
         <Analytics />
         <SpeedInsights />
