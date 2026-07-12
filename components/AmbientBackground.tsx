@@ -2,61 +2,65 @@
 
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
+import { BG_EVENT, readBgIntensity } from "@/lib/appearance";
 
 /**
- * A soft, full-screen gradient that shifts with the time of day — the quiet
- * "alive" heartbeat of the journal. Fixed behind all content, it re-tints
- * gently as morning turns to dusk to night.
+ * The fluid, living background behind every page: three soft colour fields
+ * that drift very slowly and re-tint with the time of day. Visibility is the
+ * user's choice — the Appearance slider scales it live from whisper to vivid.
  */
 type Palette = { a: string; b: string; c: string };
 
+// Base colours per time of day (rgb only — alpha comes from the intensity).
 function paletteForHour(hour: number): Palette {
-  if (hour < 5) {
-    // deep night — muted indigo/charcoal
-    return { a: "rgba(60,58,92,0.30)", b: "rgba(40,42,60,0.22)", c: "rgba(30,28,34,0.0)" };
-  }
-  if (hour < 11) {
-    // morning — soft peach + pale sage
-    return { a: "rgba(242,215,194,0.55)", b: "rgba(206,214,190,0.40)", c: "rgba(247,243,235,0.0)" };
-  }
-  if (hour < 16) {
-    // midday — light, airy warmth
-    return { a: "rgba(244,236,222,0.55)", b: "rgba(214,222,214,0.38)", c: "rgba(247,243,235,0.0)" };
-  }
-  if (hour < 20) {
-    // dusk — terracotta + lavender
-    return { a: "rgba(214,150,120,0.45)", b: "rgba(176,160,200,0.40)", c: "rgba(247,243,235,0.0)" };
-  }
-  // evening — lavender into deepening blue
-  return { a: "rgba(150,138,184,0.40)", b: "rgba(96,98,132,0.30)", c: "rgba(30,28,34,0.0)" };
+  if (hour < 5) return { a: "104,98,160", b: "70,76,118", c: "150,120,160" }; // deep night
+  if (hour < 11) return { a: "238,178,132", b: "168,192,150", c: "196,168,206" }; // morning
+  if (hour < 16) return { a: "232,192,140", b: "158,188,168", c: "184,166,212" }; // midday
+  if (hour < 20) return { a: "222,138,96", b: "162,142,204", c: "146,176,142" }; // dusk
+  return { a: "156,140,196", b: "96,102,148", c: "204,146,122" }; // evening
 }
+
+const rad = (rgb: string, alpha: number) =>
+  `radial-gradient(circle at center, rgba(${rgb},${alpha.toFixed(3)}), transparent 70%)`;
 
 export default function AmbientBackground() {
   const [palette, setPalette] = useState<Palette>(() => paletteForHour(new Date().getHours()));
+  const [intensity, setIntensity] = useState(65);
 
   useEffect(() => {
+    setIntensity(readBgIntensity());
     const tick = () => setPalette(paletteForHour(new Date().getHours()));
     tick();
-    const id = setInterval(tick, 10 * 60 * 1000); // re-tint every 10 minutes
-    return () => clearInterval(id);
+    const id = setInterval(tick, 10 * 60 * 1000);
+    const onChange = (e: Event) => setIntensity((e as CustomEvent<number>).detail);
+    window.addEventListener(BG_EVENT, onChange);
+    return () => {
+      clearInterval(id);
+      window.removeEventListener(BG_EVENT, onChange);
+    };
   }, []);
+
+  const k = intensity / 100;
 
   return (
     <div aria-hidden className="pointer-events-none fixed inset-0 -z-10 overflow-hidden">
       <motion.div
-        className="absolute -top-1/3 left-1/2 h-[80vh] w-[80vh] -translate-x-1/2 rounded-full blur-3xl animate-breathe"
-        style={{ background: `radial-gradient(circle at center, ${palette.a}, transparent 70%)` }}
-        animate={{ background: `radial-gradient(circle at center, ${palette.a}, transparent 70%)` }}
-        transition={{ duration: 3 }}
+        className="absolute -left-[15%] -top-[12%] h-[75vh] w-[75vh] rounded-full blur-3xl"
+        style={{ background: rad(palette.a, 0.85 * k) }}
+        animate={{ x: [0, 50, -25, 0], y: [0, 35, 70, 0] }}
+        transition={{ duration: 32, repeat: Infinity, ease: "easeInOut" }}
       />
       <motion.div
-        className="absolute top-1/4 -right-1/4 h-[70vh] w-[70vh] rounded-full blur-3xl"
-        style={{ background: `radial-gradient(circle at center, ${palette.b}, transparent 70%)` }}
-        transition={{ duration: 3 }}
+        className="absolute -right-[18%] top-[28%] h-[70vh] w-[70vh] rounded-full blur-3xl"
+        style={{ background: rad(palette.b, 0.75 * k) }}
+        animate={{ x: [0, -45, 20, 0], y: [0, -30, 40, 0] }}
+        transition={{ duration: 38, repeat: Infinity, ease: "easeInOut" }}
       />
-      <div
-        className="absolute inset-0"
-        style={{ background: `linear-gradient(180deg, ${palette.c}, rgb(var(--paper)) 75%)` }}
+      <motion.div
+        className="absolute -bottom-[15%] left-[10%] h-[65vh] w-[65vh] rounded-full blur-3xl"
+        style={{ background: rad(palette.c, 0.6 * k) }}
+        animate={{ x: [0, 40, -35, 0], y: [0, -45, -15, 0] }}
+        transition={{ duration: 44, repeat: Infinity, ease: "easeInOut" }}
       />
     </div>
   );
