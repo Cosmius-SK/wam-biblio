@@ -17,6 +17,7 @@ import type {
 import { estimateCost, formatCost, formatDate, modelLabel } from "@/lib/format";
 import { placeLabel } from "@/lib/geo";
 import { uploadPhotos, type PendingPhoto } from "@/lib/media";
+import { logAi } from "@/lib/usage";
 
 type Phase = "compose" | "shaping" | "review";
 
@@ -75,6 +76,7 @@ export default function CaptureComposer() {
         throw new Error(data.error || `Something went wrong (${res.status}).`);
       }
       const data = (await res.json()) as StructureResponse;
+      if (data.usage) void logAi({ feature: "shape", model: data.model, usage: data.usage });
       setResult(data);
       setTitle(data.entry.title);
       setBody(data.entry.body);

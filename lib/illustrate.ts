@@ -9,6 +9,7 @@
 
 import { getPreferredModel } from "./models";
 import { getPreferredStyle } from "./styles";
+import { logAi } from "./usage";
 
 // The card banner shape (2× the on-screen header for crispness on retina).
 const BANNER_W = 960;
@@ -41,7 +42,7 @@ export async function generateIllustration(prompt: string): Promise<string> {
     throw new IllustrateError("Couldn't reach the illustration service.", "Check your connection and try again.");
   }
 
-  let data: { image?: string; error?: string; hint?: string; code?: string } = {};
+  let data: { image?: string; model?: string; error?: string; hint?: string; code?: string } = {};
   try {
     data = await res.json();
   } catch {
@@ -54,6 +55,7 @@ export async function generateIllustration(prompt: string): Promise<string> {
       data.code,
     );
   }
+  void logAi({ feature: "illustrate", model: data.model || "gemini", images: 1 });
   return fitToBanner(data.image);
 }
 

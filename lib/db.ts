@@ -24,12 +24,27 @@ export interface SyncLedgerRow {
   pulledUp: number;
 }
 
+/** One logged AI action on this device — the itemised usage ledger. */
+export interface AiLogRow {
+  id: string;
+  at: number;
+  feature: "shape" | "ask" | "reflect" | "illustrate";
+  model: string;
+  inputTokens?: number;
+  outputTokens?: number;
+  /** Estimated cost in USD (0 for free-tier images). */
+  cost: number;
+  /** Image count, for illustrate calls (they have no token usage). */
+  images?: number;
+}
+
 class JournalDB extends Dexie {
   entries!: Table<JournalEntry, string>;
   reflections!: Table<Reflection, string>;
   settings!: Table<Setting, string>;
   portraits!: Table<Portrait, string>;
   syncled!: Table<SyncLedgerRow, string>;
+  ailog!: Table<AiLogRow, string>;
 
   constructor() {
     super("wam-biblio");
@@ -52,6 +67,10 @@ class JournalDB extends Dexie {
     // v5 adds the per-record sync ledger for differential sync.
     this.version(5).stores({
       syncled: "key",
+    });
+    // v6 adds the itemised AI usage ledger (per-device; not synced).
+    this.version(6).stores({
+      ailog: "id, at, feature",
     });
   }
 }

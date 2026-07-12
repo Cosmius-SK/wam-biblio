@@ -4,11 +4,16 @@ import SettingsShell from "@/components/SettingsShell";
 import AiModeCard from "@/components/AiModeCard";
 import ModelChooser from "@/components/ModelChooser";
 import StylePicker from "@/components/StylePicker";
+import UsageCard from "@/components/UsageCard";
 
 export default function AiSettingsPage() {
   return (
     <SettingsShell title="AI" blurb="How much the AI does, and how it draws.">
       <AiModeCard />
+
+      <div className="mt-4">
+        <UsageCard />
+      </div>
 
       <div className="mt-4 rounded-2xl border border-hairline/70 bg-surface/60 p-5">
         <h2 className="font-serif text-lg text-ink">Illustration model</h2>

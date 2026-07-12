@@ -6,6 +6,7 @@ import { motion } from "framer-motion";
 import { db, saveReflection, latestReflection } from "@/lib/db";
 import { toRef } from "@/lib/retrieve";
 import { estimateCost, formatCost, formatDate, modelLabel } from "@/lib/format";
+import { logAi } from "@/lib/usage";
 import type { SynthesisResponse } from "@/lib/types";
 
 /**
@@ -35,6 +36,7 @@ export default function ReflectCard() {
         throw new Error(data.error || `Something went wrong (${res.status}).`);
       }
       const data = (await res.json()) as SynthesisResponse;
+      if (data.usage) void logAi({ feature: "reflect", model: data.model, usage: data.usage });
       await saveReflection({
         id: crypto.randomUUID(),
         createdAt: Date.now(),

@@ -6,6 +6,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { db } from "@/lib/db";
 import { retrieve, toRef } from "@/lib/retrieve";
 import { estimateCost, formatCost, modelLabel } from "@/lib/format";
+import { logAi } from "@/lib/usage";
 import type { AskResponse } from "@/lib/types";
 
 const SUGGESTIONS = [
@@ -47,7 +48,9 @@ export default function AskView() {
         const data = (await res.json().catch(() => ({}))) as { error?: string };
         throw new Error(data.error || `Something went wrong (${res.status}).`);
       }
-      setResult((await res.json()) as AskResponse);
+      const data = (await res.json()) as AskResponse;
+      if (data.usage) void logAi({ feature: "ask", model: data.model, usage: data.usage });
+      setResult(data);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Couldn't answer that.");
     } finally {
