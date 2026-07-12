@@ -27,7 +27,6 @@ export default function BioLock() {
   const [pass, setPass] = useState("");
   const [error, setError] = useState<string | null>(null);
   const hiddenAt = useRef<number | null>(null);
-  const attempted = useRef(false);
 
   async function attempt() {
     setError(null);
@@ -45,18 +44,13 @@ export default function BioLock() {
 
   useEffect(() => {
     // Fast local hint first, then verify against the real setting (covers a
-    // cleared localStorage or a lock disabled from Settings).
+    // cleared localStorage or a lock disabled from Settings). We do NOT
+    // auto-prompt: browsers block WebAuthn without a user gesture, so the
+    // owner taps "Unlock" — that avoids a spurious error on load.
     if (lockHintOn() && !sessionUnlocked()) {
       setLocked(true);
       void isBiometricEnabled().then((en) => {
-        if (!en) {
-          setLocked(false);
-          return;
-        }
-        if (!attempted.current) {
-          attempted.current = true;
-          void attempt();
-        }
+        if (!en) setLocked(false);
       });
     }
 
@@ -71,7 +65,6 @@ export default function BioLock() {
         lockHintOn()
       ) {
         relock();
-        attempted.current = false;
         setLocked(true);
       }
       hiddenAt.current = null;
