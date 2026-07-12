@@ -26,10 +26,13 @@ export default function ThemeFilter({
   entries,
   value,
   onChange,
+  trailing,
 }: {
   entries: JournalEntry[];
   value: FilterValue | null;
   onChange: (v: FilterValue | null) => void;
+  /** Optional control (e.g. the view toggle) rendered at the row's end. */
+  trailing?: React.ReactNode;
 }) {
   const [open, setOpen] = useState(false);
 
@@ -88,6 +91,8 @@ export default function ThemeFilter({
             <span aria-hidden>✕</span>
           </button>
         )}
+
+        {trailing && <div className="ml-auto">{trailing}</div>}
       </div>
 
       <AnimatePresence>

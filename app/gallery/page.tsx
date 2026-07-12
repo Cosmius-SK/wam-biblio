@@ -1,13 +1,16 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
 import { motion } from "framer-motion";
 import { db } from "@/lib/db";
 import SceneImage from "@/components/SceneImage";
 import ThemeFilter, { matchesFilter, type FilterValue } from "@/components/ThemeFilter";
+import ViewToggle from "@/components/ViewToggle";
+import BookView from "@/components/BookView";
 import { SeedButton } from "@/components/DemoControls";
 import { formatDate } from "@/lib/format";
+import { readView, saveView, type ViewMode } from "@/lib/views";
 
 /**
  * The Gallery — a soft, full-bleed wall of scenes, one per entry. Images are
@@ -16,8 +19,15 @@ import { formatDate } from "@/lib/format";
 export default function GalleryPage() {
   const entries = useLiveQuery(() => db.entries.orderBy("createdAt").reverse().toArray());
   const [filter, setFilter] = useState<FilterValue | null>(null);
+  const [view, setViewState] = useState<ViewMode>("scroll");
 
-  const shown = entries?.filter((e) => matchesFilter(e, filter));
+  useEffect(() => setViewState(readView("gallery")), []);
+  function setView(v: ViewMode) {
+    setViewState(v);
+    saveView("gallery", v);
+  }
+
+  const shown = entries?.filter((e) => matchesFilter(e, filter)) ?? [];
 
   return (
     <div>
@@ -44,9 +54,38 @@ export default function GalleryPage() {
         </div>
       ) : (
         <>
-        <ThemeFilter entries={entries} value={filter} onChange={setFilter} />
+        <ThemeFilter
+          entries={entries}
+          value={filter}
+          onChange={setFilter}
+          trailing={<ViewToggle value={view} onChange={setView} />}
+        />
+        {shown.length === 0 ? (
+          <p className="rounded-2xl border border-dashed border-hairline bg-surface/40 p-8 text-center text-muted">
+            No scenes match that filter.
+          </p>
+        ) : view === "book" ? (
+          <BookView
+            items={shown}
+            keyOf={(e) => e.id}
+            renderPage={(entry) => (
+              <figure className="relative h-[60vh] overflow-hidden rounded-2xl border border-hairline/60 shadow-soft">
+                <SceneImage entry={entry} className="h-full w-full object-cover" />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/55 via-black/10 to-transparent" />
+                <figcaption className="absolute inset-x-0 bottom-0 p-5">
+                  <p className="font-serif text-2xl leading-tight text-white drop-shadow">
+                    {entry.title}
+                  </p>
+                  <p className="mt-1 text-sm text-white/80">
+                    {formatDate(entry.createdAt, entry.timezone)} · {entry.mood}
+                  </p>
+                </figcaption>
+              </figure>
+            )}
+          />
+        ) : (
         <div className="grid grid-cols-2 gap-4">
-          {shown?.map((entry, i) => (
+          {shown.map((entry, i) => (
             <motion.figure
               key={entry.id}
               initial={{ opacity: 0, scale: 0.97 }}
@@ -70,10 +109,6 @@ export default function GalleryPage() {
             </motion.figure>
           ))}
         </div>
-        {shown && shown.length === 0 && (
-          <p className="rounded-2xl border border-dashed border-hairline bg-surface/40 p-8 text-center text-muted">
-            No scenes match that filter.
-          </p>
         )}
         </>
       )}
