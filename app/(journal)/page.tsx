@@ -1,10 +1,12 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { useLiveQuery } from "dexie-react-hooks";
 import { AnimatePresence, motion } from "framer-motion";
 import { db, getSetting } from "@/lib/db";
 import EntryCard from "@/components/EntryCard";
+import ThemeFilter, { matchesFilter, type FilterValue } from "@/components/ThemeFilter";
 import { DemoBanner, SeedButton } from "@/components/DemoControls";
 import { greeting } from "@/lib/format";
 
@@ -17,6 +19,9 @@ export default function TimelinePage() {
   // `undefined` while loading; an array once IndexedDB has answered.
   const entries = useLiveQuery(() => db.entries.orderBy("createdAt").reverse().toArray());
   const name = useLiveQuery(() => getSetting("displayName"));
+  const [filter, setFilter] = useState<FilterValue | null>(null);
+
+  const shown = entries?.filter((e) => matchesFilter(e, filter));
 
   return (
     <div>
@@ -44,13 +49,20 @@ export default function TimelinePage() {
       ) : (
         <>
           <DemoBanner />
-          <div className="space-y-5">
-            <AnimatePresence initial={false}>
-              {entries.map((entry, i) => (
-                <EntryCard key={entry.id} entry={entry} index={i} />
-              ))}
-            </AnimatePresence>
-          </div>
+          <ThemeFilter entries={entries} value={filter} onChange={setFilter} />
+          {shown && shown.length === 0 ? (
+            <p className="rounded-2xl border border-dashed border-hairline bg-surface/40 p-8 text-center text-muted">
+              No entries match that filter.
+            </p>
+          ) : (
+            <div className="space-y-5">
+              <AnimatePresence initial={false}>
+                {shown?.map((entry, i) => (
+                  <EntryCard key={entry.id} entry={entry} index={i} />
+                ))}
+              </AnimatePresence>
+            </div>
+          )}
         </>
       )}
     </div>

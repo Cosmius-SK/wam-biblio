@@ -1,9 +1,11 @@
 "use client";
 
+import { useState } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
 import { motion } from "framer-motion";
 import { db } from "@/lib/db";
 import SceneImage from "@/components/SceneImage";
+import ThemeFilter, { matchesFilter, type FilterValue } from "@/components/ThemeFilter";
 import { SeedButton } from "@/components/DemoControls";
 import { formatDate } from "@/lib/format";
 
@@ -13,6 +15,9 @@ import { formatDate } from "@/lib/format";
  */
 export default function GalleryPage() {
   const entries = useLiveQuery(() => db.entries.orderBy("createdAt").reverse().toArray());
+  const [filter, setFilter] = useState<FilterValue | null>(null);
+
+  const shown = entries?.filter((e) => matchesFilter(e, filter));
 
   return (
     <div>
@@ -38,8 +43,10 @@ export default function GalleryPage() {
           </div>
         </div>
       ) : (
+        <>
+        <ThemeFilter entries={entries} value={filter} onChange={setFilter} />
         <div className="grid grid-cols-2 gap-4">
-          {entries.map((entry, i) => (
+          {shown?.map((entry, i) => (
             <motion.figure
               key={entry.id}
               initial={{ opacity: 0, scale: 0.97 }}
@@ -63,6 +70,12 @@ export default function GalleryPage() {
             </motion.figure>
           ))}
         </div>
+        {shown && shown.length === 0 && (
+          <p className="rounded-2xl border border-dashed border-hairline bg-surface/40 p-8 text-center text-muted">
+            No scenes match that filter.
+          </p>
+        )}
+        </>
       )}
     </div>
   );
