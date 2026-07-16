@@ -80,6 +80,11 @@ export interface JournalEntry extends StructuredEntry {
   /** A generated scene image (data URL) — set in live mode; otherwise rendered on the fly. */
   image?: string;
   /**
+   * The writer's chosen header art: "illustration", or a photo id. Unset means
+   * auto — illustration first (if any), else the first photo.
+   */
+  header?: string;
+  /**
    * True for sample/demo entries seeded to preview the app. These are kept
    * separate so they can be erased in one action before real use.
    */

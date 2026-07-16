@@ -2,6 +2,7 @@
 
 import type { JournalEntry } from "@/lib/types";
 import { formatDate, formatTime } from "@/lib/format";
+import { resolveHeader } from "@/lib/entryHeader";
 
 /**
  * One page of the book: a quiet, printed-journal layout — date line, title,
@@ -11,7 +12,8 @@ import { formatDate, formatTime } from "@/lib/format";
  * editing lives in the timeline view.
  */
 export default function JournalPage({ entry }: { entry: JournalEntry }) {
-  const art = entry.photos?.[0]?.thumb ?? entry.image;
+  const hero = resolveHeader(entry);
+  const art = hero ? (hero.kind === "photo" ? hero.photo.thumb : hero.src) : undefined;
   return (
     <article className="flex min-h-full flex-col px-7 py-7 pl-10">
       <p className="text-[0.68rem] uppercase tracking-[0.14em] text-muted">

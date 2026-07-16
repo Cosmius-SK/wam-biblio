@@ -7,8 +7,9 @@ import { deleteEntry, saveEntry } from "@/lib/db";
 import { formatDate, formatTime, modelLabel, shortZone, zoneDiffers } from "@/lib/format";
 import { placeLabel } from "@/lib/geo";
 import { generateIllustration, IllustrateError } from "@/lib/illustrate";
+import { resolveHeader } from "@/lib/entryHeader";
 import SceneImage from "./SceneImage";
-import PhotoHeader from "./PhotoHeader";
+import EntryHeader from "./EntryHeader";
 import ModelChooser from "./ModelChooser";
 
 /** A single entry in the living timeline — reading-first, book-like. */
@@ -22,8 +23,6 @@ export default function EntryCard({
   const [editing, setEditing] = useState(false);
   const [illustrating, setIllustrating] = useState(false);
   const [illustrateError, setIllustrateError] = useState<{ msg: string; hint?: string } | null>(null);
-
-  const hasPhotos = !!entry.photos && entry.photos.length > 0;
 
   /** Generate (or replace) the card's illustration on demand. */
   async function illustrate() {
@@ -47,7 +46,12 @@ export default function EntryCard({
 
   async function removeIllustration() {
     setIllustrateError(null);
-    await saveEntry({ ...entry, image: undefined });
+    await saveEntry({
+      ...entry,
+      image: undefined,
+      // A header choice pointing at the removed art falls back to auto.
+      header: entry.header === "illustration" ? undefined : entry.header,
+    });
   }
 
   return (
@@ -59,11 +63,11 @@ export default function EntryCard({
       transition={{ duration: 0.5, delay: Math.min(index * 0.04, 0.3), ease: "easeOut" }}
       className="group relative rounded-2xl border border-hairline/70 bg-surface/70 p-6 shadow-soft backdrop-blur-sm"
     >
-      {/* Photos lead when present; otherwise a real illustration (if made) or the
-          local mood-scene stand-in for significant entries. */}
-      {hasPhotos ? (
-        <PhotoHeader photos={entry.photos!} />
-      ) : entry.image || entry.significant ? (
+      {/* The chosen header art leads (writer's pick, else illustration → first
+          photo); the local mood-scene stands in for significant entries. */}
+      {resolveHeader(entry) ? (
+        <EntryHeader entry={entry} />
+      ) : entry.significant ? (
         <div className="relative -mx-6 -mt-6 mb-5 h-44 overflow-hidden rounded-t-2xl">
           <SceneImage entry={entry} className="h-full w-full object-cover" />
           <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-surface/85" />
@@ -76,7 +80,6 @@ export default function EntryCard({
           onEdit={() => setEditing(true)}
           onIllustrate={illustrate}
           onRemoveIllustration={removeIllustration}
-          canIllustrate={!hasPhotos}
           hasImage={!!entry.image}
           busy={illustrating}
         />
@@ -176,7 +179,6 @@ function EntryMenu({
   onEdit,
   onIllustrate,
   onRemoveIllustration,
-  canIllustrate,
   hasImage,
   busy,
 }: {
@@ -184,8 +186,6 @@ function EntryMenu({
   onEdit: () => void;
   onIllustrate: () => void;
   onRemoveIllustration: () => void;
-  /** False when photos already own the header slot. */
-  canIllustrate: boolean;
   hasImage: boolean;
   busy: boolean;
 }) {
@@ -259,17 +259,15 @@ function EntryMenu({
               >
                 Edit
               </button>
-              {canIllustrate && (
-                <button
-                  type="button"
-                  disabled={busy}
-                  onClick={() => run(onIllustrate)}
-                  className="block w-full border-t border-hairline/50 px-4 py-2.5 text-left text-sm text-ink transition-colors hover:bg-paper/60 disabled:opacity-50"
-                >
-                  {hasImage ? "Regenerate illustration" : "Illustrate this entry"}
-                </button>
-              )}
-              {canIllustrate && hasImage && (
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() => run(onIllustrate)}
+                className="block w-full border-t border-hairline/50 px-4 py-2.5 text-left text-sm text-ink transition-colors hover:bg-paper/60 disabled:opacity-50"
+              >
+                {hasImage ? "Regenerate illustration" : "Illustrate this entry"}
+              </button>
+              {hasImage && (
                 <button
                   type="button"
                   onClick={() => run(onRemoveIllustration)}
@@ -357,13 +355,20 @@ function IllustrationErrorDialog({
   );
 }
 
-/** Inline edit of the words that make an entry: title, body, and mood. */
+/** Inline edit of the words that make an entry: title, body, mood — and which
+ * image leads the card (illustration or any photo; Auto = illustration first). */
 function EntryEditor({ entry, onDone }: { entry: JournalEntry; onDone: () => void }) {
   const [title, setTitle] = useState(entry.title);
   const [body, setBody] = useState(entry.body);
   const [mood, setMood] = useState(entry.mood);
   const [themesText, setThemesText] = useState(entry.themes.join(", "));
+  const [headerSel, setHeaderSel] = useState(entry.header ?? "");
   const [saving, setSaving] = useState(false);
+
+  const headerChoices = [
+    ...(entry.image ? [{ id: "illustration", src: entry.image, label: "Illustration" }] : []),
+    ...(entry.photos ?? []).map((p, i) => ({ id: p.id, src: p.thumb, label: `Photo ${i + 1}` })),
+  ];
 
   async function save() {
     setSaving(true);
@@ -374,6 +379,7 @@ function EntryEditor({ entry, onDone }: { entry: JournalEntry; onDone: () => voi
       body: body.trim() || entry.body,
       mood: mood.trim() || entry.mood,
       themes,
+      header: headerSel || undefined,
     });
     setSaving(false);
     onDone();
@@ -415,6 +421,44 @@ function EntryEditor({ entry, onDone }: { entry: JournalEntry; onDone: () => voi
         />
         <span className="text-[0.7rem] text-muted/70">Separate with commas.</span>
       </label>
+
+      {headerChoices.length >= 2 && (
+        <div className="mt-4">
+          <p className="text-xs text-muted">Header image</p>
+          <div className="mt-2 flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setHeaderSel("")}
+              aria-pressed={headerSel === ""}
+              className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors ${
+                headerSel === ""
+                  ? "border-lavender bg-lavender/15 text-lavender"
+                  : "border-hairline text-muted hover:text-ink"
+              }`}
+            >
+              Auto
+            </button>
+            {headerChoices.map((c) => (
+              <button
+                key={c.id}
+                type="button"
+                onClick={() => setHeaderSel(c.id)}
+                aria-pressed={headerSel === c.id}
+                title={c.label}
+                className={`overflow-hidden rounded-lg border-2 transition-colors ${
+                  headerSel === c.id ? "border-lavender" : "border-transparent"
+                }`}
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element -- local data-URL thumbnail */}
+                <img src={c.src} alt={c.label} className="h-14 w-20 object-cover" />
+              </button>
+            ))}
+          </div>
+          <p className="mt-1 text-[0.7rem] text-muted/70">
+            Auto shows the illustration first, else your first photo.
+          </p>
+        </div>
+      )}
 
       <div className="mt-4 flex gap-3">
         <button

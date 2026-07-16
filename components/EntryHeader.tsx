@@ -2,52 +2,64 @@
 
 import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import type { EntryPhoto } from "@/lib/types";
+import type { EntryPhoto, JournalEntry } from "@/lib/types";
+import { resolveHeader } from "@/lib/entryHeader";
 import { loadPhotoUrl } from "@/lib/media";
 
 /**
- * Full-bleed photo header at the top of an entry card. The first photo spans
- * the card width; any others sit in a small strip beneath it. Tapping any of
- * them opens a lightbox that decrypts the original on-device — and tapping
- * anywhere (or Esc) closes it.
+ * The unified full-bleed header at the top of an entry card: the chosen hero
+ * (the writer picks in Edit; auto = illustration first, else first photo)
+ * spans the card width, and the remaining photos sit in a strip beneath.
+ * When a photo is the hero, the illustration stays stored but hidden —
+ * re-selectable anytime. Tapping opens a lightbox that closes on any tap.
  *
  * Note: the negative margins assume the parent card uses p-6 (see EntryCard).
  */
-export default function PhotoHeader({ photos }: { photos: EntryPhoto[] }) {
-  const [open, setOpen] = useState<EntryPhoto | null>(null);
-  const hero = photos[0];
-  const rest = photos.slice(1);
+type Open = { photo?: EntryPhoto; src?: string } | null;
 
-  // The extra photos fill the full card width — one wide, or an even grid.
+export default function EntryHeader({ entry }: { entry: JournalEntry }) {
+  const [open, setOpen] = useState<Open>(null);
+  const hero = resolveHeader(entry);
+  if (!hero) return null;
+
+  const photos = entry.photos ?? [];
+  const strip = hero.kind === "photo" ? photos.filter((p) => p.id !== hero.photo.id) : photos;
+
   const cols =
-    rest.length === 1
+    strip.length === 1
       ? "grid-cols-1"
-      : rest.length === 2
+      : strip.length === 2
         ? "grid-cols-2"
-        : rest.length === 3
+        : strip.length === 3
           ? "grid-cols-3"
           : "grid-cols-4";
-  const tileAspect = rest.length === 1 ? "aspect-[16/10]" : "aspect-square";
+  const tileAspect = strip.length === 1 ? "aspect-[16/10]" : "aspect-square";
 
   return (
     <div className="-mx-6 -mt-6 mb-5 overflow-hidden rounded-t-2xl">
       <button
         type="button"
-        onClick={() => setOpen(hero)}
-        aria-label="View photo"
+        onClick={() =>
+          setOpen(hero.kind === "photo" ? { photo: hero.photo } : { src: hero.src })
+        }
+        aria-label={hero.kind === "photo" ? "View photo" : "View illustration"}
         className="block w-full"
       >
-        {/* eslint-disable-next-line @next/next/no-img-element -- local data-URL thumbnail */}
-        <img src={hero.thumb} alt="" className="h-64 w-full object-cover" />
+        {/* eslint-disable-next-line @next/next/no-img-element -- local data-URL image */}
+        <img
+          src={hero.kind === "photo" ? hero.photo.thumb : hero.src}
+          alt=""
+          className="h-64 w-full object-cover"
+        />
       </button>
 
-      {rest.length > 0 && (
+      {strip.length > 0 && (
         <div className={`mt-1 grid gap-1 ${cols}`}>
-          {rest.map((p) => (
+          {strip.map((p) => (
             <button
               key={p.id}
               type="button"
-              onClick={() => setOpen(p)}
+              onClick={() => setOpen({ photo: p })}
               aria-label="View photo"
               className="block"
             >
@@ -59,27 +71,31 @@ export default function PhotoHeader({ photos }: { photos: EntryPhoto[] }) {
       )}
 
       <AnimatePresence>
-        {open && <Lightbox photo={open} onClose={() => setOpen(null)} />}
+        {open && <Lightbox open={open} onClose={() => setOpen(null)} />}
       </AnimatePresence>
     </div>
   );
 }
 
-function Lightbox({ photo, onClose }: { photo: EntryPhoto; onClose: () => void }) {
-  const [url, setUrl] = useState<string | null>(null);
+/** Full-screen viewer: decrypts a photo on-device, or shows a direct source
+ * (the illustration). The whole overlay — image included — closes on tap. */
+function Lightbox({ open, onClose }: { open: NonNullable<Open>; onClose: () => void }) {
+  const [url, setUrl] = useState<string | null>(open.src ?? null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     let objectUrl: string | null = null;
     let cancelled = false;
-    (async () => {
-      try {
-        objectUrl = await loadPhotoUrl(photo);
-        if (!cancelled) setUrl(objectUrl);
-      } catch (err) {
-        if (!cancelled) setError(err instanceof Error ? err.message : "Couldn't open the photo.");
-      }
-    })();
+    if (open.photo) {
+      (async () => {
+        try {
+          objectUrl = await loadPhotoUrl(open.photo!);
+          if (!cancelled) setUrl(objectUrl);
+        } catch (err) {
+          if (!cancelled) setError(err instanceof Error ? err.message : "Couldn't open the photo.");
+        }
+      })();
+    }
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
     };
@@ -89,9 +105,8 @@ function Lightbox({ photo, onClose }: { photo: EntryPhoto; onClose: () => void }
       window.removeEventListener("keydown", onKey);
       if (objectUrl) URL.revokeObjectURL(objectUrl);
     };
-  }, [photo, onClose]);
+  }, [open, onClose]);
 
-  // The whole overlay — image included — closes on tap (no stopPropagation).
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -100,7 +115,7 @@ function Lightbox({ photo, onClose }: { photo: EntryPhoto; onClose: () => void }
       onClick={onClose}
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-4 backdrop-blur-sm"
       role="dialog"
-      aria-label="Photo — tap to close"
+      aria-label="Image — tap to close"
     >
       <span
         aria-hidden

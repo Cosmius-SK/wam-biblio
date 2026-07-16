@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
 import { motion } from "framer-motion";
 import { db } from "@/lib/db";
+import type { JournalEntry } from "@/lib/types";
+import { resolveHeader } from "@/lib/entryHeader";
 import SceneImage from "@/components/SceneImage";
 import ThemeFilter, { matchesFilter, type FilterValue } from "@/components/ThemeFilter";
 import ViewToggle from "@/components/ViewToggle";
@@ -11,6 +13,23 @@ import BookView from "@/components/BookView";
 import { SeedButton } from "@/components/DemoControls";
 import { formatDate } from "@/lib/format";
 import { readView, saveView, type ViewMode } from "@/lib/views";
+
+/** The entry's scene, honouring the chosen header (illustration or a photo);
+ * falls back to the free generated mood-scene when there's no real art. */
+function SceneArt({ entry, className }: { entry: JournalEntry; className: string }) {
+  const hero = resolveHeader(entry);
+  if (hero) {
+    // eslint-disable-next-line @next/next/no-img-element -- local data-URL image
+    return (
+      <img
+        src={hero.kind === "photo" ? hero.photo.thumb : hero.src}
+        alt=""
+        className={className}
+      />
+    );
+  }
+  return <SceneImage entry={entry} className={className} />;
+}
 
 /**
  * The Gallery — a soft, full-bleed wall of scenes, one per entry. Images are
@@ -70,7 +89,7 @@ export default function GalleryPage() {
             keyOf={(e) => e.id}
             renderPage={(entry) => (
               <figure className="relative h-full">
-                <SceneImage entry={entry} className="h-full w-full object-cover" />
+                <SceneArt entry={entry} className="h-full w-full object-cover" />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/55 via-black/10 to-transparent" />
                 <figcaption className="absolute inset-x-0 bottom-0 p-5 pl-9">
                   <p className="font-serif text-2xl leading-tight text-white drop-shadow">
@@ -95,7 +114,7 @@ export default function GalleryPage() {
                 entry.significant ? "col-span-2 h-56" : "h-40"
               }`}
             >
-              <SceneImage
+              <SceneArt
                 entry={entry}
                 className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
               />
