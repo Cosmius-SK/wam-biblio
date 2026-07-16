@@ -69,10 +69,10 @@ export default function GalleryPage() {
             items={shown}
             keyOf={(e) => e.id}
             renderPage={(entry) => (
-              <figure className="relative h-[60vh] overflow-hidden rounded-2xl border border-hairline/60 shadow-soft">
+              <figure className="relative h-full">
                 <SceneImage entry={entry} className="h-full w-full object-cover" />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/55 via-black/10 to-transparent" />
-                <figcaption className="absolute inset-x-0 bottom-0 p-5">
+                <figcaption className="absolute inset-x-0 bottom-0 p-5 pl-9">
                   <p className="font-serif text-2xl leading-tight text-white drop-shadow">
                     {entry.title}
                   </p>

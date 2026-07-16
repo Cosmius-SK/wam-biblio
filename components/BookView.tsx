@@ -4,9 +4,15 @@ import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 
 /**
- * Book view: one item per page, turned by a swipe or the arrows — the journal
- * read as the book it is. A soft x-slide with a hint of page-curl (rotateY
- * under perspective) keeps it fluid without fighting readability.
+ * Book view — a real journal to leaf through. Every page is the same fixed
+ * paper frame (uniform size, spine shading, small folio corners), and turning
+ * is a true page-turn: the page rotates around the spine (left edge) under
+ * perspective, revealing the next page beneath — not a slide.
+ *
+ * Forward: the current page lifts and turns away on top (z=3) while the next
+ * sits static beneath (z=1). Backward: the previous page turns back IN on top.
+ * Pages never animate their own content (renderPage output is static), which
+ * is what keeps the turn clean.
  */
 export default function BookView<T>({
   items,
@@ -34,44 +40,58 @@ export default function BookView<T>({
     setPage([next, delta]);
   }
 
+  const turn = { duration: 0.6, ease: [0.35, 0.15, 0.25, 1] as const };
+  const variants = {
+    // Forward: the incoming page is simply there, beneath. Backward: it turns in.
+    enter: (d: number) =>
+      d >= 0 ? { rotateY: 0, zIndex: 1 } : { rotateY: -105, zIndex: 3 },
+    center: (d: number) => ({
+      rotateY: 0,
+      zIndex: d >= 0 ? 1 : 3,
+      transition: d >= 0 ? { duration: 0 } : turn,
+    }),
+    // Forward: the outgoing page turns away, on top. Backward: it just waits
+    // beneath until the turn above finishes, then unmounts.
+    exit: (d: number) =>
+      d >= 0
+        ? { rotateY: -105, zIndex: 3, transition: turn }
+        : { rotateY: 0, zIndex: 1, transition: { duration: turn.duration } },
+  };
+
   return (
     <div>
-      <div className="relative [perspective:1400px]">
-        <AnimatePresence mode="popLayout" custom={dir} initial={false}>
+      <motion.div
+        className="relative mx-auto h-[64vh] max-w-[30rem] [perspective:1800px]"
+        style={{ touchAction: "pan-y" }}
+        onPanEnd={(_, info) => {
+          if (Math.abs(info.offset.x) < 60 || Math.abs(info.offset.x) < Math.abs(info.offset.y))
+            return;
+          go(info.offset.x < 0 ? 1 : -1);
+        }}
+      >
+        <AnimatePresence custom={dir} initial={false}>
           <motion.div
             key={keyOf(item)}
             custom={dir}
-            variants={{
-              enter: (d: number) => ({
-                x: d >= 0 ? 90 : -90,
-                opacity: 0,
-                rotateY: d >= 0 ? -12 : 12,
-              }),
-              center: { x: 0, opacity: 1, rotateY: 0 },
-              exit: (d: number) => ({
-                x: d >= 0 ? -90 : 90,
-                opacity: 0,
-                rotateY: d >= 0 ? 12 : -12,
-              }),
-            }}
+            variants={variants}
             initial="enter"
             animate="center"
             exit="exit"
-            transition={{ duration: 0.45, ease: [0.22, 0.61, 0.36, 1] }}
-            drag="x"
-            dragConstraints={{ left: 0, right: 0 }}
-            dragElastic={0.25}
-            onDragEnd={(_, info) => {
-              if (info.offset.x < -70 || info.velocity.x < -400) go(1);
-              else if (info.offset.x > 70 || info.velocity.x > 400) go(-1);
+            className="absolute inset-0 overflow-hidden rounded-r-xl rounded-l-md border border-hairline/70 bg-paper shadow-lift"
+            style={{
+              transformOrigin: "left center",
+              backfaceVisibility: "hidden",
+              transformStyle: "preserve-3d",
             }}
-            style={{ transformStyle: "preserve-3d" }}
-            className="cursor-grab active:cursor-grabbing"
           >
-            {renderPage(item, clamped)}
+            {/* Spine shading — the page belongs to a bound book. */}
+            <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-6 bg-gradient-to-r from-ink/15 via-ink/5 to-transparent" />
+            <div className="h-full overflow-y-auto overscroll-contain">
+              {renderPage(item, clamped)}
+            </div>
           </motion.div>
         </AnimatePresence>
-      </div>
+      </motion.div>
 
       <div className="mt-5 flex items-center justify-center gap-4">
         <PageArrow flip={false} disabled={clamped === 0} onClick={() => go(-1)} />

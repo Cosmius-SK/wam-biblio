@@ -6,6 +6,7 @@ import { useLiveQuery } from "dexie-react-hooks";
 import { AnimatePresence, motion } from "framer-motion";
 import { db, getSetting } from "@/lib/db";
 import EntryCard from "@/components/EntryCard";
+import JournalPage from "@/components/JournalPage";
 import ThemeFilter, { matchesFilter, type FilterValue } from "@/components/ThemeFilter";
 import ViewToggle from "@/components/ViewToggle";
 import BookView from "@/components/BookView";
@@ -73,7 +74,7 @@ export default function TimelinePage() {
             <BookView
               items={shown}
               keyOf={(e) => e.id}
-              renderPage={(entry) => <EntryCard entry={entry} index={0} />}
+              renderPage={(entry) => <JournalPage entry={entry} />}
             />
           ) : (
             <div className="space-y-5">
