@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import { onDataChange } from "@/lib/db";
-import { autoPull, isGoogleConnected, syncNow } from "@/lib/googleAccount";
+import { autoPull, autoPush, isGoogleConnected } from "@/lib/googleAccount";
 
 /**
  * Invisible driver for Google-account sync: pull once on app open, then push
@@ -25,12 +25,12 @@ export default function AutoSync() {
       }
     })();
 
-    // syncNow() self-gates on whether a sync secret exists, so this also
-    // covers connecting mid-session without a stale "connected" flag.
+    // autoPush() self-gates on the connection, so this also covers
+    // connecting mid-session without a stale "connected" flag.
     const unsubscribe = onDataChange(() => {
       if (timer.current) window.clearTimeout(timer.current);
       timer.current = window.setTimeout(() => {
-        void syncNow().catch(() => {
+        void autoPush().catch(() => {
           /* surfaced in the account card */
         });
       }, 4000);

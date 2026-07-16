@@ -51,11 +51,6 @@ export async function lastSyncedAt(): Promise<number | null> {
   return v ? Number(v) : null;
 }
 
-/** The cached sync secret for this device, or null if not connected. */
-async function syncSecret(): Promise<string | null> {
-  return (await getSetting("googleSyncSecret")) || null;
-}
-
 /** Recover the account's sync secret from appDataFolder, or mint + store one. */
 async function ensureSecret(token: string): Promise<string> {
   const cached = await getSetting("googleSyncSecret");
@@ -75,6 +70,19 @@ async function ensureSecret(token: string): Promise<string> {
 }
 
 /**
+ * The sync secret, healing the signed-in-without-a-key state: if this device
+ * missed the key at sign-in (e.g. the appData read failed that day), fetch a
+ * token — silently, or interactively when the user just tapped — and recover
+ * the key from Drive. Throws when recovery isn't possible right now.
+ */
+async function requireSecret(interactive: boolean): Promise<string> {
+  const cached = await getSetting("googleSyncSecret");
+  if (cached) return cached;
+  const token = await getAccessToken(interactive);
+  return ensureSecret(token);
+}
+
+/**
  * Interactive sign-in: fresh consent (for the broadened scopes), read the
  * profile, recover/create the sync secret, then pull cloud → push local so both
  * ends merge. Returns the profile; throws with a friendly message on failure.
@@ -91,12 +99,13 @@ export async function signInWithGoogle(
   await setSetting("driveConnected", "1"); // photos work under the same grant
   if (id.name && !(await getSetting("displayName"))) await setSetting("displayName", id.name);
 
-  const secret = await ensureSecret(token);
-  // Sign-in + key escrow have succeeded here. The first sync can still fail
-  // (e.g. no Blob store connected yet) without undoing the connection — the
-  // account stays signed in and auto-sync will pick it up once storage exists.
+  // Sign-in has succeeded here. Key recovery and the first sync can still fail
+  // (e.g. no Blob store yet, or a transient Drive error) without undoing the
+  // connection — the account stays signed in, the error is surfaced, and both
+  // autoPull and Sync now heal the missing key on their next run.
   let syncError: string | null = null;
   try {
+    const secret = await ensureSecret(token);
     await pullSync(secret, onProgress);
     await pushSync(secret, onProgress);
     await setSetting("lastSyncAt", String(Date.now()));
@@ -116,18 +125,44 @@ export async function signOutGoogle(): Promise<void> {
   clearCachedToken();
 }
 
-/** Pull cloud → local (called on app open when connected). */
+/** Pull cloud → local on app open — recovering the key silently if missing. */
 export async function autoPull(onProgress?: OnSyncProgress): Promise<void> {
-  const secret = await syncSecret();
-  if (!secret) return;
+  if (!(await isGoogleConnected())) return;
+  let secret: string;
+  try {
+    secret = await requireSecret(false);
+  } catch {
+    return; // background path — Sync now offers the interactive recovery
+  }
   await pullSync(secret, onProgress);
   await setSetting("lastSyncAt", String(Date.now()));
 }
 
-/** Push local → cloud (called debounced after changes, and by "Sync now"). */
+/** Push local → cloud, debounced after changes (background, never prompts). */
+export async function autoPush(): Promise<void> {
+  if (!(await isGoogleConnected())) return;
+  let secret: string;
+  try {
+    secret = await requireSecret(false);
+  } catch {
+    return;
+  }
+  await pushSync(secret);
+  await setSetting("lastSyncAt", String(Date.now()));
+}
+
+/** User-initiated Sync now: converge BOTH ways — pull, then push. May prompt
+ * to recover the key, since it runs from a real tap. */
 export async function syncNow(onProgress?: OnSyncProgress): Promise<void> {
-  const secret = await syncSecret();
-  if (!secret) return;
+  let secret: string;
+  try {
+    secret = await requireSecret(true);
+  } catch {
+    throw new Error(
+      "This device hasn't finished sync setup — its key is missing. Sign out and sign in again to link it.",
+    );
+  }
+  await pullSync(secret, onProgress);
   await pushSync(secret, onProgress);
   await setSetting("lastSyncAt", String(Date.now()));
 }
