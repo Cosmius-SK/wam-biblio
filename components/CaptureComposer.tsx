@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 import VoiceRecorder from "./VoiceRecorder";
@@ -18,6 +18,8 @@ import { estimateCost, formatCost, formatDate, modelLabel } from "@/lib/format";
 import { placeLabel } from "@/lib/geo";
 import { uploadPhotos, type PendingPhoto } from "@/lib/media";
 import { logAi } from "@/lib/usage";
+import { generateIllustration } from "@/lib/illustrate";
+import { AI_MODE_COOKIE } from "@/lib/ai/constants";
 
 type Phase = "compose" | "shaping" | "review";
 
@@ -34,11 +36,20 @@ function deriveTitle(text: string): string {
   return words ? words.charAt(0).toUpperCase() + words.slice(1) : "Untitled";
 }
 
+/** Whether this device is in Live AI mode (illustrations need it). */
+function aiIsLive(): boolean {
+  if (typeof document === "undefined") return false;
+  const m = document.cookie.match(new RegExp(`(?:^|; )${AI_MODE_COOKIE}=([^;]*)`));
+  return !!m && decodeURIComponent(m[1]) === "live";
+}
+
 export default function CaptureComposer() {
   const router = useRouter();
   const [phase, setPhase] = useState<Phase>("compose");
   const [text, setText] = useState("");
   const [significant, setSignificant] = useState(false);
+  const [illustrate, setIllustrate] = useState(false);
+  const [live, setLive] = useState(false);
   const [when, setWhen] = useState<string>(() => nowForInput());
   const [place, setPlace] = useState<EntryPlace | null>(null);
   const [photos, setPhotos] = useState<PendingPhoto[]>([]);
@@ -52,6 +63,8 @@ export default function CaptureComposer() {
 
   const baseTextRef = useRef("");
   const usedVoiceRef = useRef(false);
+
+  useEffect(() => setLive(aiIsLive()), []);
 
   async function shape() {
     if (!text.trim()) return;
@@ -117,7 +130,22 @@ export default function CaptureComposer() {
       significant: structured.significant,
     };
     await saveEntry(entry);
+    // Illustration is drawn AFTER saving, in the background — the entry appears
+    // on the timeline immediately and the card updates live when the art lands.
+    if (illustrate && live) void illustrateInBackground(entry);
     router.push("/");
+  }
+
+  async function illustrateInBackground(entry: JournalEntry) {
+    try {
+      const prompt =
+        entry.imagePrompt?.trim() || `a calm, simple scene evoking a ${entry.mood} mood`;
+      const image = await generateIllustration(prompt);
+      await saveEntry({ ...entry, image });
+    } catch {
+      // Quiet by design — the card's ⋯ menu offers Illustrate with the full
+      // error dialog whenever the writer wants to retry.
+    }
   }
 
   async function accept() {
@@ -210,6 +238,22 @@ export default function CaptureComposer() {
               className="h-4 w-4 accent-terracotta"
             />
             This moment matters — give it the deeper touch
+          </label>
+
+          <label
+            className={`mt-3 flex items-center gap-3 text-sm ${
+              live ? "cursor-pointer text-muted" : "cursor-not-allowed text-muted/50"
+            }`}
+          >
+            <input
+              type="checkbox"
+              checked={illustrate}
+              disabled={!live}
+              onChange={(e) => setIllustrate(e.target.checked)}
+              className="h-4 w-4 accent-lavender"
+            />
+            Draw an illustration for this entry
+            {!live && <span className="text-xs">(needs Live AI — see Settings › AI)</span>}
           </label>
 
           {error && (
