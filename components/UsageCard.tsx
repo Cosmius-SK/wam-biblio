@@ -66,7 +66,7 @@ export default function UsageCard() {
                   <span className="text-ink/80">{label}</span>
                   <span className="tabular-nums text-muted">
                     {key === "illustrate"
-                      ? `${images} image${images === 1 ? "" : "s"} · free tier`
+                      ? `${images} image${images === 1 ? "" : "s"} · ≈ ${formatCost(sum(of))}`
                       : `${of.length} × · ${formatCost(sum(of))}`}
                   </span>
                 </li>
@@ -76,8 +76,8 @@ export default function UsageCard() {
 
           {imagesToday > 0 && (
             <p className="mt-3 text-xs text-muted/80">
-              {imagesToday} illustration{imagesToday === 1 ? "" : "s"} today — counts against
-              Gemini&rsquo;s daily free quota.
+              {imagesToday} illustration{imagesToday === 1 ? "" : "s"} today — billed ≈4¢ each
+              on billing-enabled (Tier 1+) Gemini keys; free-tier keys aren&rsquo;t charged.
             </p>
           )}
 

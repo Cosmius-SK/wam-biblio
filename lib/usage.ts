@@ -8,6 +8,11 @@ import { estimateCost } from "./format";
  * call site. Sample-mode previews return no usage and are never logged, so
  * the ledger reflects real spend only. Per-device by design (not synced).
  */
+/** Estimated cost per generated image in USD. Gemini bills an image as ~1,290
+ * output tokens (≈ $0.04 at Flash-image rates) on billing-enabled (Tier 1+)
+ * keys; free-tier keys aren't charged, so this is an upper-bound estimate. */
+const IMAGE_COST_USD = 0.04;
+
 export async function logAi(input: {
   feature: AiLogRow["feature"];
   model: string;
@@ -24,7 +29,7 @@ export async function logAi(input: {
       outputTokens: input.usage?.outputTokens,
       cost: input.usage
         ? estimateCost(input.model, input.usage.inputTokens, input.usage.outputTokens)
-        : 0,
+        : (input.images ?? 0) * IMAGE_COST_USD,
       images: input.images,
     });
   } catch {
