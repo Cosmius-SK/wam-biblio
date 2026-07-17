@@ -1,61 +1,87 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 
 /**
  * Book view — a real journal to leaf through. Every page is the same fixed
- * paper frame (uniform size, spine shading, small folio corners), and turning
- * is a true page-turn: the page rotates around the spine (left edge) under
- * perspective, revealing the next page beneath — not a slide.
+ * paper frame (spine shading, book corners), and turning is a true page-turn
+ * around the spine.
  *
- * Forward: the current page lifts and turns away on top (z=3) while the next
- * sits static beneath (z=1). Backward: the previous page turns back IN on top.
- * Pages never animate their own content (renderPage output is static), which
- * is what keeps the turn clean.
+ * With `paginate`, an entry longer than one page FLOWS onto further leaves —
+ * no scrollbars. The trick: the content is laid out in CSS columns exactly one
+ * page wide/tall (the browser splits at line boundaries, keeps images whole),
+ * and each leaf shows one column; turning a leaf uses the same page-turn as
+ * moving between entries, so a 3-page entry reads like three pages of a book.
  */
+const GAP = 48; // px between column-pages; anything > 0 keeps leaves cleanly apart
+
 export default function BookView<T>({
   items,
   keyOf,
   renderPage,
+  paginate = false,
 }: {
   items: T[];
   keyOf: (item: T) => string;
   renderPage: (item: T, index: number) => React.ReactNode;
+  /** Flow long content onto further leaves (Timeline); off = page must fit (Gallery). */
+  paginate?: boolean;
 }) {
-  const [[index, dir], setPage] = useState<[number, number]>([0, 0]);
+  const [nav, setNav] = useState<{
+    turn: number;
+    item: number;
+    leaf: number | "last";
+    dir: number;
+  }>({ turn: 0, item: 0, leaf: 0, dir: 0 });
+  const [leafCount, setLeafCount] = useState(1);
 
   // Items can shrink (filter change, deletion) — stay on a real page.
   useEffect(() => {
-    if (index > items.length - 1) setPage([Math.max(0, items.length - 1), 0]);
-  }, [items.length, index]);
+    if (nav.item > items.length - 1) {
+      setNav((n) => ({ ...n, item: Math.max(0, items.length - 1), leaf: 0 }));
+    }
+  }, [items.length, nav.item]);
 
   if (items.length === 0) return null;
-  const clamped = Math.min(index, items.length - 1);
-  const item = items[clamped];
+  const itemIdx = Math.min(nav.item, items.length - 1);
+  const item = items[itemIdx];
+  const leaf =
+    nav.leaf === "last"
+      ? Math.max(0, leafCount - 1)
+      : Math.min(nav.leaf, Math.max(0, leafCount - 1));
 
   function go(delta: number) {
-    const next = clamped + delta;
-    if (next < 0 || next > items.length - 1) return;
-    setPage([next, delta]);
+    if (delta > 0) {
+      if (paginate && leaf + 1 < leafCount) {
+        setNav((n) => ({ turn: n.turn + 1, item: itemIdx, leaf: leaf + 1, dir: 1 }));
+      } else if (itemIdx < items.length - 1) {
+        setNav((n) => ({ turn: n.turn + 1, item: itemIdx + 1, leaf: 0, dir: 1 }));
+      }
+    } else {
+      if (paginate && leaf > 0) {
+        setNav((n) => ({ turn: n.turn + 1, item: itemIdx, leaf: leaf - 1, dir: -1 }));
+      } else if (itemIdx > 0) {
+        setNav((n) => ({ turn: n.turn + 1, item: itemIdx - 1, leaf: "last", dir: -1 }));
+      }
+    }
   }
 
-  const turn = { duration: 0.6, ease: [0.35, 0.15, 0.25, 1] as const };
+  const atStart = itemIdx === 0 && leaf === 0;
+  const atEnd = itemIdx === items.length - 1 && (!paginate || leaf >= leafCount - 1);
+
+  const turnT = { duration: 0.6, ease: [0.35, 0.15, 0.25, 1] as const };
   const variants = {
-    // Forward: the incoming page is simply there, beneath. Backward: it turns in.
-    enter: (d: number) =>
-      d >= 0 ? { rotateY: 0, zIndex: 1 } : { rotateY: -105, zIndex: 3 },
+    enter: (d: number) => (d >= 0 ? { rotateY: 0, zIndex: 1 } : { rotateY: -105, zIndex: 3 }),
     center: (d: number) => ({
       rotateY: 0,
       zIndex: d >= 0 ? 1 : 3,
-      transition: d >= 0 ? { duration: 0 } : turn,
+      transition: d >= 0 ? { duration: 0 } : turnT,
     }),
-    // Forward: the outgoing page turns away, on top. Backward: it just waits
-    // beneath until the turn above finishes, then unmounts.
     exit: (d: number) =>
       d >= 0
-        ? { rotateY: -105, zIndex: 3, transition: turn }
-        : { rotateY: 0, zIndex: 1, transition: { duration: turn.duration } },
+        ? { rotateY: -105, zIndex: 3, transition: turnT }
+        : { rotateY: 0, zIndex: 1, transition: { duration: turnT.duration } },
   };
 
   return (
@@ -69,10 +95,10 @@ export default function BookView<T>({
           go(info.offset.x < 0 ? 1 : -1);
         }}
       >
-        <AnimatePresence custom={dir} initial={false}>
+        <AnimatePresence custom={nav.dir} initial={false}>
           <motion.div
-            key={keyOf(item)}
-            custom={dir}
+            key={nav.turn}
+            custom={nav.dir}
             variants={variants}
             initial="enter"
             animate="center"
@@ -86,21 +112,107 @@ export default function BookView<T>({
           >
             {/* Spine shading — the page belongs to a bound book. */}
             <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-6 bg-gradient-to-r from-ink/15 via-ink/5 to-transparent" />
-            <div className="h-full overflow-y-auto overscroll-contain">
-              {renderPage(item, clamped)}
-            </div>
+            {paginate ? (
+              <Leaf
+                leaf={nav.leaf}
+                onCount={(c) => {
+                  setLeafCount(c);
+                  setNav((n) => {
+                    if (n.leaf === "last") return { ...n, leaf: Math.max(0, c - 1) };
+                    if (typeof n.leaf === "number" && n.leaf > c - 1)
+                      return { ...n, leaf: Math.max(0, c - 1) };
+                    return n;
+                  });
+                }}
+              >
+                {renderPage(item, itemIdx)}
+              </Leaf>
+            ) : (
+              <div className="h-full overflow-hidden">{renderPage(item, itemIdx)}</div>
+            )}
           </motion.div>
         </AnimatePresence>
       </motion.div>
 
       <div className="mt-5 flex items-center justify-center gap-4">
-        <PageArrow flip={false} disabled={clamped === 0} onClick={() => go(-1)} />
+        <PageArrow flip={false} disabled={atStart} onClick={() => go(-1)} />
         <span className="text-sm tabular-nums text-muted">
-          {clamped + 1} <span className="text-muted/60">/ {items.length}</span>
+          {itemIdx + 1} <span className="text-muted/60">/ {items.length}</span>
+          {paginate && leafCount > 1 && (
+            <span className="text-muted/60">
+              {" "}
+              · page {leaf + 1}/{leafCount}
+            </span>
+          )}
         </span>
-        <PageArrow flip disabled={clamped === items.length - 1} onClick={() => go(1)} />
+        <PageArrow flip disabled={atEnd} onClick={() => go(1)} />
       </div>
       <p className="mt-2 text-center text-xs text-muted/60">Swipe, or use the arrows.</p>
+    </div>
+  );
+}
+
+/**
+ * One visible page of a multi-leaf entry. Content flows through CSS columns
+ * sized exactly one page each; showing leaf N is a translate to column N.
+ * Measured before paint, re-measured on resize; the leaf count is reported up
+ * so navigation knows when the entry runs onto more pages.
+ */
+function Leaf({
+  leaf,
+  onCount,
+  children,
+}: {
+  leaf: number | "last";
+  onCount: (count: number) => void;
+  children: React.ReactNode;
+}) {
+  const colRef = useRef<HTMLDivElement>(null);
+  const [pageW, setPageW] = useState(0);
+  const [count, setCount] = useState(1);
+  const reported = useRef(0);
+
+  useLayoutEffect(() => {
+    const el = colRef.current;
+    if (!el) return;
+    const measure = () => setPageW(el.clientWidth);
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
+  useLayoutEffect(() => {
+    const el = colRef.current;
+    if (!el || !pageW) return;
+    const c = Math.max(1, Math.round((el.scrollWidth + GAP) / (pageW + GAP)));
+    setCount(c);
+    if (reported.current !== c) {
+      reported.current = c;
+      onCount(c);
+    }
+  }, [pageW, children, onCount]);
+
+  const offset = Math.min(leaf === "last" ? count - 1 : leaf, count - 1);
+
+  return (
+    <div className="h-full overflow-hidden py-7 pl-10 pr-7">
+      <div
+        ref={colRef}
+        className="h-full [&_img]:[break-inside:avoid]"
+        style={
+          pageW
+            ? {
+                columnWidth: pageW,
+                columnGap: GAP,
+                columnFill: "auto",
+                transform: `translateX(-${offset * (pageW + GAP)}px)`,
+              }
+            : undefined
+        }
+      >
+        {children}
+      </div>
     </div>
   );
 }

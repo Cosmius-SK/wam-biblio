@@ -74,6 +74,7 @@ export default function TimelinePage() {
             <BookView
               items={shown}
               keyOf={(e) => e.id}
+              paginate
               renderPage={(entry) => <JournalPage entry={entry} />}
             />
           ) : (
