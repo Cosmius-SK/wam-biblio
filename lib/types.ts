@@ -108,6 +108,12 @@ export interface StructureRequest {
   recent?: EntryContext[];
   /** User hint that this moment matters — biases the router toward the deeper model. */
   markedSignificant?: boolean;
+  /**
+   * How much the AI touches the words: "deep" understands and shapes the
+   * moment; "rephrase" is wordsmithing only (polish, never reinterpret).
+   * Absent = classic shaping.
+   */
+  shapeMode?: "deep" | "rephrase";
   /** Human-readable date the thought is about (context only, e.g. "Sat Jun 14 2026"). */
   occurredAt?: string;
   /** Label of the chosen place (context only, e.g. "Lisbon, Portugal"). */

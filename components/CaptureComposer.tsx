@@ -23,6 +23,9 @@ import { AI_MODE_COOKIE } from "@/lib/ai/constants";
 
 type Phase = "compose" | "shaping" | "review";
 
+/** How much the AI touches the words — the capture screen's one big choice. */
+type AiTouch = "deep" | "rephrase" | "none";
+
 /** The chosen "when", as epoch ms — falling back to now if the input is empty/invalid. */
 function whenToMs(when: string): number {
   const ms = new Date(when).getTime();
@@ -47,7 +50,7 @@ export default function CaptureComposer() {
   const router = useRouter();
   const [phase, setPhase] = useState<Phase>("compose");
   const [text, setText] = useState("");
-  const [significant, setSignificant] = useState(false);
+  const [aiMode, setAiMode] = useState<AiTouch>("rephrase");
   const [illustrate, setIllustrate] = useState(false);
   const [live, setLive] = useState(false);
   const [when, setWhen] = useState<string>(() => nowForInput());
@@ -79,7 +82,8 @@ export default function CaptureComposer() {
           raw: text.trim(),
           source: usedVoiceRef.current ? "voice" : "text",
           recent,
-          markedSignificant: significant,
+          markedSignificant: aiMode === "deep",
+          shapeMode: aiMode === "none" ? undefined : aiMode,
           occurredAt: new Date(whenToMs(when)).toDateString(),
           placeName: place ? placeLabel(place) : undefined,
         }),
@@ -155,7 +159,7 @@ export default function CaptureComposer() {
         ...result.entry,
         title: title.trim() || result.entry.title,
         body: body.trim() || result.entry.body,
-        significant: significant || result.entry.significant,
+        significant: aiMode === "deep" || result.entry.significant,
       },
       result.model,
     );
@@ -173,7 +177,7 @@ export default function CaptureComposer() {
         themes: [],
         mood: "neutral",
         entities: [],
-        significant,
+        significant: false,
         imagePrompt: "A soft, calm scene in warm dusk light.",
       },
       "self",
@@ -230,14 +234,18 @@ export default function CaptureComposer() {
 
           <PhotoAttach photos={photos} onChange={setPhotos} />
 
-          <label className="mt-5 flex cursor-pointer items-center gap-3 text-sm text-muted">
-            <input
-              type="checkbox"
-              checked={significant}
-              onChange={(e) => setSignificant(e.target.checked)}
-              className="h-4 w-4 accent-terracotta"
-            />
-            This moment matters — give it the deeper touch
+          <label className="mt-5 block text-sm text-muted">
+            How much should the AI touch this?
+            <select
+              value={aiMode}
+              onChange={(e) => setAiMode(e.target.value as AiTouch)}
+              aria-label="AI involvement"
+              className="mt-2 w-full cursor-pointer rounded-xl border border-hairline bg-surface/70 px-4 py-3 text-ink shadow-soft focus:border-lavender/60 focus:outline-none"
+            >
+              <option value="deep">This moment matters — give it the deeper touch</option>
+              <option value="rephrase">I&rsquo;ve made most of the point — just rephrase</option>
+              <option value="none">No AI — save as is</option>
+            </select>
           </label>
 
           <label
@@ -264,19 +272,16 @@ export default function CaptureComposer() {
 
           <button
             type="button"
-            onClick={shape}
+            onClick={aiMode === "none" ? saveDirect : shape}
             disabled={!text.trim() || saveProgress !== null}
             className="mt-6 w-full rounded-full bg-ink/90 px-6 py-3 font-medium text-paper shadow-soft transition-transform enabled:hover:scale-[1.02] enabled:active:scale-95 disabled:opacity-40"
           >
-            Shape this into an entry
-          </button>
-          <button
-            type="button"
-            onClick={saveDirect}
-            disabled={!text.trim() || saveProgress !== null}
-            className="mt-3 w-full rounded-full border border-hairline bg-surface/60 px-6 py-3 font-medium text-ink transition-transform enabled:hover:scale-[1.02] enabled:active:scale-95 disabled:opacity-40"
-          >
-            {saveProgress ?? "Save"}
+            {saveProgress ??
+              (aiMode === "none"
+                ? "Save as is"
+                : aiMode === "rephrase"
+                  ? "Polish my words"
+                  : "Shape this into an entry")}
           </button>
         </motion.div>
       )}
@@ -290,8 +295,14 @@ export default function CaptureComposer() {
           className="flex min-h-[50vh] flex-col items-center justify-center text-center"
         >
           <div className="h-16 w-16 animate-breathe rounded-full bg-gradient-to-br from-terracotta/50 via-lavender/50 to-sage/50" />
-          <p className="mt-6 font-serif text-xl text-ink">Listening to what you meant…</p>
-          <p className="mt-1 text-sm text-muted">Shaping it into something whole.</p>
+          <p className="mt-6 font-serif text-xl text-ink">
+            {aiMode === "rephrase" ? "Polishing your words…" : "Listening to what you meant…"}
+          </p>
+          <p className="mt-1 text-sm text-muted">
+            {aiMode === "rephrase"
+              ? "Your point, your voice — just smoother."
+              : "Shaping it into something whole."}
+          </p>
         </motion.div>
       )}
 

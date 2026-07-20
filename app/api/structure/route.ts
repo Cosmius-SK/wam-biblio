@@ -35,6 +35,7 @@ export async function POST(request: Request) {
       source: body.source === "voice" ? "voice" : "text",
       recent: body.recent,
       markedSignificant: body.markedSignificant,
+      shapeMode: body.shapeMode === "rephrase" || body.shapeMode === "deep" ? body.shapeMode : undefined,
       occurredAt: typeof body.occurredAt === "string" ? body.occurredAt.slice(0, 64) : undefined,
       placeName: typeof body.placeName === "string" ? body.placeName.slice(0, 128) : undefined,
     });

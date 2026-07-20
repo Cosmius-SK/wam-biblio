@@ -1,7 +1,7 @@
 import "server-only";
 import type { StructureRequest, StructureResponse, StructuredEntry } from "@/lib/types";
 import { FLOOR_MODEL, CEILING_MODEL, routeModel } from "./router";
-import { STRUCTURE_SYSTEM, STRUCTURE_SCHEMA, buildUserContent } from "./structurePrompt";
+import { STRUCTURE_SYSTEM, REPHRASE_SYSTEM, STRUCTURE_SCHEMA, buildUserContent } from "./structurePrompt";
 import { structuredCall, parseJsonObject } from "./client";
 
 type ParsedEntry = StructuredEntry & { needsDeeperPass: boolean };
@@ -13,10 +13,10 @@ interface PassResult {
 }
 
 /** Run a single structuring pass on a specific model. */
-async function runPass(model: string, req: StructureRequest): Promise<PassResult> {
+async function runPass(model: string, req: StructureRequest, system: string): Promise<PassResult> {
   const res = await structuredCall({
     model,
-    system: STRUCTURE_SYSTEM,
+    system,
     user: buildUserContent(req.raw, req.recent, { when: req.occurredAt, place: req.placeName }),
     schema: STRUCTURE_SCHEMA,
   });
@@ -48,20 +48,26 @@ function parseEntry(raw: string): ParsedEntry {
  * floor model up to the ceiling model.
  */
 export async function structureEntry(req: StructureRequest): Promise<StructureResponse> {
-  const firstModel = routeModel({
-    operation: "structure",
-    text: req.raw,
-    markedSignificant: req.markedSignificant,
-  });
+  // "Just rephrase" is wordsmithing: always the floor model, never escalated —
+  // polishing words doesn't benefit from the deeper model.
+  const rephrase = req.shapeMode === "rephrase";
+  const system = rephrase ? REPHRASE_SYSTEM : STRUCTURE_SYSTEM;
+  const firstModel = rephrase
+    ? FLOOR_MODEL
+    : routeModel({
+        operation: "structure",
+        text: req.raw,
+        markedSignificant: req.markedSignificant,
+      });
 
-  let result = await runPass(firstModel, req);
+  let result = await runPass(firstModel, req, system);
   let model = firstModel;
   let inputTokens = result.inputTokens;
   let outputTokens = result.outputTokens;
 
-  const canEscalate = firstModel === FLOOR_MODEL && CEILING_MODEL !== FLOOR_MODEL;
+  const canEscalate = !rephrase && firstModel === FLOOR_MODEL && CEILING_MODEL !== FLOOR_MODEL;
   if (canEscalate && result.entry.needsDeeperPass) {
-    const deep = await runPass(CEILING_MODEL, req);
+    const deep = await runPass(CEILING_MODEL, req, system);
     result = deep;
     model = CEILING_MODEL;
     inputTokens += deep.inputTokens;
