@@ -9,6 +9,7 @@ import { motion } from "framer-motion";
  */
 const SECTIONS: { href: string; title: string; desc: string }[] = [
   { href: "/settings/profile", title: "Profile", desc: "Your name and portrait timelapse." },
+  { href: "/settings/maya", title: "Maya", desc: "Her voice, and how often she speaks up." },
   { href: "/settings/account", title: "Account & sync", desc: "Google sign-in, automatic sync." },
   { href: "/settings/ai", title: "AI", desc: "Live mode, illustration model & style, usage." },
   { href: "/settings/security", title: "Security", desc: "App lock with Face ID / fingerprint." },

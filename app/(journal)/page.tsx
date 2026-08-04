@@ -15,6 +15,8 @@ import { DemoBanner, SeedButton } from "@/components/DemoControls";
 import { greeting } from "@/lib/format";
 import { readView, saveView, type ViewMode } from "@/lib/views";
 import { useIsDesktop } from "@/lib/useMediaQuery";
+import { maya } from "@/lib/maya";
+import { emptyLine } from "@/lib/mayaLines";
 
 /**
  * The living timeline — the journal as a continuous, self-arranging canvas.
@@ -30,6 +32,15 @@ export default function TimelinePage() {
   const desktop = useIsDesktop();
 
   useEffect(() => setViewState(readView("timeline")), []);
+
+  // A blank journal is the one place she speaks unprompted, whatever her
+  // frequency — the empty page is exactly when a nudge helps.
+  const blank = entries?.length === 0;
+  useEffect(() => {
+    if (!blank) return;
+    const t = window.setTimeout(() => maya.say(emptyLine(), "empty", 9000), 2200);
+    return () => window.clearTimeout(t);
+  }, [blank]);
   function setView(v: ViewMode) {
     setViewState(v);
     saveView("timeline", v);

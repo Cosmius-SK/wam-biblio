@@ -6,7 +6,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import VoiceRecorder from "./VoiceRecorder";
 import WhenWhere, { nowForInput } from "./WhenWhere";
 import PhotoAttach from "./PhotoAttach";
-import { recentContext, saveEntry } from "@/lib/db";
+import { db, recentContext, saveEntry } from "@/lib/db";
 import type {
   EntryPhoto,
   EntryPlace,
@@ -18,6 +18,9 @@ import { estimateCost, formatCost, formatDate, modelLabel } from "@/lib/format";
 import { placeLabel } from "@/lib/geo";
 import { uploadPhotos, type PendingPhoto } from "@/lib/media";
 import { logAi } from "@/lib/usage";
+import { maya } from "@/lib/maya";
+import { savedLine } from "@/lib/mayaLines";
+import { milestoneFor } from "@/lib/mayaObserve";
 import { generateIllustration } from "@/lib/illustrate";
 import { AI_MODE_COOKIE } from "@/lib/ai/constants";
 
@@ -134,6 +137,11 @@ export default function CaptureComposer() {
       significant: structured.significant,
     };
     await saveEntry(entry);
+    // Maya marks the keeping — a landmark if this one is, otherwise a quiet nod.
+    void db.entries.count().then((total) => {
+      const landmark = milestoneFor(total);
+      maya.say(landmark ?? savedLine(), landmark ? "milestone" : "saved", landmark ? 9000 : 4500);
+    });
     // Illustration is drawn AFTER saving, in the background — the entry appears
     // on the timeline immediately and the card updates live when the art lands.
     if (illustrate && live) void illustrateInBackground(entry);

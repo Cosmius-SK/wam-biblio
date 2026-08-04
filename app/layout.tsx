@@ -3,6 +3,7 @@ import Link from "next/link";
 import { Newsreader } from "next/font/google";
 import "./globals.css";
 import AmbientBackground from "@/components/AmbientBackground";
+import MayaPresence from "@/components/MayaPresence";
 import ThemeSync from "@/components/ThemeSync";
 import AutoSync from "@/components/AutoSync";
 import BioLock from "@/components/BioLock";
@@ -51,6 +52,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         />
         <ThemeSync />
         <AmbientBackground />
+        <MayaPresence />
         <AutoSync />
         <BioLock />
         <header className="sticky top-0 z-20 backdrop-blur-md">

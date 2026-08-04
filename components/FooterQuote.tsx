@@ -34,7 +34,10 @@ export default function FooterQuote() {
       <blockquote className="sweep-text font-serif text-sm italic leading-relaxed">
         &ldquo;{quote.q}&rdquo;
       </blockquote>
-      <figcaption className="mt-1.5 text-xs text-muted/70">— {quote.a}</figcaption>
+      {/* The light crosses the words first, then the name — one after the other. */}
+      <figcaption className="sweep-text mt-1.5 text-xs" style={{ animationDelay: "1.6s" }}>
+        — {quote.a}
+      </figcaption>
     </motion.figure>
   );
 }
