@@ -15,6 +15,18 @@ import { observe } from "@/lib/mayaObserve";
  * observation if the journal is old enough to have any.
  */
 export default function MayaPresence() {
+  // iOS only lets speech start from a user gesture, and suspends it whenever
+  // the page is backgrounded — waking it on the first tap makes her audible.
+  useEffect(() => {
+    const wake = () => maya.prime();
+    window.addEventListener("pointerdown", wake);
+    document.addEventListener("visibilitychange", wake);
+    return () => {
+      window.removeEventListener("pointerdown", wake);
+      document.removeEventListener("visibilitychange", wake);
+    };
+  }, []);
+
   useEffect(() => {
     let cancelled = false;
     let follow: number | undefined;

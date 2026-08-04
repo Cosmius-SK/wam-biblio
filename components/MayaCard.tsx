@@ -23,7 +23,7 @@ export default function MayaCard() {
     setVoice(maya.voiceSetting());
     setFreq(maya.frequency());
     if (!maya.canSpeak()) return;
-    const load = () => setVoices(maya.voices());
+    const load = () => setVoices(maya.femaleVoices());
     load();
     // Voices arrive asynchronously in most browsers.
     window.speechSynthesis.addEventListener("voiceschanged", load);
@@ -33,7 +33,15 @@ export default function MayaCard() {
   function chooseVoice(v: string) {
     setVoice(v);
     maya.setVoice(v);
-    if (v !== "") maya.say("This is my voice.", "observation", 4500);
+  }
+
+  /**
+   * iOS only lets speech begin inside a real user gesture, so hearing her is
+   * its own button — speaking straight out of the tap, never after an await.
+   */
+  function hearHer() {
+    maya.prime();
+    maya.say("Hello. I'm Maya — I'll be here while you write.", "observation", 6000);
   }
 
   function chooseFrequency(f: MayaFrequency) {
@@ -84,7 +92,7 @@ export default function MayaCard() {
             aria-label="Maya's voice"
             className="mt-2 w-full cursor-pointer rounded-xl border border-hairline bg-paper/50 px-3 py-2.5 text-sm text-ink focus:border-lavender/60 focus:outline-none"
           >
-            <option value="auto">Auto — the calmest voice on this device</option>
+            <option value="auto">Auto — the calmest woman&rsquo;s voice on this device</option>
             <option value="">Off — her words appear as text only</option>
             {voices.map((v) => (
               <option key={v.voiceURI} value={v.voiceURI}>
@@ -92,9 +100,24 @@ export default function MayaCard() {
               </option>
             ))}
           </select>
-          <p className="mt-2 text-xs text-muted/80">
+
+          {voice !== "" && (
+            <button
+              type="button"
+              onClick={hearHer}
+              className="mt-3 rounded-full border border-hairline bg-paper/50 px-4 py-2 text-sm font-medium text-ink transition-colors hover:border-lavender/40"
+            >
+              Hear her
+            </button>
+          )}
+
+          <p className="mt-3 text-xs text-muted/80">
             Spoken by this device — free, offline, and never sent anywhere. Her words always
             appear on screen too, so nothing is lost with the sound off.
+          </p>
+          <p className="mt-1.5 text-xs text-muted/70">
+            On iPhone the silent switch mutes her too — if she looks like she&rsquo;s speaking
+            but you hear nothing, that&rsquo;s usually why.
           </p>
         </>
       ) : (

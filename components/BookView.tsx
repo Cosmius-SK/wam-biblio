@@ -2,6 +2,7 @@
 
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
+import { useIsDesktop } from "@/lib/useMediaQuery";
 
 /**
  * Book view — a real journal to leaf through. Every page is the same fixed
@@ -35,6 +36,10 @@ export default function BookView<T>({
     dir: number;
   }>({ turn: 0, item: 0, leaf: 0, dir: 0 });
   const [leafCount, setLeafCount] = useState(1);
+  const [flip, setFlip] = useState<{ k: number; dir: number } | null>(null);
+  // On a laptop the book lies open: two pages side by side, turned together.
+  const desktop = useIsDesktop();
+  const perLeaf = paginate && desktop ? 2 : 1;
 
   // Items can shrink (filter change, deletion) — stay on a real page.
   useEffect(() => {
@@ -52,6 +57,7 @@ export default function BookView<T>({
       : Math.min(nav.leaf, Math.max(0, leafCount - 1));
 
   function go(delta: number) {
+    if (perLeaf === 2) setFlip({ k: Date.now(), dir: delta });
     if (delta > 0) {
       if (paginate && leaf + 1 < leafCount) {
         setNav((n) => ({ turn: n.turn + 1, item: itemIdx, leaf: leaf + 1, dir: 1 }));
@@ -71,7 +77,8 @@ export default function BookView<T>({
   const atEnd = itemIdx === items.length - 1 && (!paginate || leaf >= leafCount - 1);
 
   const turnT = { duration: 0.6, ease: [0.35, 0.15, 0.25, 1] as const };
-  const variants = {
+  const flat = { enter: {}, center: {}, exit: {} };
+  const variants = perLeaf === 2 ? flat : {
     enter: (d: number) => (d >= 0 ? { rotateY: 0, zIndex: 1 } : { rotateY: -105, zIndex: 3 }),
     center: (d: number) => ({
       rotateY: 0,
@@ -87,7 +94,9 @@ export default function BookView<T>({
   return (
     <div>
       <motion.div
-        className="relative mx-auto h-[64vh] max-w-[30rem] [perspective:1800px]"
+        className={`relative mx-auto [perspective:2200px] ${
+          perLeaf === 2 ? "h-[74vh] max-w-[58rem]" : "h-[64vh] max-w-[30rem]"
+        }`}
         style={{ touchAction: "pan-y" }}
         onPanEnd={(_, info) => {
           if (Math.abs(info.offset.x) < 60 || Math.abs(info.offset.x) < Math.abs(info.offset.y))
@@ -103,18 +112,30 @@ export default function BookView<T>({
             initial="enter"
             animate="center"
             exit="exit"
-            className="absolute inset-0 overflow-hidden rounded-r-xl rounded-l-md border border-hairline/70 bg-paper shadow-lift"
+            className={`paper-surface absolute inset-0 overflow-hidden border border-hairline/70 bg-paper shadow-lift ${
+              perLeaf === 2 ? "rounded-xl" : "rounded-l-md rounded-r-xl"
+            }`}
             style={{
               transformOrigin: "left center",
               backfaceVisibility: "hidden",
               transformStyle: "preserve-3d",
             }}
           >
-            {/* Spine shading — the page belongs to a bound book. */}
-            <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-6 bg-gradient-to-r from-ink/15 via-ink/5 to-transparent" />
+            {perLeaf === 2 ? (
+              /* The gutter where the two pages meet, and the outer edges. */
+              <>
+                <div className="pointer-events-none absolute inset-y-0 left-1/2 z-10 w-16 -translate-x-1/2 bg-gradient-to-r from-transparent via-ink/20 to-transparent" />
+                <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-4 bg-gradient-to-r from-ink/12 to-transparent" />
+                <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-4 bg-gradient-to-l from-ink/12 to-transparent" />
+              </>
+            ) : (
+              /* Spine shading — the page belongs to a bound book. */
+              <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-6 bg-gradient-to-r from-ink/15 via-ink/5 to-transparent" />
+            )}
             {paginate ? (
               <Leaf
                 leaf={nav.leaf}
+                columns={perLeaf}
                 onCount={(c) => {
                   setLeafCount(c);
                   setNav((n) => {
@@ -132,6 +153,19 @@ export default function BookView<T>({
             )}
           </motion.div>
         </AnimatePresence>
+
+        {perLeaf === 2 && flip && (
+          <motion.div
+            key={flip.k}
+            aria-hidden
+            className="paper-surface pointer-events-none absolute inset-y-0 left-1/2 right-0 z-20 origin-left rounded-r-xl border-l border-hairline/50 bg-paper shadow-lift"
+            style={{ backfaceVisibility: "hidden" }}
+            initial={{ rotateY: flip.dir > 0 ? 0 : -172 }}
+            animate={{ rotateY: flip.dir > 0 ? -172 : 0 }}
+            transition={turnT}
+            onAnimationComplete={() => setFlip(null)}
+          />
+        )}
       </motion.div>
 
       <div className="mt-5 flex items-center justify-center gap-4">
@@ -141,7 +175,7 @@ export default function BookView<T>({
           {paginate && leafCount > 1 && (
             <span className="text-muted/60">
               {" "}
-              · page {leaf + 1}/{leafCount}
+              · {perLeaf === 2 ? "spread" : "page"} {leaf + 1}/{leafCount}
             </span>
           )}
         </span>
@@ -160,10 +194,13 @@ export default function BookView<T>({
  */
 function Leaf({
   leaf,
+  columns = 1,
   onCount,
   children,
 }: {
   leaf: number | "last";
+  /** Pages visible at once — 2 makes the gap between columns the gutter. */
+  columns?: number;
   onCount: (count: number) => void;
   children: React.ReactNode;
 }) {
@@ -171,32 +208,34 @@ function Leaf({
   const [pageW, setPageW] = useState(0);
   const [count, setCount] = useState(1);
   const reported = useRef(0);
+  const gap = columns === 2 ? 76 : GAP; // a wider channel reads as the gutter
 
   useLayoutEffect(() => {
     const el = colRef.current;
     if (!el) return;
-    const measure = () => setPageW(el.clientWidth);
+    const measure = () => setPageW((el.clientWidth - (columns - 1) * gap) / columns);
     measure();
     const ro = new ResizeObserver(measure);
     ro.observe(el);
     return () => ro.disconnect();
-  }, []);
+  }, [columns, gap]);
 
   useLayoutEffect(() => {
     const el = colRef.current;
     if (!el || !pageW) return;
-    const c = Math.max(1, Math.round((el.scrollWidth + GAP) / (pageW + GAP)));
+    const pages = Math.max(1, Math.round((el.scrollWidth + gap) / (pageW + gap)));
+    const c = Math.max(1, Math.ceil(pages / columns)); // count in spreads
     setCount(c);
     if (reported.current !== c) {
       reported.current = c;
       onCount(c);
     }
-  }, [pageW, children, onCount]);
+  }, [pageW, columns, gap, children, onCount]);
 
   const offset = Math.min(leaf === "last" ? count - 1 : leaf, count - 1);
 
   return (
-    <div className="h-full overflow-hidden py-7 pl-10 pr-7">
+    <div className={`h-full overflow-hidden py-8 ${columns === 2 ? "px-9" : "pl-10 pr-7"}`}>
       <div
         ref={colRef}
         className="h-full [&_img]:[break-inside:avoid]"
@@ -204,9 +243,10 @@ function Leaf({
           pageW
             ? {
                 columnWidth: pageW,
-                columnGap: GAP,
+                columnGap: gap,
                 columnFill: "auto",
-                transform: `translateX(-${offset * (pageW + GAP)}px)`,
+                // One turn advances by a whole spread's worth of columns.
+                transform: `translateX(-${offset * columns * (pageW + gap)}px)`,
               }
             : undefined
         }

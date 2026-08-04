@@ -52,16 +52,53 @@ function write(key: string, value: string): void {
   }
 }
 
-/** Voices worth being Maya: calm, English, and preferably not robotic. */
+/**
+ * Maya is a she, so only women's voices are offered.
+ *
+ * The Web Speech API exposes no gender, so this reads the voice's name:
+ * Android and Windows often say so outright ("…#female_1", "Google UK English
+ * Female"), and elsewhere the name is a given name. Anything recognisably a
+ * man's voice is ruled out, and novelty voices with it.
+ */
+const FEMALE_NAMES = [
+  "samantha", "serena", "moira", "karen", "tessa", "fiona", "victoria", "allison",
+  "ava", "susan", "zoe", "nicky", "kate", "martha", "catherine", "amelie", "anna",
+  "alice", "ellen", "joana", "luciana", "milena", "paulina", "sara", "satu", "yuna",
+  "zosia", "zuzana", "kanya", "mariska", "nora", "lekha", "veena", "zira", "hazel",
+  "eva", "linda", "heera", "aria", "jenny", "michelle", "sonia", "libby", "natasha",
+  "clara", "emily", "isabella", "elsa", "carmit", "damayanti", "ioana", "laura",
+  "lesya", "marie", "mei", "melina", "monica", "nicolas", "rishi", "sin-ji", "ting",
+];
+const MALE_NAMES = [
+  "daniel", "alex", "fred", "tom", "aaron", "arthur", "gordon", "oliver", "reed",
+  "rocko", "ralph", "jamie", "nathan", "david", "mark", "guy", "ravi", "george",
+  "james", "thomas", "william", "liam", "brian", "christopher", "eric", "roger",
+  "steffan", "prabhat", "hemant", "junior", "grandpa", "bruce", "albert", "yuri",
+  "maged", "jorge", "diego", "juan", "xander", "luca", "gustav", "felipe",
+];
+const NOVELTY =
+  /(bad news|bahh|bells|boing|bubbles|cellos|deranged|good news|jester|organ|superstar|trinoids|whisper|wobble|zarvox|hysterical|pipe organ)/;
+
+export function isFemaleVoice(v: SpeechSynthesisVoice): boolean {
+  const n = v.name.toLowerCase();
+  if (NOVELTY.test(n)) return false;
+  if (n.includes("female")) return true; // "…#female_1", "UK English Female"
+  if (/\bmale\b|#male|_male/.test(n)) return false; // \b never matches inside "female"
+  if (MALE_NAMES.some((m) => n.includes(m))) return false;
+  return FEMALE_NAMES.some((f) => n.includes(f));
+}
+
+/** Her voice: a woman's, English where possible, and preferably on-device. */
 function preferredVoice(voices: SpeechSynthesisVoice[]): SpeechSynthesisVoice | undefined {
-  const english = voices.filter((v) => v.lang?.toLowerCase().startsWith("en"));
-  const pool = english.length > 0 ? english : voices;
-  const liked = ["samantha", "serena", "moira", "karen", "google uk english female", "zira"];
-  for (const name of liked) {
-    const hit = pool.find((v) => v.name.toLowerCase().includes(name));
+  const women = voices.filter(isFemaleVoice);
+  const pool = women.length > 0 ? women : voices;
+  const english = pool.filter((v) => v.lang?.toLowerCase().startsWith("en"));
+  const shortlist = english.length > 0 ? english : pool;
+  for (const name of ["samantha", "serena", "karen", "moira", "female", "zira"]) {
+    const hit = shortlist.find((v) => v.name.toLowerCase().includes(name));
     if (hit) return hit;
   }
-  return pool.find((v) => v.localService) ?? pool[0];
+  return shortlist.find((v) => v.localService) ?? shortlist[0];
 }
 
 class Maya {
@@ -132,6 +169,27 @@ class Maya {
     return window.speechSynthesis.getVoices();
   }
 
+  /** Only the voices she'd use — falling back to all if none look female. */
+  femaleVoices(): SpeechSynthesisVoice[] {
+    const all = this.voices();
+    const women = all.filter(isFemaleVoice);
+    return women.length > 0 ? women : all;
+  }
+
+  /**
+   * iOS will only start speaking from inside a real user gesture, and pauses
+   * synthesis whenever the page goes to the background. Calling this from a
+   * tap wakes it up so later lines are audible.
+   */
+  prime(): void {
+    if (!this.canSpeak()) return;
+    try {
+      window.speechSynthesis.resume();
+    } catch {
+      /* ignore */
+    }
+  }
+
   /** "" when her voice is off, otherwise "auto" or a specific voiceURI. */
   voiceSetting(): string {
     return read(VOICE_KEY, "auto");
@@ -151,12 +209,28 @@ class Maya {
     write(FREQ_KEY, v);
   }
 
-  private speak(text: string): void {
+  private speak(text: string, retried = false): void {
     const setting = this.voiceSetting();
     if (setting === "" || !this.canSpeak()) return;
     const synth = window.speechSynthesis;
+
+    // Voices load asynchronously — on iOS the first call often sees none at
+    // all. Wait for them once rather than speaking in the wrong voice.
+    if (synth.getVoices().length === 0 && !retried) {
+      const onVoices = () => {
+        synth.removeEventListener("voiceschanged", onVoices);
+        this.speak(text, true);
+      };
+      synth.addEventListener("voiceschanged", onVoices);
+      window.setTimeout(() => {
+        synth.removeEventListener("voiceschanged", onVoices);
+      }, 3000);
+      return;
+    }
+
     try {
       synth.cancel(); // never let her talk over herself
+      synth.resume(); // iOS suspends synthesis in the background
       const utterance = new SpeechSynthesisUtterance(text);
       const all = synth.getVoices();
       const chosen =

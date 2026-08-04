@@ -27,8 +27,14 @@ export default function Footer() {
   }, []);
 
   return (
-    <footer className="mx-auto max-w-2xl px-5 pb-10 pt-4 text-center">
-      <div className="relative min-h-[3.5rem]" aria-live="polite">
+    // Anchored like the header: the quotation, and Maya, always in the same
+    // place rather than scrolling away with the journal. Full width so the
+    // blur spans the screen, with the words held to a reading column.
+    <footer className="fixed inset-x-0 bottom-0 z-30 backdrop-blur-md">
+      <div
+        className="relative mx-auto min-h-[3.5rem] max-w-2xl px-5 pb-5 pt-3 text-center"
+        aria-live="polite"
+      >
         <div
           className={`transition-opacity duration-700 ${line ? "opacity-0" : "opacity-100"}`}
           aria-hidden={!!line}
