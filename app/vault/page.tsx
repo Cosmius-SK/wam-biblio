@@ -2,6 +2,7 @@
 
 import { useRef, useState } from "react";
 import { motion } from "framer-motion";
+import PageBar from "@/components/PageBar";
 import { db, getSetting, setSetting } from "@/lib/db";
 import type { JournalEntry, Portrait, Reflection } from "@/lib/types";
 import { encryptJSON, decryptJSON, isEncryptedBlob, syncId } from "@/lib/crypto";
@@ -211,6 +212,7 @@ export default function VaultPage() {
       transition={{ duration: 0.5 }}
       className="mx-auto max-w-2xl"
     >
+      <PageBar />
       <div className="mb-7 mt-4">
         <h1 className="font-serif text-3xl text-ink">Your vault</h1>
         <p className="mt-1 text-muted">

@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { motion } from "framer-motion";
+import PageBar from "@/components/PageBar";
 
 /**
  * Settings hub — iOS-style: a short list of categories, each opening a focused
@@ -30,6 +31,7 @@ export default function SettingsPage() {
       transition={{ duration: 0.5 }}
       className="mx-auto max-w-2xl"
     >
+      <PageBar />
       <div className="mb-7 mt-4">
         <h1 className="font-serif text-3xl text-ink">Settings</h1>
         <p className="mt-1 text-muted">Make it yours.</p>

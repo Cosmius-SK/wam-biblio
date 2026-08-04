@@ -1,3 +1,4 @@
+import PageBar from "@/components/PageBar";
 import ReflectCard from "@/components/ReflectCard";
 import AskView from "@/components/AskView";
 
@@ -5,6 +6,7 @@ import AskView from "@/components/AskView";
 export default function AskPage() {
   return (
     <div className="mx-auto max-w-2xl">
+      <PageBar />
       <div className="mt-4">
         <ReflectCard />
       </div>

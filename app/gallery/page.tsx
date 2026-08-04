@@ -10,6 +10,7 @@ import SceneImage from "@/components/SceneImage";
 import ThemeFilter, { matchesFilter, type FilterValue } from "@/components/ThemeFilter";
 import ViewToggle from "@/components/ViewToggle";
 import BookView from "@/components/BookView";
+import PageBar from "@/components/PageBar";
 import { SeedButton } from "@/components/DemoControls";
 import { formatDate } from "@/lib/format";
 import { readView, saveView, type ViewMode } from "@/lib/views";
@@ -48,12 +49,28 @@ export default function GalleryPage() {
 
   const shown = entries?.filter((e) => matchesFilter(e, filter)) ?? [];
 
+  const heading = (
+    <div className="mb-8 mt-4 lg:mb-0 lg:mt-0">
+      <h1 className="font-serif text-3xl text-ink">Scenes</h1>
+      <p className="mt-1 text-muted">An image for each moment, the way it felt.</p>
+    </div>
+  );
+
   return (
     <div>
-      <div className="mb-8 mt-4">
-        <h1 className="font-serif text-3xl text-ink">Scenes</h1>
-        <p className="mt-1 text-muted">An image for each moment, the way it felt.</p>
-      </div>
+      <PageBar
+        heading={heading}
+        controls={
+          entries && entries.length > 0 ? (
+            <ThemeFilter
+              entries={entries}
+              value={filter}
+              onChange={setFilter}
+              trailing={<ViewToggle value={view} onChange={setView} />}
+            />
+          ) : null
+        }
+      />
 
       {entries === undefined ? (
         <div className="grid grid-cols-2 gap-4 lg:grid-cols-4 lg:gap-5">
@@ -73,12 +90,6 @@ export default function GalleryPage() {
         </div>
       ) : (
         <>
-        <ThemeFilter
-          entries={entries}
-          value={filter}
-          onChange={setFilter}
-          trailing={<ViewToggle value={view} onChange={setView} />}
-        />
         {shown.length === 0 ? (
           <p className="rounded-2xl border border-dashed border-hairline bg-surface/40 p-8 text-center text-muted">
             No scenes match that filter.

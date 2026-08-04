@@ -11,6 +11,7 @@ import ThemeFilter, { matchesFilter, type FilterValue } from "@/components/Theme
 import ViewToggle from "@/components/ViewToggle";
 import BookView from "@/components/BookView";
 import Bookshelf from "@/components/Bookshelf";
+import PageBar from "@/components/PageBar";
 import { DemoBanner, SeedButton } from "@/components/DemoControls";
 import { greeting } from "@/lib/format";
 import { readView, saveView, type ViewMode } from "@/lib/views";
@@ -49,7 +50,7 @@ export default function TimelinePage() {
   const shown = entries?.filter((e) => matchesFilter(e, filter)) ?? [];
 
   const heading = (
-    <div className="mb-8 mt-4">
+    <div className="mb-8 mt-4 lg:mb-0 lg:mt-0">
       <motion.h1
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
@@ -124,15 +125,12 @@ export default function TimelinePage() {
       </div>
     );
 
+  // Greeting, controls and tabs share one line across the top; the journal
+  // itself then has the full width — stacked cards, or the shelf.
   return (
-    // Phone: one column, as before. Laptop: the room is split — greeting and
-    // controls rest in a sticky column, the journal itself takes the rest.
-    <div className="lg:grid lg:grid-cols-[minmax(15rem,30%)_1fr] lg:items-start lg:gap-12">
-      <aside className="lg:sticky lg:top-24">
-        {heading}
-        {controls}
-      </aside>
-      <div className="lg:pt-4">{reading}</div>
+    <div>
+      <PageBar heading={heading} controls={controls} />
+      {reading}
     </div>
   );
 }

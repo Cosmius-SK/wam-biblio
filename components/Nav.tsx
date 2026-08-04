@@ -10,10 +10,12 @@ const TABS = [
 ];
 
 /** Calm segmented control linking the three reading surfaces. */
-export default function Nav() {
+export default function Nav({ className = "mx-auto mb-6 mt-1" }: { className?: string }) {
   const pathname = usePathname();
   return (
-    <nav className="mx-auto mb-6 mt-1 flex w-fit gap-1 rounded-full border border-hairline/70 bg-surface/60 p-1 backdrop-blur-sm">
+    <nav
+      className={`${className} flex w-fit gap-1 rounded-full border border-hairline/70 bg-surface/60 p-1 backdrop-blur-sm`}
+    >
       {TABS.map((tab) => {
         const active = pathname === tab.href;
         return (

@@ -8,8 +8,8 @@ import ThemeSync from "@/components/ThemeSync";
 import AutoSync from "@/components/AutoSync";
 import BioLock from "@/components/BioLock";
 import Nav from "@/components/Nav";
+import Footer from "@/components/Footer";
 import MusicToggle from "@/components/MusicToggle";
-import FooterQuote from "@/components/FooterQuote";
 import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 
@@ -115,12 +115,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         {/* Wide on a laptop so pages can use the room; each page decides its
             own reading width (see SettingsShell, Ask, Capture). */}
         <main className="mx-auto w-full max-w-2xl px-5 pb-28 pt-2 lg:max-w-6xl">
-          <Nav />
+          <div className="lg:hidden">
+            <Nav />
+          </div>
           {children}
         </main>
-        <footer className="mx-auto max-w-2xl px-5 pb-10 text-center">
-          <FooterQuote />
-        </footer>
+        <Footer />
         <Analytics />
         <SpeedInsights />
       </body>

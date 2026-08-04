@@ -51,53 +51,85 @@ export default function Bookshelf({ entries }: { entries: JournalEntry[] }) {
     );
   }
 
+  // Real shelves: books fill each row left to right, and where there is no
+  // book there is simply empty shelf — never a reflowed, gapless grid.
+  const perShelf = 4;
+  const shelves: JournalEntry[][] = [];
+  for (let i = 0; i < entries.length; i += perShelf) {
+    shelves.push(entries.slice(i, i + perShelf));
+  }
+
   return (
-    <div className="grid grid-cols-3 gap-7 xl:grid-cols-4">
-      {entries.map((entry, i) => {
-        const hero = resolveHeader(entry);
-        return (
-          <motion.button
-            key={entry.id}
-            type="button"
-            onClick={() => setOpenId(entry.id)}
-            initial={{ opacity: 0, y: 14 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.45, delay: Math.min(i * 0.05, 0.4), ease: "easeOut" }}
-            whileHover={{ y: -6, rotate: -0.4 }}
-            className="paper-surface group relative aspect-[3/4] overflow-hidden rounded-l-sm rounded-r-xl bg-surface text-left shadow-page"
-          >
-            {hero ? (
-              // eslint-disable-next-line @next/next/no-img-element -- local data-URL image
-              <img
-                src={hero.kind === "photo" ? hero.photo.thumb : hero.src}
-                alt=""
-                className="absolute inset-0 h-full w-full object-cover transition-transform duration-700 group-hover:scale-[1.04]"
-              />
-            ) : (
-              <SceneImage entry={entry} className="absolute inset-0 h-full w-full object-cover" />
-            )}
+    <div className="space-y-8">
+      {shelves.map((shelf, row) => (
+        <div key={row}>
+          <div className="grid grid-cols-4 items-end gap-7">
+            {shelf.map((entry, i) => {
+              const hero = resolveHeader(entry);
+              return (
+                <motion.button
+                  key={entry.id}
+                  type="button"
+                  onClick={() => setOpenId(entry.id)}
+                  initial={{ opacity: 0, y: 14 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{
+                    duration: 0.45,
+                    delay: Math.min((row * perShelf + i) * 0.05, 0.4),
+                    ease: "easeOut",
+                  }}
+                  whileHover={{ y: -8, rotate: -0.5 }}
+                  className="paper-surface group relative aspect-[3/4] overflow-hidden rounded-l-sm rounded-r-xl bg-surface text-left shadow-page"
+                >
+                  {hero ? (
+                    // eslint-disable-next-line @next/next/no-img-element -- local data-URL image
+                    <img
+                      src={hero.kind === "photo" ? hero.photo.thumb : hero.src}
+                      alt=""
+                      className="absolute inset-0 h-full w-full object-cover transition-transform duration-700 group-hover:scale-[1.04]"
+                    />
+                  ) : (
+                    <SceneImage
+                      entry={entry}
+                      className="absolute inset-0 h-full w-full object-cover"
+                    />
+                  )}
 
-            {/* The spine, and enough shade under the title to read it. */}
-            <span
-              aria-hidden
-              className="absolute inset-y-0 left-0 w-5 bg-gradient-to-r from-black/45 via-black/15 to-transparent"
-            />
-            <span
-              aria-hidden
-              className="absolute inset-x-0 bottom-0 h-2/5 bg-gradient-to-t from-black/80 via-black/35 to-transparent"
-            />
+                  {/* The spine, and enough shade under the title to read it. */}
+                  <span
+                    aria-hidden
+                    className="absolute inset-y-0 left-0 w-5 bg-gradient-to-r from-black/45 via-black/15 to-transparent"
+                  />
+                  <span
+                    aria-hidden
+                    className="absolute inset-x-0 bottom-0 h-2/5 bg-gradient-to-t from-black/80 via-black/35 to-transparent"
+                  />
 
-            <span className="absolute inset-x-0 bottom-0 block p-4 pl-6">
-              <span className="block font-serif text-lg leading-snug text-white drop-shadow">
-                {entry.title}
-              </span>
-              <span className="mt-1 block text-xs text-white/75">
-                {formatDate(entry.createdAt, entry.timezone)} · {entry.mood}
-              </span>
-            </span>
-          </motion.button>
-        );
-      })}
+                  <span className="absolute inset-x-0 bottom-0 block p-4 pl-6">
+                    <span className="block font-serif text-lg leading-snug text-white drop-shadow">
+                      {entry.title}
+                    </span>
+                    <span className="mt-1 block text-xs text-white/75">
+                      {formatDate(entry.createdAt, entry.timezone)} · {entry.mood}
+                    </span>
+                  </span>
+                </motion.button>
+              );
+            })}
+
+            {/* Room left on the shelf, waiting to be filled. */}
+            {Array.from({ length: perShelf - shelf.length }, (_, i) => (
+              <span key={`gap-${i}`} aria-hidden className="aspect-[3/4]" />
+            ))}
+          </div>
+
+          {/* The board the books are standing on. */}
+          <div
+            aria-hidden
+            className="mt-1 h-2 rounded-[3px] bg-gradient-to-b from-ink/25 via-ink/10 to-transparent"
+          />
+        </div>
+      ))}
     </div>
   );
 }

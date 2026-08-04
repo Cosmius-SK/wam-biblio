@@ -146,7 +146,7 @@ export default function EntryCard({
         <>
           <h2 className="font-serif text-2xl leading-snug text-ink">{entry.title}</h2>
 
-          <p className="mt-3 whitespace-pre-wrap font-serif text-[1.05rem] leading-relaxed text-ink/90">
+          <p className="mt-3 max-w-[70ch] whitespace-pre-wrap font-serif text-[1.05rem] leading-relaxed text-ink/90">
             {entry.body}
           </p>
 

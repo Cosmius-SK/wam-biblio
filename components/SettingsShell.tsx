@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { motion } from "framer-motion";
+import PageBar from "./PageBar";
 
 /** Shared frame for a Settings sub-page: back link, title, blurb, content. */
 export default function SettingsShell({
@@ -20,6 +21,7 @@ export default function SettingsShell({
       transition={{ duration: 0.35, ease: "easeOut" }}
       className="mx-auto max-w-2xl"
     >
+      <PageBar />
       <Link
         href="/settings"
         className="mt-2 inline-flex items-center gap-1 text-sm text-muted transition-colors hover:text-ink"
