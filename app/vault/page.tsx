@@ -205,7 +205,12 @@ export default function VaultPage() {
   }
 
   return (
-    <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
+    <motion.div
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5 }}
+      className="mx-auto max-w-2xl"
+    >
       <div className="mb-7 mt-4">
         <h1 className="font-serif text-3xl text-ink">Your vault</h1>
         <p className="mt-1 text-muted">

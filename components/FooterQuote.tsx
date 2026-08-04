@@ -31,7 +31,7 @@ export default function FooterQuote() {
       transition={{ duration: 0.8 }}
       className="mx-auto max-w-md"
     >
-      <blockquote className="font-serif text-sm italic leading-relaxed text-muted">
+      <blockquote className="sweep-text font-serif text-sm italic leading-relaxed">
         &ldquo;{quote.q}&rdquo;
       </blockquote>
       <figcaption className="mt-1.5 text-xs text-muted/70">— {quote.a}</figcaption>

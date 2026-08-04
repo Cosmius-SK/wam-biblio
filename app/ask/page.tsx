@@ -4,7 +4,7 @@ import AskView from "@/components/AskView";
 /** Ask: the reflection ("Where you are") leads, then questions to your journal. */
 export default function AskPage() {
   return (
-    <div>
+    <div className="mx-auto max-w-2xl">
       <div className="mt-4">
         <ReflectCard />
       </div>

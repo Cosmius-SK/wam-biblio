@@ -18,6 +18,7 @@ export default function SettingsShell({
       initial={{ opacity: 0, x: 12 }}
       animate={{ opacity: 1, x: 0 }}
       transition={{ duration: 0.35, ease: "easeOut" }}
+      className="mx-auto max-w-2xl"
     >
       <Link
         href="/settings"

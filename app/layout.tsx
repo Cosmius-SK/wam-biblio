@@ -3,6 +3,7 @@ import Link from "next/link";
 import { Newsreader } from "next/font/google";
 import "./globals.css";
 import AmbientBackground from "@/components/AmbientBackground";
+import ThemeSync from "@/components/ThemeSync";
 import AutoSync from "@/components/AutoSync";
 import BioLock from "@/components/BioLock";
 import Nav from "@/components/Nav";
@@ -39,22 +40,23 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className={newsreader.variable} suppressHydrationWarning>
-      <head>
-        {/* Stamp the saved theme before first paint, so a chosen light/dark
-            never flashes the wrong paper. Mirrors lib/theme.ts. */}
+      <body className="min-h-full font-sans">
+        {/* Resolve and stamp the theme before anything paints, so the chosen
+            paper never flashes the wrong one. Mirrors lib/theme.ts. */}
         <script
           dangerouslySetInnerHTML={{
             __html:
-              "try{var t=localStorage.getItem('biblio_theme');if(t==='light'||t==='dark')document.documentElement.setAttribute('data-theme',t)}catch(e){}",
+              "try{var p=localStorage.getItem('biblio_theme');var r=(p==='light'||p==='dark')?p:(window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme',r)}catch(e){}",
           }}
         />
-      </head>
-      <body className="min-h-full font-sans">
+        <ThemeSync />
         <AmbientBackground />
         <AutoSync />
         <BioLock />
         <header className="sticky top-0 z-20 backdrop-blur-md">
-          <div className="mx-auto flex max-w-2xl items-center justify-between gap-3 px-5 py-4">
+          {/* A quiet heartbeat along the header's edge. */}
+          <span aria-hidden className="header-pulse" />
+          <div className="mx-auto flex max-w-2xl items-center justify-between gap-3 px-5 py-4 lg:max-w-6xl">
             <Link
               href="/"
               className="font-serif text-xl tracking-tight text-ink transition-opacity hover:opacity-70"
@@ -108,7 +110,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             </div>
           </div>
         </header>
-        <main className="mx-auto max-w-2xl px-5 pb-28 pt-2">
+        {/* Wide on a laptop so pages can use the room; each page decides its
+            own reading width (see SettingsShell, Ask, Capture). */}
+        <main className="mx-auto w-full max-w-2xl px-5 pb-28 pt-2 lg:max-w-6xl">
           <Nav />
           {children}
         </main>

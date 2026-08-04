@@ -10,9 +10,11 @@ import JournalPage from "@/components/JournalPage";
 import ThemeFilter, { matchesFilter, type FilterValue } from "@/components/ThemeFilter";
 import ViewToggle from "@/components/ViewToggle";
 import BookView from "@/components/BookView";
+import Bookshelf from "@/components/Bookshelf";
 import { DemoBanner, SeedButton } from "@/components/DemoControls";
 import { greeting } from "@/lib/format";
 import { readView, saveView, type ViewMode } from "@/lib/views";
+import { useIsDesktop } from "@/lib/useMediaQuery";
 
 /**
  * The living timeline — the journal as a continuous, self-arranging canvas.
@@ -25,6 +27,7 @@ export default function TimelinePage() {
   const name = useLiveQuery(() => getSetting("displayName"));
   const [filter, setFilter] = useState<FilterValue | null>(null);
   const [view, setViewState] = useState<ViewMode>("scroll");
+  const desktop = useIsDesktop();
 
   useEffect(() => setViewState(readView("timeline")), []);
   function setView(v: ViewMode) {
@@ -34,60 +37,91 @@ export default function TimelinePage() {
 
   const shown = entries?.filter((e) => matchesFilter(e, filter)) ?? [];
 
-  return (
-    <div>
-      <div className="mb-8 mt-4">
-        <motion.h1
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6 }}
-          className="font-serif text-3xl text-ink"
-        >
-          {greeting()}
-          {name ? `, ${name}` : ""}.
-        </motion.h1>
-        <p className="mt-1 text-muted">
-          {entries && entries.length > 0
-            ? "Your story so far."
-            : "A quiet place for whatever is on your mind."}
-        </p>
-      </div>
+  const heading = (
+    <div className="mb-8 mt-4">
+      <motion.h1
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.6 }}
+        className="font-serif text-3xl text-ink"
+      >
+        {greeting()}
+        {name ? `, ${name}` : ""}.
+      </motion.h1>
+      <p className="mt-1 text-muted">
+        {entries && entries.length > 0
+          ? "Your story so far."
+          : "A quiet place for whatever is on your mind."}
+      </p>
+    </div>
+  );
 
-      {entries === undefined ? (
+  if (entries === undefined) {
+    return (
+      <div className="mx-auto max-w-2xl lg:mx-0">
+        {heading}
         <LoadingShimmer />
-      ) : entries.length === 0 ? (
+      </div>
+    );
+  }
+  if (entries.length === 0) {
+    return (
+      <div className="mx-auto max-w-2xl">
+        {heading}
         <EmptyState />
+      </div>
+    );
+  }
+
+  const controls = (
+    <>
+      <DemoBanner />
+      <ThemeFilter
+        entries={entries}
+        value={filter}
+        onChange={setFilter}
+        trailing={<ViewToggle value={view} onChange={setView} />}
+      />
+    </>
+  );
+
+  const reading =
+    shown.length === 0 ? (
+      <p className="rounded-2xl border border-dashed border-hairline bg-surface/40 p-8 text-center text-muted">
+        No entries match that filter.
+      </p>
+    ) : view === "book" ? (
+      // On a laptop the book becomes a shelf you pick from; on a phone it
+      // stays a single volume you flip straight through.
+      desktop ? (
+        <Bookshelf entries={shown} />
       ) : (
-        <>
-          <DemoBanner />
-          <ThemeFilter
-            entries={entries}
-            value={filter}
-            onChange={setFilter}
-            trailing={<ViewToggle value={view} onChange={setView} />}
-          />
-          {shown.length === 0 ? (
-            <p className="rounded-2xl border border-dashed border-hairline bg-surface/40 p-8 text-center text-muted">
-              No entries match that filter.
-            </p>
-          ) : view === "book" ? (
-            <BookView
-              items={shown}
-              keyOf={(e) => e.id}
-              paginate
-              renderPage={(entry) => <JournalPage entry={entry} />}
-            />
-          ) : (
-            <div className="space-y-5">
-              <AnimatePresence initial={false}>
-                {shown.map((entry, i) => (
-                  <EntryCard key={entry.id} entry={entry} index={i} />
-                ))}
-              </AnimatePresence>
-            </div>
-          )}
-        </>
-      )}
+        <BookView
+          items={shown}
+          keyOf={(e) => e.id}
+          paginate
+          renderPage={(entry) => <JournalPage entry={entry} />}
+        />
+      )
+    ) : (
+      <div className="space-y-5">
+        <AnimatePresence initial={false}>
+          {shown.map((entry, i) => (
+            <EntryCard key={entry.id} entry={entry} index={i} />
+          ))}
+        </AnimatePresence>
+      </div>
+    );
+
+  return (
+    // Phone: one column, as before. Laptop: the room is split — greeting and
+    // controls rest in a sticky column, the journal itself takes the rest.
+    <div className="lg:grid lg:grid-cols-[minmax(15rem,30%)_1fr] lg:items-start lg:gap-12">
+      <aside className="lg:sticky lg:top-24">
+        {heading}
+        {controls}
+      </aside>
+      <div className="lg:pt-4">{reading}</div>
     </div>
   );
 }

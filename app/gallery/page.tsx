@@ -56,7 +56,7 @@ export default function GalleryPage() {
       </div>
 
       {entries === undefined ? (
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-2 gap-4 lg:grid-cols-4 lg:gap-5">
           {[0, 1, 2, 3].map((i) => (
             <div key={i} className="h-40 animate-pulse rounded-2xl bg-surface/50" />
           ))}
@@ -103,7 +103,7 @@ export default function GalleryPage() {
             )}
           />
         ) : (
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-2 gap-4 lg:grid-cols-4 lg:gap-5">
           {shown.map((entry, i) => (
             <motion.figure
               key={entry.id}

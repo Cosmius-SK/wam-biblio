@@ -1,17 +1,21 @@
 "use client";
 
 /**
- * Light / dark / system, per device. "system" leaves the choice to the OS
- * (the media query in globals.css); the other two stamp data-theme on <html>,
- * which the CSS honours over the media query.
+ * Light / dusk / auto, per device.
  *
- * Applied as early as possible — see the inline script in app/layout.tsx —
- * so a chosen theme never flashes the wrong paper on load.
+ * The RESOLVED theme is always stamped on <html data-theme>, even for "auto"
+ * (where it follows the device and updates live). Nothing is left to the
+ * media query at runtime, so a chosen paper can never be overridden by the
+ * OS setting — the media query in globals.css is only a no-JS fallback.
+ *
+ * Applied before first paint by the inline script in app/layout.tsx, and kept
+ * in sync by components/ThemeSync.tsx.
  */
 export type Theme = "light" | "dark" | "system";
 
 const KEY = "biblio_theme";
 
+/** The reader's preference (what the Appearance card shows). */
 export function readTheme(): Theme {
   try {
     const v = localStorage.getItem(KEY);
@@ -22,10 +26,17 @@ export function readTheme(): Theme {
   return "system";
 }
 
+/** What "auto" currently means on this device. */
+export function systemTheme(): "light" | "dark" {
+  return typeof window !== "undefined" &&
+    window.matchMedia?.("(prefers-color-scheme: dark)").matches
+    ? "dark"
+    : "light";
+}
+
 export function applyTheme(theme: Theme): void {
-  const root = document.documentElement;
-  if (theme === "system") root.removeAttribute("data-theme");
-  else root.setAttribute("data-theme", theme);
+  const resolved = theme === "system" ? systemTheme() : theme;
+  document.documentElement.setAttribute("data-theme", resolved);
 }
 
 export function setTheme(theme: Theme): void {

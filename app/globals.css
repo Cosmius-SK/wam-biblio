@@ -15,8 +15,11 @@
   --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
     "Helvetica Neue", Arial, sans-serif;
 
-  /* Paper: how much grain shows, and how strongly a page edge is drawn. */
+  /* Paper: page wash, card tooth (blended, so it textures rather than veils),
+     and how strongly a page edge is drawn. */
   --grain: 0.11;
+  --tooth: 0.85;
+  --tooth-blend: soft-light;
   --edge: 0.055;
   --paper-noise: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.7' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23g)'/%3E%3C/svg%3E");
 
@@ -50,6 +53,8 @@
 
     /* Grain reads as light speckle on dark paper — lighter touch than day. */
     --grain: 0.05;
+    --tooth: 0.5;
+    --tooth-blend: overlay;
     --edge: 0.12;
   }
 }
@@ -66,6 +71,8 @@
   --terracotta: 214 140 112;
 
   --grain: 0.05;
+  --tooth: 0.5;
+  --tooth-blend: overlay;
   --edge: 0.12;
 }
 
@@ -115,10 +122,11 @@ body::after {
   filter: blur(46px);
   will-change: transform, border-radius;
   mix-blend-mode: multiply;
-  animation-name: fluidDrift, fluidMorph;
+  animation-name: fluidDrift, fluidMorph, fluidIn;
   animation-timing-function: ease-in-out;
-  animation-iteration-count: infinite;
-  animation-direction: normal, alternate;
+  animation-iteration-count: infinite, infinite, 1;
+  animation-direction: normal, alternate, normal;
+  animation-fill-mode: none, none, both;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -133,21 +141,37 @@ body::after {
   filter: blur(54px);
 }
 
+/*
+ * Every waypoint is a custom property, so each field gets its OWN wandering
+ * path (set inline from JS) instead of every layer tracing the same route.
+ * Travel is large enough to cross the middle of the screen, so no corner is
+ * permanently owned by one colour.
+ */
 @keyframes fluidDrift {
   0% {
     transform: translate3d(0, 0, 0) rotate(0deg) scale(1);
   }
   25% {
-    transform: translate3d(14%, 10%, 0) rotate(58deg) scale(1.16);
+    transform: translate3d(var(--x1), var(--y1), 0) rotate(84deg) scale(var(--s1));
   }
   50% {
-    transform: translate3d(4%, 22%, 0) rotate(146deg) scale(0.93);
+    transform: translate3d(var(--x2), var(--y2), 0) rotate(171deg) scale(var(--s2));
   }
   75% {
-    transform: translate3d(-12%, 8%, 0) rotate(242deg) scale(1.1);
+    transform: translate3d(var(--x3), var(--y3), 0) rotate(268deg) scale(var(--s3));
   }
   100% {
     transform: translate3d(0, 0, 0) rotate(360deg) scale(1);
+  }
+}
+
+/* Fields ease in on load rather than snapping into place. */
+@keyframes fluidIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
   }
 }
 
@@ -183,9 +207,12 @@ body::after {
     inset: 0;
     border-radius: inherit;
     pointer-events: none;
-    opacity: calc(var(--grain) * 1.5);
+    /* Blended rather than laid on top: the noise modulates the surface into
+       tooth instead of veiling it in grey, so it survives being subtle. */
+    opacity: var(--tooth);
+    mix-blend-mode: var(--tooth-blend);
     background-image: var(--paper-noise);
-    background-size: 160px 160px;
+    background-size: 150px 150px;
   }
 
   .paper-surface::after {
@@ -228,12 +255,85 @@ body::after {
     pointer-events: none;
   }
 
+  /*
+   * The header's heartbeat: a hairline of colour along the bottom edge that
+   * breathes while a brighter crest travels along it.
+   */
+  .header-pulse {
+    position: absolute;
+    inset: auto 0 0 0;
+    height: 1px;
+    pointer-events: none;
+    background-image: linear-gradient(
+      90deg,
+      transparent 0%,
+      rgb(var(--lavender) / 0.55) 25%,
+      rgb(var(--terracotta) / 0.6) 50%,
+      rgb(var(--sage) / 0.5) 75%,
+      transparent 100%
+    );
+    background-size: 220% 100%;
+    animation: headerBreath 6.5s ease-in-out infinite, headerTravel 14s linear infinite;
+  }
+
+  /*
+   * A slow band of light crossing a line of text. The base colour and the
+   * crest both come from the palette, so it brightens on dusk paper and inks
+   * in on day paper.
+   */
+  .sweep-text {
+    background-image: linear-gradient(
+      100deg,
+      rgb(var(--muted)) 0%,
+      rgb(var(--muted)) 38%,
+      rgb(var(--ink)) 50%,
+      rgb(var(--muted)) 62%,
+      rgb(var(--muted)) 100%
+    );
+    background-size: 260% 100%;
+    background-repeat: no-repeat;
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    color: transparent;
+    animation: textSweep 9s ease-in-out infinite;
+  }
+
   /* An inked underline that sits under a word like a pen stroke. */
   .ink-underline {
     background-image: linear-gradient(rgb(var(--terracotta) / 0.35), rgb(var(--terracotta) / 0.35));
     background-repeat: no-repeat;
     background-position: 0 100%;
     background-size: 100% 2px;
+  }
+}
+
+@keyframes headerBreath {
+  0%,
+  100% {
+    opacity: 0.3;
+  }
+  50% {
+    opacity: 0.95;
+  }
+}
+
+@keyframes headerTravel {
+  from {
+    background-position: 120% 0;
+  }
+  to {
+    background-position: -120% 0;
+  }
+}
+
+@keyframes textSweep {
+  0% {
+    background-position: 130% 0;
+  }
+  55%,
+  100% {
+    background-position: -60% 0;
   }
 }
 
