@@ -1,13 +1,19 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { motion } from "framer-motion";
+import { motion, useReducedMotion } from "framer-motion";
 import { BG_EVENT, readBgIntensity } from "@/lib/appearance";
 
 /**
- * The fluid, living background behind every page: three soft colour fields
- * that drift very slowly and re-tint with the time of day. Visibility is the
- * user's choice — the Appearance slider scales it live from whisper to vivid.
+ * The living background behind every page — and, from here on, Maya's mood:
+ * three soft colour fields that drift, swell and cross the screen, re-tinting
+ * with the time of day.
+ *
+ * Motion is expressed as a PERCENTAGE of each field's own size, so the travel
+ * scales with the screen and is genuinely visible (an earlier version moved
+ * ~40px behind a 64px blur — animating on paper, frozen to the eye). The
+ * Appearance slider drives both how visible the colour is and how briskly it
+ * moves, and prefers-reduced-motion stills it completely.
  */
 type Palette = { a: string; b: string; c: string };
 
@@ -20,18 +26,21 @@ function paletteForHour(hour: number): Palette {
   return { a: "156,140,196", b: "96,102,148", c: "204,146,122" }; // evening
 }
 
-const rad = (rgb: string, alpha: number) =>
-  `radial-gradient(circle at center, rgba(${rgb},${alpha.toFixed(3)}), transparent 70%)`;
+const field = (rgb: string, alpha: number) =>
+  `radial-gradient(circle at center, rgba(${rgb},${alpha.toFixed(3)}) 0%, rgba(${rgb},${(
+    alpha * 0.45
+  ).toFixed(3)}) 38%, rgba(${rgb},0) 70%)`;
 
 export default function AmbientBackground() {
   const [palette, setPalette] = useState<Palette>(() => paletteForHour(new Date().getHours()));
   const [intensity, setIntensity] = useState(65);
+  const still = useReducedMotion();
 
   useEffect(() => {
     setIntensity(readBgIntensity());
     const tick = () => setPalette(paletteForHour(new Date().getHours()));
     tick();
-    const id = setInterval(tick, 10 * 60 * 1000);
+    const id = setInterval(tick, 10 * 60 * 1000); // re-tint every 10 minutes
     const onChange = (e: Event) => setIntensity((e as CustomEvent<number>).detail);
     window.addEventListener(BG_EVENT, onChange);
     return () => {
@@ -41,27 +50,71 @@ export default function AmbientBackground() {
   }, []);
 
   const k = intensity / 100;
+  // Brisker at full strength, unhurried when dialled down.
+  const pace = 1.5 - 0.7 * k;
 
   return (
     <div aria-hidden className="pointer-events-none fixed inset-0 -z-10 overflow-hidden">
-      <motion.div
-        className="absolute -left-[15%] -top-[12%] h-[75vh] w-[75vh] rounded-full blur-3xl"
-        style={{ background: rad(palette.a, 0.85 * k) }}
-        animate={{ x: [0, 50, -25, 0], y: [0, 35, 70, 0] }}
-        transition={{ duration: 32, repeat: Infinity, ease: "easeInOut" }}
+      <Field
+        rgb={palette.a}
+        alpha={0.95 * k}
+        className="-left-[15%] -top-[20%] h-[85vh] w-[85vh]"
+        x={["0%", "26%", "-8%", "0%"]}
+        y={["0%", "18%", "38%", "0%"]}
+        scale={[1, 1.14, 0.94, 1]}
+        duration={24 * pace}
+        still={still}
       />
-      <motion.div
-        className="absolute -right-[18%] top-[28%] h-[70vh] w-[70vh] rounded-full blur-3xl"
-        style={{ background: rad(palette.b, 0.75 * k) }}
-        animate={{ x: [0, -45, 20, 0], y: [0, -30, 40, 0] }}
-        transition={{ duration: 38, repeat: Infinity, ease: "easeInOut" }}
+      <Field
+        rgb={palette.b}
+        alpha={0.8 * k}
+        className="-right-[20%] top-[22%] h-[78vh] w-[78vh]"
+        x={["0%", "-24%", "10%", "0%"]}
+        y={["0%", "-20%", "22%", "0%"]}
+        scale={[1, 0.92, 1.12, 1]}
+        duration={31 * pace}
+        still={still}
       />
-      <motion.div
-        className="absolute -bottom-[15%] left-[10%] h-[65vh] w-[65vh] rounded-full blur-3xl"
-        style={{ background: rad(palette.c, 0.6 * k) }}
-        animate={{ x: [0, 40, -35, 0], y: [0, -45, -15, 0] }}
-        transition={{ duration: 44, repeat: Infinity, ease: "easeInOut" }}
+      <Field
+        rgb={palette.c}
+        alpha={0.66 * k}
+        className="-bottom-[22%] left-[8%] h-[72vh] w-[72vh]"
+        x={["0%", "20%", "-18%", "0%"]}
+        y={["0%", "-26%", "-8%", "0%"]}
+        scale={[1, 1.1, 0.96, 1]}
+        duration={38 * pace}
+        still={still}
       />
     </div>
+  );
+}
+
+/** One drifting colour field. Percent-based travel keeps it visible on any screen. */
+function Field({
+  rgb,
+  alpha,
+  className,
+  x,
+  y,
+  scale,
+  duration,
+  still,
+}: {
+  rgb: string;
+  alpha: number;
+  className: string;
+  x: string[];
+  y: string[];
+  scale: number[];
+  duration: number;
+  still: boolean | null;
+}) {
+  return (
+    <motion.div
+      className={`absolute rounded-full blur-2xl ${className}`}
+      style={{ background: field(rgb, alpha), willChange: "transform" }}
+      animate={still ? undefined : { x, y, scale }}
+      transition={{ duration, repeat: Infinity, ease: "easeInOut", times: [0, 0.34, 0.68, 1] }}
+    />
   );
 }

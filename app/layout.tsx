@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import Link from "next/link";
+import { Newsreader } from "next/font/google";
 import "./globals.css";
 import AmbientBackground from "@/components/AmbientBackground";
 import AutoSync from "@/components/AutoSync";
@@ -9,6 +10,17 @@ import MusicToggle from "@/components/MusicToggle";
 import FooterQuote from "@/components/FooterQuote";
 import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
+
+/**
+ * The journal's reading face. Newsreader is warm and literary with a true
+ * italic — self-hosted by next/font (no runtime request, no layout shift).
+ */
+const newsreader = Newsreader({
+  subsets: ["latin"],
+  display: "swap",
+  style: ["normal", "italic"],
+  variable: "--font-newsreader",
+});
 
 export const metadata: Metadata = {
   title: "biblio — a living journal",
@@ -26,7 +38,17 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
+    <html lang="en" className={newsreader.variable} suppressHydrationWarning>
+      <head>
+        {/* Stamp the saved theme before first paint, so a chosen light/dark
+            never flashes the wrong paper. Mirrors lib/theme.ts. */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html:
+              "try{var t=localStorage.getItem('biblio_theme');if(t==='light'||t==='dark')document.documentElement.setAttribute('data-theme',t)}catch(e){}",
+          }}
+        />
+      </head>
       <body className="min-h-full font-sans">
         <AmbientBackground />
         <AutoSync />

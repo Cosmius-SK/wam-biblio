@@ -8,9 +8,16 @@
  * warm (never cold-black) dark mode at night.
  */
 :root {
-  --font-serif: Georgia, "Iowan Old Style", "Palatino Linotype", "Book Antiqua", serif;
+  /* Newsreader (self-hosted via next/font in app/layout.tsx) with the old
+     system stack behind it, so text still reads well before the font lands. */
+  --font-serif: var(--font-newsreader), Georgia, "Iowan Old Style",
+    "Palatino Linotype", "Book Antiqua", serif;
   --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
     "Helvetica Neue", Arial, sans-serif;
+
+  /* Paper: how much grain shows, and how strongly a page edge is drawn. */
+  --grain: 0.05;
+  --edge: 0.055;
 
   --paper: 247 243 235;
   --surface: 252 249 243;
@@ -23,8 +30,13 @@
   --terracotta: 192 116 90;
 }
 
+/*
+ * Dusk paper. Applied when the device asks for dark AND the reader hasn't
+ * forced light, or whenever they've explicitly chosen dark
+ * (html[data-theme], set by lib/theme.ts).
+ */
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme="light"]) {
     --paper: 26 24 22;
     --surface: 35 32 29;
     --ink: 237 231 222;
@@ -34,7 +46,26 @@
     --sage: 150 170 142;
     --lavender: 176 165 208;
     --terracotta: 214 140 112;
+
+    /* Grain reads as light speckle on dark paper — keep it barely there. */
+    --grain: 0.022;
+    --edge: 0.12;
   }
+}
+
+:root[data-theme="dark"] {
+  --paper: 26 24 22;
+  --surface: 35 32 29;
+  --ink: 237 231 222;
+  --muted: 167 158 147;
+  --hairline: 58 53 48;
+
+  --sage: 150 170 142;
+  --lavender: 176 165 208;
+  --terracotta: 214 140 112;
+
+  --grain: 0.022;
+  --edge: 0.12;
 }
 
 html,
@@ -48,6 +79,58 @@ body {
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
+}
+
+/*
+ * Paper grain: a fixed, non-interactive wash of fractal noise over the whole
+ * app — the way print texture sits over ink. Deliberately faint (see --grain)
+ * so it is felt rather than seen, and never dulls the text.
+ */
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  pointer-events: none;
+  opacity: var(--grain);
+  background-size: 170px 170px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='170' height='170'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.82' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='170' height='170' filter='url(%23g)'/%3E%3C/svg%3E");
+}
+
+@layer components {
+  /*
+   * A leaf of paper with the stack showing beneath it. Two offset shadow
+   * "pages" read as bound depth; pair with rounded corners and shadow-page.
+   */
+  .page-edge {
+    box-shadow:
+      3px 3px 0 -1px rgb(var(--surface)),
+      3px 3px 0 0 rgb(var(--ink) / var(--edge)),
+      6px 6px 0 -1px rgb(var(--surface)),
+      6px 6px 0 0 rgb(var(--ink) / var(--edge)),
+      0 2px 6px rgb(var(--ink) / 0.05),
+      0 16px 44px rgb(var(--ink) / 0.08);
+  }
+
+  /* The faint ruled margin down a notebook page. Needs a positioned parent. */
+  .gutter-rule::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 1.6rem;
+    width: 1px;
+    background: rgb(var(--terracotta) / 0.16);
+    pointer-events: none;
+  }
+
+  /* An inked underline that sits under a word like a pen stroke. */
+  .ink-underline {
+    background-image: linear-gradient(rgb(var(--terracotta) / 0.35), rgb(var(--terracotta) / 0.35));
+    background-repeat: no-repeat;
+    background-position: 0 100%;
+    background-size: 100% 2px;
+  }
 }
 
 /* Calm focus rings that match the palette. */
