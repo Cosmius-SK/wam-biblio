@@ -50,10 +50,7 @@ export default function GalleryPage() {
   const shown = entries?.filter((e) => matchesFilter(e, filter)) ?? [];
 
   const heading = (
-    <div className="mb-8 mt-4 lg:mb-0 lg:mt-0">
-      <h1 className="font-serif text-3xl text-ink">Scenes</h1>
-      <p className="mt-1 text-muted">An image for each moment, the way it felt.</p>
-    </div>
+    <p className="truncate font-serif text-lg text-ink lg:text-xl">Scenes</p>
   );
 
   return (

@@ -50,44 +50,40 @@ export default function TimelinePage() {
   const shown = entries?.filter((e) => matchesFilter(e, filter)) ?? [];
 
   const heading = (
-    <div className="mb-8 mt-4 lg:mb-0 lg:mt-0">
-      <motion.h1
-        initial={{ opacity: 0, y: 8 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.6 }}
-        className="font-serif text-3xl text-ink"
-      >
-        {greeting()}
-        {name ? `, ${name}` : ""}.
-      </motion.h1>
-      <p className="mt-1 text-muted">
-        {entries && entries.length > 0
-          ? "Your story so far."
-          : "A quiet place for whatever is on your mind."}
-      </p>
-    </div>
+    <motion.p
+      initial={{ opacity: 0, y: 4 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5 }}
+      className="truncate font-serif text-lg text-ink lg:text-xl"
+    >
+      {greeting()}
+      {name ? `, ${name}` : ""}.
+    </motion.p>
   );
 
   if (entries === undefined) {
     return (
-      <div className="mx-auto max-w-2xl lg:mx-0">
-        {heading}
-        <LoadingShimmer />
+      <div>
+        <PageBar heading={heading} />
+        <div className="mx-auto max-w-2xl lg:mx-0">
+          <LoadingShimmer />
+        </div>
       </div>
     );
   }
   if (entries.length === 0) {
     return (
-      <div className="mx-auto max-w-2xl">
-        {heading}
-        <EmptyState />
+      <div>
+        <PageBar heading={heading} />
+        <div className="mx-auto max-w-2xl">
+          <EmptyState />
+        </div>
       </div>
     );
   }
 
   const controls = (
     <>
-      <DemoBanner />
       <ThemeFilter
         entries={entries}
         value={filter}
@@ -130,6 +126,7 @@ export default function TimelinePage() {
   return (
     <div>
       <PageBar heading={heading} controls={controls} />
+      <DemoBanner />
       {reading}
     </div>
   );

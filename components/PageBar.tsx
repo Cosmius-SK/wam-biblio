@@ -3,15 +3,16 @@
 import Nav from "./Nav";
 
 /**
- * The page's top line — on a laptop or tablet only.
+ * The page's own fixed bar, sitting directly under the header.
  *
- * One row across the full width: the greeting on the left, the page's own
- * controls (filter, view toggle) in the middle, and the tabs on the right.
- * A phone keeps exactly the layout it had — heading, then controls, with the
- * tabs centred by the root layout — so nothing about the mobile design moves.
+ * Everything in it is one uniform height and vertically centred, so the
+ * greeting no longer towers over the controls beside it. On a laptop it is a
+ * single row — greeting, the page's controls, then the tabs. On a phone the
+ * tabs take their own centred row with the greeting and controls beneath, the
+ * order they've always been in.
  *
- * Both arrangements are rendered and one is hidden with CSS rather than
- * chosen in JS, so there's no flash of the wrong layout on load.
+ * A spacer of matching height holds its place in the flow, so no page has to
+ * know how tall the chrome is.
  */
 export default function PageBar({
   heading,
@@ -20,18 +21,35 @@ export default function PageBar({
   heading?: React.ReactNode;
   controls?: React.ReactNode;
 }) {
+  const hasRow = Boolean(heading || controls);
+
   return (
     <>
-      <div className="mb-8 hidden items-end justify-between gap-8 pt-3 lg:flex">
-        <div className="min-w-0 flex-1">{heading}</div>
-        {controls && <div className="shrink-0">{controls}</div>}
-        <Nav className="shrink-0" />
+      <div className="fixed inset-x-0 top-16 z-30 backdrop-blur-md">
+        <div className="mx-auto max-w-2xl px-5 lg:max-w-6xl">
+          {/* Laptop and tablet: one line, everything aligned to its middle. */}
+          <div className="hidden h-16 items-center justify-between gap-8 lg:flex">
+            <div className="min-w-0 flex-1">{heading}</div>
+            {controls && <div className="shrink-0">{controls}</div>}
+            <Nav className="shrink-0" />
+          </div>
+
+          {/* Phone: tabs, then the greeting and controls on one line. */}
+          <div className="lg:hidden">
+            <div className="flex h-12 items-center justify-center">
+              <Nav className="" />
+            </div>
+            {hasRow && (
+              <div className="flex h-12 items-center justify-between gap-3">
+                <div className="min-w-0 flex-1">{heading}</div>
+                {controls && <div className="shrink-0">{controls}</div>}
+              </div>
+            )}
+          </div>
+        </div>
       </div>
 
-      <div className="lg:hidden">
-        {heading}
-        {controls}
-      </div>
+      <div aria-hidden className={hasRow ? "h-24 lg:h-16" : "h-12 lg:h-16"} />
     </>
   );
 }

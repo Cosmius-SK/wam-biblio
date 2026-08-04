@@ -41,7 +41,7 @@ export default function ThemeFilter({
   const moods = moodDistribution(entries);
 
   return (
-    <div className="mb-5">
+    <div>
       <div className="flex flex-wrap items-center gap-2">
         <button
           type="button"
@@ -104,7 +104,7 @@ export default function ThemeFilter({
             transition={{ duration: 0.3, ease: "easeOut" }}
             className="overflow-hidden"
           >
-            <div className="mt-3 rounded-2xl border border-hairline/60 bg-surface/50 p-4">
+            <div className="mt-3 rounded-2xl border border-hairline/60 bg-surface p-4 shadow-lift">
               {moods.length > 0 && (
                 <>
                   <p className="mb-2 text-xs uppercase tracking-wide text-muted/70">Moods</p>

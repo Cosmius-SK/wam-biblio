@@ -7,7 +7,6 @@ import MayaPresence from "@/components/MayaPresence";
 import ThemeSync from "@/components/ThemeSync";
 import AutoSync from "@/components/AutoSync";
 import BioLock from "@/components/BioLock";
-import Nav from "@/components/Nav";
 import Footer from "@/components/Footer";
 import MusicToggle from "@/components/MusicToggle";
 import { Analytics } from "@vercel/analytics/next";
@@ -55,10 +54,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <MayaPresence />
         <AutoSync />
         <BioLock />
-        <header className="sticky top-0 z-20 backdrop-blur-md">
+        <header className="fixed inset-x-0 top-0 z-40 h-16 backdrop-blur-md">
           {/* A quiet heartbeat along the header's edge. */}
           <span aria-hidden className="header-pulse" />
-          <div className="mx-auto flex max-w-2xl items-center justify-between gap-3 px-5 py-4 lg:max-w-6xl">
+          <div className="mx-auto flex h-full max-w-2xl items-center justify-between gap-3 px-5 lg:max-w-6xl">
             <Link
               href="/"
               className="font-serif text-xl tracking-tight text-ink transition-opacity hover:opacity-70"
@@ -112,14 +111,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             </div>
           </div>
         </header>
+        {/* Holds the fixed header's place in the flow. */}
+        <div aria-hidden className="h-16" />
         {/* Wide on a laptop so pages can use the room; each page decides its
             own reading width (see SettingsShell, Ask, Capture). */}
-        <main className="mx-auto w-full max-w-2xl px-5 pb-28 pt-2 lg:max-w-6xl">
-          <div className="lg:hidden">
-            <Nav />
-          </div>
-          {children}
-        </main>
+        <main className="mx-auto w-full max-w-2xl px-5 pb-28 lg:max-w-6xl">{children}</main>
         <Footer />
         <Analytics />
         <SpeedInsights />
