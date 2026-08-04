@@ -16,8 +16,9 @@
     "Helvetica Neue", Arial, sans-serif;
 
   /* Paper: how much grain shows, and how strongly a page edge is drawn. */
-  --grain: 0.05;
+  --grain: 0.11;
   --edge: 0.055;
+  --paper-noise: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.7' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23g)'/%3E%3C/svg%3E");
 
   --paper: 247 243 235;
   --surface: 252 249 243;
@@ -47,8 +48,8 @@
     --lavender: 176 165 208;
     --terracotta: 214 140 112;
 
-    /* Grain reads as light speckle on dark paper — keep it barely there. */
-    --grain: 0.022;
+    /* Grain reads as light speckle on dark paper — lighter touch than day. */
+    --grain: 0.05;
     --edge: 0.12;
   }
 }
@@ -64,7 +65,7 @@
   --lavender: 176 165 208;
   --terracotta: 214 140 112;
 
-  --grain: 0.022;
+  --grain: 0.05;
   --edge: 0.12;
 }
 
@@ -93,11 +94,114 @@ body::after {
   z-index: 100;
   pointer-events: none;
   opacity: var(--grain);
-  background-size: 170px 170px;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='170' height='170'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.82' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='170' height='170' filter='url(%23g)'/%3E%3C/svg%3E");
+  background-size: 160px 160px;
+  background-image: var(--paper-noise);
+}
+
+/*
+ * Maya's field — the flowing wash behind every page.
+ *
+ * Not circles sliding around: each layer is an irregular shape whose OUTLINE
+ * morphs while it slowly rotates, drifts and swells, with an off-centre
+ * gradient inside so the rotation is legible. Because the layers blend into
+ * one another (watercolour bleed on day paper, aurora light on dusk), they
+ * read as one moving body of colour rather than as separate blobs.
+ *
+ * All animation is CSS — no React re-renders, GPU-composited, and the
+ * reduced-motion rule below stills it. JS only sets the custom properties.
+ */
+.fluid-field {
+  position: absolute;
+  filter: blur(46px);
+  will-change: transform, border-radius;
+  mix-blend-mode: multiply;
+  animation-name: fluidDrift, fluidMorph;
+  animation-timing-function: ease-in-out;
+  animation-iteration-count: infinite;
+  animation-direction: normal, alternate;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .fluid-field {
+    mix-blend-mode: plus-lighter;
+    filter: blur(54px);
+  }
+}
+
+:root[data-theme="dark"] .fluid-field {
+  mix-blend-mode: plus-lighter;
+  filter: blur(54px);
+}
+
+@keyframes fluidDrift {
+  0% {
+    transform: translate3d(0, 0, 0) rotate(0deg) scale(1);
+  }
+  25% {
+    transform: translate3d(14%, 10%, 0) rotate(58deg) scale(1.16);
+  }
+  50% {
+    transform: translate3d(4%, 22%, 0) rotate(146deg) scale(0.93);
+  }
+  75% {
+    transform: translate3d(-12%, 8%, 0) rotate(242deg) scale(1.1);
+  }
+  100% {
+    transform: translate3d(0, 0, 0) rotate(360deg) scale(1);
+  }
+}
+
+/* The outline itself flows — this is what stops it reading as a circle. */
+@keyframes fluidMorph {
+  0% {
+    border-radius: 62% 38% 44% 56% / 54% 42% 58% 46%;
+  }
+  33% {
+    border-radius: 38% 62% 58% 42% / 42% 63% 37% 58%;
+  }
+  66% {
+    border-radius: 54% 46% 33% 67% / 64% 34% 66% 36%;
+  }
+  100% {
+    border-radius: 45% 55% 62% 38% / 38% 57% 43% 62%;
+  }
 }
 
 @layer components {
+  /*
+   * A sheet of paper: its own grain (stronger than the page wash, so a card
+   * feels like stock rather than a flat panel) plus a soft sheen down from the
+   * top edge, as light falls on a page. Content sits above it naturally.
+   */
+  .paper-surface {
+    position: relative;
+  }
+
+  .paper-surface::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    pointer-events: none;
+    opacity: calc(var(--grain) * 1.5);
+    background-image: var(--paper-noise);
+    background-size: 160px 160px;
+  }
+
+  .paper-surface::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    pointer-events: none;
+    background-image: linear-gradient(
+      to bottom,
+      rgb(255 255 255 / 0.05),
+      transparent 42%,
+      rgb(var(--ink) / 0.025)
+    );
+  }
+
   /*
    * A leaf of paper with the stack showing beneath it. Two offset shadow
    * "pages" read as bound depth; pair with rounded corners and shadow-page.

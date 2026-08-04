@@ -1,40 +1,39 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { motion, useReducedMotion } from "framer-motion";
+import { useEffect, useState, type CSSProperties } from "react";
 import { BG_EVENT, readBgIntensity } from "@/lib/appearance";
 
 /**
- * The living background behind every page — and, from here on, Maya's mood:
- * three soft colour fields that drift, swell and cross the screen, re-tinting
- * with the time of day.
+ * The living background — and, from here on, Maya's mood.
  *
- * Motion is expressed as a PERCENTAGE of each field's own size, so the travel
- * scales with the screen and is genuinely visible (an earlier version moved
- * ~40px behind a 64px blur — animating on paper, frozen to the eye). The
- * Appearance slider drives both how visible the colour is and how briskly it
- * moves, and prefers-reduced-motion stills it completely.
+ * Four irregular fields of colour whose outlines morph while they rotate,
+ * drift and swell, blending into one another (watercolour on day paper,
+ * aurora on dusk) so they read as one flowing body rather than as blobs.
+ * The shapes and motion live in CSS (see .fluid-field in globals.css); this
+ * component only chooses the colours for the hour and hands the Appearance
+ * slider down as custom properties.
  */
-type Palette = { a: string; b: string; c: string };
+type Palette = [string, string, string, string];
 
-// Base colours per time of day (rgb only — alpha comes from the intensity).
 function paletteForHour(hour: number): Palette {
-  if (hour < 5) return { a: "104,98,160", b: "70,76,118", c: "150,120,160" }; // deep night
-  if (hour < 11) return { a: "238,178,132", b: "168,192,150", c: "196,168,206" }; // morning
-  if (hour < 16) return { a: "232,192,140", b: "158,188,168", c: "184,166,212" }; // midday
-  if (hour < 20) return { a: "222,138,96", b: "162,142,204", c: "146,176,142" }; // dusk
-  return { a: "156,140,196", b: "96,102,148", c: "204,146,122" }; // evening
+  if (hour < 5) return ["104,98,160", "70,76,118", "150,120,160", "60,70,110"]; // deep night
+  if (hour < 11) return ["238,178,132", "168,192,150", "196,168,206", "232,206,160"]; // morning
+  if (hour < 16) return ["232,192,140", "158,188,168", "184,166,212", "220,200,170"]; // midday
+  if (hour < 20) return ["222,138,96", "162,142,204", "146,176,142", "226,170,130"]; // dusk
+  return ["156,140,196", "96,102,148", "204,146,122", "120,116,168"]; // evening
 }
 
-const field = (rgb: string, alpha: number) =>
-  `radial-gradient(circle at center, rgba(${rgb},${alpha.toFixed(3)}) 0%, rgba(${rgb},${(
-    alpha * 0.45
-  ).toFixed(3)}) 38%, rgba(${rgb},0) 70%)`;
+/** Where each field sits, how big it is, and the rhythm of its two cycles. */
+const FIELDS = [
+  { cls: "-left-[22%] -top-[26%] h-[92vh] w-[92vh]", drift: 34, morph: 17, alpha: 0.95, at: "36% 32%" },
+  { cls: "-right-[26%] top-[6%] h-[86vh] w-[86vh]", drift: 43, morph: 21, alpha: 0.85, at: "62% 40%" },
+  { cls: "-bottom-[30%] left-[2%] h-[88vh] w-[88vh]", drift: 51, morph: 26, alpha: 0.75, at: "40% 62%" },
+  { cls: "-bottom-[18%] -right-[18%] h-[74vh] w-[74vh]", drift: 61, morph: 31, alpha: 0.6, at: "55% 55%" },
+] as const;
 
 export default function AmbientBackground() {
   const [palette, setPalette] = useState<Palette>(() => paletteForHour(new Date().getHours()));
   const [intensity, setIntensity] = useState(65);
-  const still = useReducedMotion();
 
   useEffect(() => {
     setIntensity(readBgIntensity());
@@ -55,66 +54,18 @@ export default function AmbientBackground() {
 
   return (
     <div aria-hidden className="pointer-events-none fixed inset-0 -z-10 overflow-hidden">
-      <Field
-        rgb={palette.a}
-        alpha={0.95 * k}
-        className="-left-[15%] -top-[20%] h-[85vh] w-[85vh]"
-        x={["0%", "26%", "-8%", "0%"]}
-        y={["0%", "18%", "38%", "0%"]}
-        scale={[1, 1.14, 0.94, 1]}
-        duration={24 * pace}
-        still={still}
-      />
-      <Field
-        rgb={palette.b}
-        alpha={0.8 * k}
-        className="-right-[20%] top-[22%] h-[78vh] w-[78vh]"
-        x={["0%", "-24%", "10%", "0%"]}
-        y={["0%", "-20%", "22%", "0%"]}
-        scale={[1, 0.92, 1.12, 1]}
-        duration={31 * pace}
-        still={still}
-      />
-      <Field
-        rgb={palette.c}
-        alpha={0.66 * k}
-        className="-bottom-[22%] left-[8%] h-[72vh] w-[72vh]"
-        x={["0%", "20%", "-18%", "0%"]}
-        y={["0%", "-26%", "-8%", "0%"]}
-        scale={[1, 1.1, 0.96, 1]}
-        duration={38 * pace}
-        still={still}
-      />
+      {FIELDS.map((f, i) => {
+        const rgb = palette[i];
+        const a = f.alpha * k;
+        const style: CSSProperties = {
+          background: `radial-gradient(circle at ${f.at}, rgba(${rgb},${a.toFixed(3)}) 0%, rgba(${rgb},${(
+            a * 0.5
+          ).toFixed(3)}) 40%, rgba(${rgb},0) 72%)`,
+          animationDuration: `${(f.drift * pace).toFixed(1)}s, ${(f.morph * pace).toFixed(1)}s`,
+          animationDelay: `${i * -7}s, ${i * -4}s`,
+        };
+        return <div key={i} className={`fluid-field ${f.cls}`} style={style} />;
+      })}
     </div>
-  );
-}
-
-/** One drifting colour field. Percent-based travel keeps it visible on any screen. */
-function Field({
-  rgb,
-  alpha,
-  className,
-  x,
-  y,
-  scale,
-  duration,
-  still,
-}: {
-  rgb: string;
-  alpha: number;
-  className: string;
-  x: string[];
-  y: string[];
-  scale: number[];
-  duration: number;
-  still: boolean | null;
-}) {
-  return (
-    <motion.div
-      className={`absolute rounded-full blur-2xl ${className}`}
-      style={{ background: field(rgb, alpha), willChange: "transform" }}
-      animate={still ? undefined : { x, y, scale }}
-      transition={{ duration, repeat: Infinity, ease: "easeInOut", times: [0, 0.34, 0.68, 1] }}
-    />
   );
 }

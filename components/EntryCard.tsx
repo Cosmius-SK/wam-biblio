@@ -61,7 +61,7 @@ export default function EntryCard({
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -8, scale: 0.98 }}
       transition={{ duration: 0.5, delay: Math.min(index * 0.04, 0.3), ease: "easeOut" }}
-      className="group relative rounded-2xl border border-hairline/70 bg-surface/70 p-6 shadow-soft backdrop-blur-sm"
+      className="paper-surface group relative overflow-hidden rounded-2xl border border-hairline/70 bg-surface/85 p-6 shadow-page backdrop-blur-sm"
     >
       {/* The chosen header art leads (writer's pick, else illustration → first
           photo); the local mood-scene stands in for significant entries. */}
