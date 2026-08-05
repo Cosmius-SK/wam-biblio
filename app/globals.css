@@ -285,18 +285,20 @@ body::after {
     background-image: linear-gradient(
       100deg,
       rgb(var(--muted)) 0%,
-      rgb(var(--muted)) 38%,
+      rgb(var(--muted)) 42%,
       rgb(var(--ink)) 50%,
-      rgb(var(--muted)) 62%,
+      rgb(var(--muted)) 58%,
       rgb(var(--muted)) 100%
     );
-    background-size: 260% 100%;
-    background-repeat: no-repeat;
+    background-size: 300% 100%;
+    /* Repeating matters: the text is painted THROUGH this gradient, so any
+       part of the line the gradient doesn't cover would simply vanish. */
+    background-repeat: repeat-x;
     -webkit-background-clip: text;
     background-clip: text;
     -webkit-text-fill-color: transparent;
     color: transparent;
-    animation: textSweep 9s ease-in-out infinite;
+    animation: textSweep 16s ease-in-out infinite;
   }
 
   /* An inked underline that sits under a word like a pen stroke. */
@@ -327,13 +329,17 @@ body::after {
   }
 }
 
+/*
+ * One unhurried pass of light, then a long rest to read in. The start and end
+ * positions are exactly one tile apart, so the loop restarts invisibly.
+ */
 @keyframes textSweep {
   0% {
-    background-position: 130% 0;
+    background-position: 150% 0;
   }
-  55%,
+  45%,
   100% {
-    background-position: -60% 0;
+    background-position: -150% 0;
   }
 }
 

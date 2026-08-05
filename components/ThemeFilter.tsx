@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import type { JournalEntry } from "@/lib/types";
 import { groupByTheme, moodDistribution } from "@/lib/organize";
@@ -36,13 +36,32 @@ export default function ThemeFilter({
 }) {
   const [open, setOpen] = useState(false);
 
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpen(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open]);
+
   if (entries.length === 0) return null;
   const clusters = groupByTheme(entries);
   const moods = moodDistribution(entries);
 
   return (
-    <div>
-      <div className="flex flex-wrap items-center gap-2">
+    <div className="relative">
+      {open && (
+        // Tap anywhere else to put the filter away.
+        <button
+          type="button"
+          aria-hidden
+          tabIndex={-1}
+          onClick={() => setOpen(false)}
+          className="fixed inset-0 z-40 cursor-default"
+        />
+      )}
+      <div className="relative z-50 flex flex-wrap items-center gap-2">
         <button
           type="button"
           onClick={() => setOpen((v) => !v)}
@@ -97,14 +116,17 @@ export default function ThemeFilter({
 
       <AnimatePresence>
         {open && (
+          // Hangs beneath the bar rather than growing inside it: in a fixed,
+          // centred row it would otherwise stretch past the screen edge and
+          // swell upward over its own button, leaving no way to close it.
           <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: "auto", opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.3, ease: "easeOut" }}
-            className="overflow-hidden"
+            initial={{ opacity: 0, y: -6 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -6 }}
+            transition={{ duration: 0.22, ease: "easeOut" }}
+            className="absolute right-0 top-full z-50 mt-3 max-h-[60vh] w-[min(86vw,30rem)] overflow-y-auto overscroll-contain rounded-2xl border border-hairline/60 bg-surface shadow-lift"
           >
-            <div className="mt-3 rounded-2xl border border-hairline/60 bg-surface p-4 shadow-lift">
+            <div className="p-4">
               {moods.length > 0 && (
                 <>
                   <p className="mb-2 text-xs uppercase tracking-wide text-muted/70">Moods</p>
