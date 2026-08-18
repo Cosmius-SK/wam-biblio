@@ -266,6 +266,19 @@ export async function downloadEncrypted(token: string, fileId: string): Promise<
   return new Uint8Array(await res.arrayBuffer());
 }
 
+/** Overwrite an existing appDataFolder JSON file in place. */
+export async function updateAppDataFile(token: string, fileId: string, obj: unknown): Promise<void> {
+  const res = await fetch(
+    `https://www.googleapis.com/upload/drive/v3/files/${fileId}?uploadType=media`,
+    {
+      method: "PATCH",
+      headers: { ...auth(token), "Content-Type": "application/json" },
+      body: JSON.stringify(obj),
+    },
+  );
+  if (!res.ok) throw new Error(`Couldn't update app data (${res.status}).`);
+}
+
 /** Delete a file this app created. Best effort: a file that is already gone,
  * or a Drive that is momentarily unreachable, is not worth surfacing. */
 export async function deleteDriveFile(token: string, fileId: string): Promise<void> {

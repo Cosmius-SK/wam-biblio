@@ -1,9 +1,14 @@
 # Access — the three mechanisms
 
-**Status:** the **door is built** — `/welcome`, `/api/auth/session`, the signed
-session cookie, the Blob-backed allowlist and the device registry, with the
-passcode still working alongside it. **Not built yet:** key wrapping (§2) and
-the recovery phrase (§3), which ship in their own release.
+**Status: built.** The door (`/welcome`, `/api/auth/session`, the signed session
+cookie, the Blob-backed allowlist, the device registry) with the old passcode
+still working alongside it; and key wrapping with the recovery phrase
+(`lib/keyvault.ts`, `lib/recovery.ts`, Settings › Security).
+
+The migration is deliberately unfinished by default: envelopes are written
+**alongside** the plaintext key, and the plaintext is dropped only once a
+*second* device has opened an envelope. Until then a journal reads as
+"protected, still migrating".
 
 All three are set during onboarding, in this order. The order is forced, not
 stylistic: a passcode has to belong to *someone*, so identity must exist first.

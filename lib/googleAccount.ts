@@ -1,16 +1,16 @@
 "use client";
 
 import { db, getSetting, setSetting } from "./db";
-import { generateMediaKey } from "./crypto";
 import {
-  clearCachedToken,
-  createAppDataFile,
-  driveConfigured,
-  findAppDataFile,
-  getAccessToken,
-  getIdentity,
-  readAppDataFile,
-} from "./drive";
+  NEEDS_PASSCODE,
+  loadKeyFile,
+  setPasscode,
+  silentKey,
+  stateOf,
+  unlockWithSecret,
+  type KeyState,
+} from "./keyvault";
+import { clearCachedToken, driveConfigured, getAccessToken, getIdentity } from "./drive";
 import { pullSync, pushSync, type OnSyncProgress } from "./sync";
 import { describeDevice } from "./deviceId";
 
@@ -20,8 +20,6 @@ import { describeDevice } from "./deviceId";
  * ordinary encrypted sync pipeline with that secret. So a second device signs
  * in and its journal reassembles itself, no passphrase to remember.
  */
-const SECRET_FILE = "biblio-sync.json";
-
 export interface Profile {
   sub: string;
   email?: string;
@@ -69,22 +67,41 @@ async function openSessionDoor(token: string): Promise<void> {
   }
 }
 
-/** Recover the account's sync secret from appDataFolder, or mint + store one. */
+/**
+ * The account's sync key, without asking anyone anything.
+ *
+ * Throws NEEDS_PASSCODE when the key is sealed and only the passcode (or the
+ * recovery phrase) can open it — the caller decides whether this is a moment
+ * to interrupt someone. See lib/keyvault.ts.
+ */
 async function ensureSecret(token: string): Promise<string> {
-  const cached = await getSetting("googleSyncSecret");
-  if (cached) return cached;
-  const fileId = await findAppDataFile(token, SECRET_FILE);
-  if (fileId) {
-    const content = await readAppDataFile<{ secret?: string }>(token, fileId);
-    if (content?.secret) {
-      await setSetting("googleSyncSecret", content.secret);
-      return content.secret;
-    }
-  }
-  const secret = generateMediaKey(); // random 256-bit, base64
-  await createAppDataFile(token, SECRET_FILE, { secret });
-  await setSetting("googleSyncSecret", secret);
+  const secret = await silentKey(token);
+  if (!secret) throw new Error(NEEDS_PASSCODE);
   return secret;
+}
+
+/** Is this journal sealed, in the clear, or mid-migration? */
+export async function keyState(): Promise<KeyState | "unknown"> {
+  try {
+    const token = await getAccessToken(false);
+    const { file } = await loadKeyFile(token);
+    return stateOf(file);
+  } catch {
+    return "unknown";
+  }
+}
+
+/** Seal the journal with a passcode; returns the new recovery phrase. */
+export async function protectWithPasscode(passcode: string): Promise<string> {
+  const token = await getAccessToken(true);
+  return setPasscode(token, passcode);
+}
+
+/** Open a sealed journal on this device with a passcode or recovery phrase. */
+export async function unlockHere(phrase: string): Promise<boolean> {
+  const token = await getAccessToken(true);
+  const secret = await unlockWithSecret(token, phrase);
+  return !!secret;
 }
 
 /**
@@ -129,7 +146,11 @@ export async function signInWithGoogle(
     await pushSync(secret, onProgress);
     await setSetting("lastSyncAt", String(Date.now()));
   } catch (e) {
-    syncError = e instanceof Error ? e.message : "Sync couldn't start yet.";
+    const message = e instanceof Error ? e.message : "Sync couldn't start yet.";
+    syncError =
+      message === NEEDS_PASSCODE
+        ? "This journal is protected by a passcode — enter it in Settings › Security to open it here."
+        : message;
   }
   return { profile, syncError };
 }
@@ -181,9 +202,12 @@ export async function syncNow(onProgress?: OnSyncProgress): Promise<void> {
   let secret: string;
   try {
     secret = await requireSecret(true);
-  } catch {
+  } catch (e) {
+    const message = e instanceof Error ? e.message : "";
     throw new Error(
-      "This device hasn't finished sync setup — its key is missing. Sign out and sign in again to link it.",
+      message === NEEDS_PASSCODE
+        ? "This journal is protected by a passcode — enter it in Settings › Security to open it here."
+        : "This device hasn't finished sync setup — its key is missing. Sign out and sign in again to link it.",
     );
   }
   await pullSync(secret, onProgress);

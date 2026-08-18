@@ -20,6 +20,52 @@ Newest first. Dates are the day the work landed.
 
 ---
 
+## 0.9.0 — 18 August 2026
+
+### What's new
+
+- **A passcode that actually seals your journal.** Settings › Security → *Protect
+  my journal*. Until now, anyone who got into your Google account could have read
+  everything; now it takes your Google account **and** your passcode together.
+- **A six-word recovery phrase**, shown once when you set the passcode. It is the
+  only other way in — and the screen says so plainly, before you set it rather
+  than after you've lost it.
+- **Opening your journal on a new device** asks for the passcode, or the phrase
+  if that's what you have.
+- **Nobody can undo a forgotten passcode.** Not the person who built this. That's
+  the trade for "not even the host can read it", and it's stated where it can be
+  acted on.
+
+### Under the hood
+
+- `lib/keyvault.ts`: the sync key `K` is no longer stored. It is kept as
+  *envelopes* — the same key sealed under the passcode and under the recovery
+  phrase — so any one of them yields the same key. Reuses `encryptJSON` /
+  `decryptJSON` unchanged.
+- No passcode hash is stored anywhere, on any server. A wrong passcode fails as
+  an AES-GCM authentication failure, so being right proves itself.
+- **The migration writes envelopes alongside the plaintext, never over it.** The
+  plaintext is dropped automatically only after a device that did *not* write
+  the envelopes has opened one — proof before removal, because every other
+  mistake here costs a redeploy and this one costs the journal.
+- A fresh phrase is minted whenever the passcode changes: the old one has just
+  been typed into a screen someone may have been standing behind.
+- `lib/recovery.ts` holds the wordlist. The phrase is used as a passphrase
+  string and never decoded to bits, so the list can change later without
+  invalidating a single existing phrase.
+
+### Notes
+
+- Existing journals keep working untouched. Sealing happens when you set a
+  passcode, not before.
+- While migrating, Settings › Security offers **"Check my passcode works on this
+  device"** — run it on a *second* device to retire the old unsealed key.
+- There is deliberately **no reset by email or Google**. It would hand the
+  journal back to whoever took the Google account, and the sealing would have
+  bought nothing.
+
+---
+
 ## 0.8.0 — 18 August 2026
 
 ### What's new
