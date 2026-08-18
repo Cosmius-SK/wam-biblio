@@ -94,6 +94,38 @@ Rules across all of them:
 before a journal has any honest pattern in it. That number means nothing outside
 a journal, which is exactly why it lives in `lib/mayaLines.ts` and not here.
 
+## Personalisation — memory, not training
+
+**Decided: memory plus a small local model. Not a fine-tune.**
+
+What makes her feel alive is not her phrasing — it is **when she chooses to say
+nothing**. That lives in threshold logic, not in language, so training would not
+touch it. And a fine-tune could only learn from lines we wrote: it buys
+consistency and cheaper calls, never new capability.
+
+"Knows me" is **memory**, and memory is state:
+
+- what to call them, and their rhythms
+- what she has already said, so she does not repeat
+- what they have declined, so she does not ask twice
+- milestones passed
+
+Kept **on the device**, never synced, never uploaded. This is also what makes
+one Maya across several projects affordable: the character is this file, the
+personalisation is local state, and neither needs a hosted model.
+
+Three tiers for her words, each with a clear job:
+
+| | Role |
+|---|---|
+| **Handwritten pools** | the floor — always works, offline, free |
+| **Small on-device model** | variety and phrasing; private by construction |
+| **Frontier model** | the rare moment that genuinely matters |
+
+The same escalation shape the journal already uses for shaping entries. The
+local tier is a privacy win first and a cost win second; it is never required
+for her to function.
+
 ## Implementation shape
 
 ```
