@@ -10,10 +10,10 @@ testing — which community is still an open question.
 
 ## What breaks first, in order
 
-1. **The allowlist.** An env var and a redeploy per person stops being sane
-   somewhere around fifteen. Needs invite links or self-serve sign-up with
-   approval — the first thing that genuinely requires a **user store** rather
-   than a list.
+1. **The allowlist.** Adding people one at a time from the owner view stops
+   being sane somewhere around fifteen, even without a redeploy. Needs invite
+   links or self-serve sign-up with approval — the first thing that genuinely
+   requires a **user store** rather than a list.
 2. **Google's Testing mode caps at 100 users.** Past that the app must be
    published and pass Google's verification review — a privacy policy, a
    homepage, and a wait measured in weeks. **Start this early; it is the longest

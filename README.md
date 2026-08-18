@@ -10,7 +10,10 @@ AI feature has a free local "sample" preview, so nothing bills until you opt in.
 
 ## What it does
 
-- **Capture** — speak (on‑device transcription) or type a messy thought.
+- **Capture** — speak or type a messy thought. (Dictation currently uses the
+  browser's own speech service, which sends audio to the platform vendor;
+  private on‑device transcription is planned — see
+  [docs/user-management/onboarding.md](docs/user-management/onboarding.md).)
 - **Shape** — Claude rewrites it into a coherent first‑person entry (you review &
   accept), and extracts mood, themes, and entities.
 - **Self‑organize** — a Themes view groups your entries by mood/theme; a "state of

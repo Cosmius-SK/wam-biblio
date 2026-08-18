@@ -14,39 +14,37 @@ has already told us something.
 | | Decision |
 |---|---|
 | **Cost** | Shiva's API accounts, with a **hard daily cap per person** |
-| **Login** | Their own Google accounts — no passcode, nothing to remember |
-| **Privacy** | Metadata for insight, **never their words** |
+| **Login** | Their own Google accounts — identity that survives upgrades |
+| **Passcode** | Kept, per person, set at first login — it **wraps the key** |
+| **Biometric** | Offered as a choice during onboarding, per device |
+| **Live AI** | **On by default** — so the disclosure moves into onboarding |
+| **Privacy** | Two metrics only: entries written, time spent |
 | **Guiding** | A first-run walkthrough, with **Maya as the face** of it |
 | **Listening** | A place to send thoughts back, **also Maya** |
 
+The detail lives in its own files, because these outgrew a section each:
+
+- [**access.md**](./access.md) — Google, passcode, biometric; key wrapping; forgetting it
+- [**onboarding.md**](./onboarding.md) — all of it stitched into one sequence
+- [**privacy.md**](./privacy.md) — the line, drawn precisely
+- [**devices-and-deletion.md**](./devices-and-deletion.md) — the registry, and the four radii
+
 ---
 
-## 1. Identity and access — Google sign-in becomes the door
+## 1. Identity and access
 
-Today the door is a shared passcode (`APP_PASSCODE`, `middleware.ts`,
-`lib/auth.ts`) and Google sign-in sits *behind* it, only for sync. For two
-non-technical people that's one secret too many, and it identifies nobody.
+Google sign-in becomes the door; the shared `APP_PASSCODE` retires. The
+**per-person passcode stays**, but with a different job — it wraps the sync key
+rather than gating the server. Full design in [access.md](./access.md).
 
-**Signing in with Google becomes the way in**, and the passcode retires.
+The **allowlist lives in the Blob store** (`users/allowed.json`), not an env
+var. Adding someone is a tap in the owner view, not a redeploy. This matters
+more than it sounds: env-var-per-person is hardcoding by another name, and it
+scales to about nobody.
 
-- An **allowlist** of Google accounts (env: `ALLOWED_USERS="shiva@…,…,…"`).
-  Adding or removing someone is one line and a redeploy.
-- The client already gets a Google access token
-  (`lib/drive.ts` → `getAccessToken`). It posts that once to
-  **`/api/auth/session`**, which verifies it with Google, checks the allowlist,
-  and sets a **signed, HttpOnly session cookie** carrying `{ sub, email, name }`.
-- `middleware.ts` validates that cookie instead of the passcode. Every API route
-  can now answer *"who is asking?"* — which is what makes per-person caps and
-  per-person insights possible at all.
-- Verifying once and trusting our own cookie (rather than calling Google on
-  every request) keeps the AI routes fast.
-
-Someone not on the list gets a warm dead end, not a stack trace: *"biblio isn't
-open yet — ask Shiva."*
-
-**Console note:** each of them must be a **Test user** on the OAuth consent
-screen or Google blocks sign-in outright. They'll click past an "unverified app"
-warning once. At two or three people this is a non-issue; the 100-user cap
+**Console note:** each person must be a **Test user** on the OAuth consent
+screen or Google blocks sign-in outright. They will click past an "unverified
+app" warning once. At two or three people this is a non-issue; the 100-user cap
 belongs to the mid-term doc.
 
 ## 2. Cost — his accounts, capped per person per day
@@ -59,15 +57,15 @@ Sonnet; Ask/Reflect ≈ **1¢**; **an illustration ≈ 4¢.**
 Two layers, because one of them must not depend on our own code being correct:
 
 **Wallet backstops (no code, do first).** A separate Anthropic workspace + key
-for this, with a **monthly spend limit**; and a Google Cloud **quota cap** on
-Generative Language requests/day. Hard stops nothing can code around.
+with a **monthly spend limit**; and a Google Cloud **quota cap** on Generative
+Language requests/day. Hard stops nothing can code around.
 
-**Per-person caps (`lib/users/limits.ts`).** Counters in the Vercel Blob store
-already connected — `meter/<date>/<sub>.json` → `{ calls, images, costUsd }`.
-Checked before the model call, recorded after using the real token usage the
-routes already return (reuse `estimateCost`). Wired into all four AI routes.
+**Per-person caps (`lib/users/limits.ts`).** Counters in the Blob store —
+`meter/<date>/<sub>.json` → `{ calls, images, costUsd }`. Checked before the
+model call, recorded after using the real token usage the routes already return
+(reuse `estimateCost`). Wired into all four AI routes.
 
-Suggested opening numbers — generous enough never to be felt:
+**Agreed numbers:**
 
 | Limit | Value | Worst case |
 |---|---|---|
@@ -79,91 +77,78 @@ Hitting a cap must never feel like a failure. It reuses the existing
 `{ error, code, hint }` shape the UI already renders, in Maya's voice:
 *"That's all the drawing I can do today — it comes back tomorrow."*
 
-## 3. Privacy — the line, drawn precisely
+## 3. Server-side AI call logging
 
-**They own their words. Shiva owns the numbers.**
+The current ledger (`ailog`, `lib/usage.ts`) is **client-side and records only
+successes**. That is why the unexplained Gemini traffic — calls that 400'd and
+never came back — has been invisible.
 
-**Collected** (`lib/insights/`) — structural facts only:
+Log every outbound model call server-side, including failures:
+`{ route, model, sub, status, tokens }`. It names that class of problem in one
+look, and gives the per-person metering for free. Same work, much better return.
 
-- counts: entries, words *counted not stored*, photos, illustrations
-- choices: which AI mode (deep / rephrase / none), timeline vs book, filter used
-- rhythm: days active, time of day, session length, return on day 1 / 7 / 30
-- surface: platform, browser, screen size, installed to home screen or not
-- Maya: voice on or off, frequency, whether the tour was finished
-- health: errors, with the screen they happened on
-- cost: spend per person per day
+**Settle this before anyone is invited.** More users means more noise in exactly
+the signal needed to find it.
 
-**Never collected — not now, not "just for debugging":**
+## 4. Privacy
 
-- entry text, titles, summaries, raw thoughts, photos
-- questions asked of the journal, or any AI output
-- **moods and themes** — these look like metadata but they are *derived from
-  content*. "grief", "divorce", "quietly triumphant" would tell Shiva more
-  about his wife's week than any paragraph. They stay out.
+Two metrics: **entries written** and **time spent**. Everything else parked
+until the group passes ten. Full model, including what is never collected and
+the dormant smiley flag, in [privacy.md](./privacy.md).
 
-Two things make the promise real rather than stated:
+## 5. Maya shows them around
 
-1. **A page that shows them everything held about them** — Settings › Privacy,
-   listing the actual collected record, with a button to stop collection.
-2. **Their journal is end-to-end encrypted anyway.** Even the deployment owner
-   sees only ciphertext (`lib/sync.ts`). The privacy promise is enforced by
-   architecture, not goodwill — worth saying to them in exactly those words.
+See [onboarding.md](./onboarding.md) for the full sequence. Her character
+definition — portable across projects — is [docs/maya/character.md](../maya/character.md).
 
-## 4. Maya shows them around
+## 6. Maya listens back
 
-The single highest-value thing for two people who have never seen this app.
-Maya narrates; nothing is a wall of text.
-
-**Act 1 — Hello** (three or four full-screen cards): who she is, what biblio is
-for, and the privacy promise in plain words.
-
-**Act 2 — The room** (spotlight coach-marks on the real screen): the 💭 button,
-the three tabs, filter and view, where settings live.
-
-**Act 3 — The first sentence** (on the capture screen): what the three AI modes
-mean, in her words, and then out of the way while they write.
-
-Rules: skippable at any point, resumable where they left it, and repeatable from
-Settings (*"Maya, show me around again"*). Progress in the local store, so it
-never repeats itself uninvited.
-
-**Her voice during the tour:** text first, with an invitation — *"I can read this
-aloud, if you'd like."* Speech that starts unasked on someone's first minute is
-startling, and iOS blocks it before a gesture anyway (`lib/maya.ts` → `prime`).
-
-## 5. Maya listens back
-
-A place for them to say how it's going — because these two will tell Shiva the
+A place for them to say how it is going — because these two will tell Shiva the
 truth, and a Google Form would waste that.
 
 - Maya asks **one gentle question at a time**, timed rather than nagging: after
-  the first entry, after three days, after two weeks. *"Has anything felt
-  awkward?"* — one question, a text box, send.
+  the first entry, after three days, after two weeks.
 - Also reachable whenever they want: Settings › **Tell Maya**.
 - The answer posts to `/api/feedback` → `feedback/<sub>/<timestamp>.json`.
 
-**The boundary must be unmistakable.** The journal is never read; this is written
-*to Shiva* deliberately. The screen says so in as many words, every time —
-different colour, different framing, no ambiguity. Getting this wrong would
-poison the trust that makes the rest work.
+**The boundary must be unmistakable.** The journal is never read; this is
+written *to Shiva* deliberately. The screen says so in as many words, every
+time — different colour, different framing, no ambiguity.
 
-## 6. What Shiva sees
+## 7. What Shiva sees
 
-An owner-only view at `/insights`, gated to his own Google `sub`: who's active,
-entries written, features used, retention, spend per person, errors, and the
-feedback they've sent. Numbers and their volunteered words — nothing else,
-because nothing else exists.
+An owner-only view at `/insights`, gated to his own Google `sub`: who is active,
+entries written, time spent, spend per person, errors, and the feedback they
+have sent. Numbers and their volunteered words — nothing else, because nothing
+else exists.
 
 ---
+
+## Foundations this rests on
+
+Two app-wide systems are prerequisites, not extras:
+
+- [**sessions.md**](../sessions.md) — the app lock, Maya's nudge and "time
+  spent" all sit on one session module. Build it first; it is small.
+- [**drafts.md**](../drafts.md) — draft persistence is a **prerequisite for the
+  idle lock**. A lock that closes the app is only humane if nothing is lost.
+
+And one that changes how every future release is built:
+
+- [**releases.md**](../releases.md) — there is no service worker today, so no
+  offline and no update control. Adding one gets both.
 
 ## Proposed structure
 
 ```
 lib/users/
   session.ts        sign + verify the session cookie
-  allowlist.ts      who may come in
+  allowlist.ts      who may come in (Blob-backed)
   identity.ts       Google access token → verified profile
   limits.ts         per-person daily caps, counters in Blob
+  devices.ts        the device registry
+lib/session.ts      attended-use sessions (app-wide)
+lib/drafts.ts       the single draft, persisted and synced
 lib/insights/
   schema.ts         the exact shape collected — the privacy contract, in code
   collect.ts        client-side recording (numbers only)
@@ -171,40 +156,55 @@ app/api/auth/session/route.ts
 app/api/insights/route.ts
 app/api/feedback/route.ts
 app/(owner)/insights/page.tsx
-components/tour/
-  Tour.tsx  Spotlight.tsx  steps.ts
+components/tour/    Tour.tsx  Spotlight.tsx  steps.ts
 components/MayaAsk.tsx      her feedback surface
 app/settings/privacy/page.tsx
+app/settings/devices/page.tsx
 ```
 
-Reuses rather than rebuilds: `lib/maya.ts` (voice, presence, ducking),
-`lib/mayaLines.ts` (her register), `lib/format.ts` → `estimateCost`,
-`lib/blobStore.ts` (private/public-aware storage), the existing
+Reuses rather than rebuilds: `lib/maya.ts`, `lib/mayaLines.ts`,
+`lib/crypto.ts` (`encryptJSON`/`decryptJSON` carry the key wrapping unchanged),
+`lib/format.ts` → `estimateCost`, `lib/blobStore.ts`, and the existing
 `{ error, code, hint }` error contract.
 
 ## Build order
 
-1. **Wallet backstops** and the Google console test users — no code.
-2. **Session + allowlist**, retiring the passcode.
-3. **Per-person caps** in the four AI routes.
-4. **Insights + the privacy page** — the schema first, so the contract is
-   written down before anything collects anything.
-5. **Maya's tour.**
-6. **Maya's feedback space** + the owner view.
+1. **Wallet backstops** and Google console test users — no code.
+2. **Server-side AI logging**, and settle the Gemini traffic.
+3. **`lib/session.ts`** — everything else leans on it.
+4. **Drafts** — on top of sessions, and required before the lock.
+5. **Session + allowlist + device registry**, retiring the shared passcode.
+6. **Key wrapping v2** and the recovery phrase, with Shiva's own migration first.
+7. **Per-person caps** in the four AI routes.
+8. **Service worker**, version stamp, what's-new card.
+9. **Insights + the privacy page** — schema first, so the contract is written
+   down before anything collects anything.
+10. **Maya's tour**, then her feedback space and the owner view.
 
-Steps 1–3 are what must exist before anyone signs in. Steps 4–6 are what make
-the round worth running.
+Steps 1–7 are what must exist before anyone signs in. The rest is what makes the
+round worth running.
 
 ## Verification
 
 - A non-allowlisted Google account gets the warm dead end, not an error.
 - Sign in as each of them: session cookie set, entries save, sync works.
+- **Second device:** sign in, enter the same passcode, journal reassembles.
+- **Forgot passcode:** change it from an unlocked device; and separately, from
+  the recovery phrase alone on a fresh browser.
 - Set `USER_DAILY_USD=0.01`, shape twice — the second is refused, in Maya's
   voice, with the UI rendering the `hint`.
 - Set `USER_DAILY_IMAGES=1`, illustrate twice — second refused.
 - `meter/<date>/<sub>.json` matches Settings › AI › Usage.
+- **Draft:** type, background the app, force-quit, reopen — the words are there.
+  Start on one device, finish on another. Attach a photo on the phone and see it
+  on the laptop.
+- **Idle:** Maya asks; answering keeps the session; silence closes it with the
+  draft intact.
 - **Privacy audit:** write an entry with a distinctive word, then grep the whole
-  insights store for it. It must not be there — nor its mood, nor its themes.
+  insights store for it. It must not be there — nor its mood, nor its themes,
+  nor which smiley was tapped.
+- **Deletion:** each of the four radii does what it says, and "delete
+  everything" reports devices it could not reach.
 - Fresh account: the tour runs once, survives a reload mid-way, and does not
   return after finishing.
 - Feedback from a tester's account appears in `/insights`, and `/insights` is a
