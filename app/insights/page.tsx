@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { blobToken, listPrefix, readSyncJson } from "@/lib/blobStore";
+import { agoLabel } from "@/lib/format";
 import { currentUser } from "@/lib/users/limits";
 import { ownerEmail } from "@/lib/users/allowlist";
 
@@ -17,6 +18,25 @@ interface Row {
   date: string;
   entries: number;
   activeMinutes: number;
+}
+
+interface Message {
+  at: number;
+  from?: { email?: string | null; name?: string | null };
+  prompt?: string | null;
+  message: string;
+  context?: { version?: string; device?: string } | null;
+}
+
+/** What people chose to say. The only words on this page, and volunteered. */
+async function messages(): Promise<Message[]> {
+  const token = blobToken();
+  if (!token) return [];
+  const files = await listPrefix("feedback/", token).catch(() => []);
+  const all = await Promise.all(
+    files.slice(0, 200).map((f) => readSyncJson(f.url, token).catch(() => null)),
+  );
+  return (all.filter(Boolean) as Message[]).sort((a, b) => (b.at ?? 0) - (a.at ?? 0));
 }
 
 async function gather(): Promise<Row[]> {
@@ -57,7 +77,7 @@ export default async function InsightsPage() {
   const owner = ownerEmail();
   if (!user || !owner || user.email?.toLowerCase() !== owner) notFound();
 
-  const rows = await gather();
+  const [rows, notes] = await Promise.all([gather(), messages()]);
   const people = [...new Set(rows.map((r) => r.sub))];
 
   return (
@@ -93,9 +113,38 @@ export default async function InsightsPage() {
         </>
       )}
 
-      <p className="mt-8 text-xs leading-relaxed text-muted/70">
-        People are shown by the last characters of their Google id, not their name or
-        address. Whether that is enough distance is worth revisiting if this ever grows.
+      <h2 className="mt-12 font-serif text-2xl text-ink">What people said</h2>
+      <p className="mt-1 text-sm text-muted">
+        Written to you deliberately. This is the only place anyone&rsquo;s words appear.
+      </p>
+
+      {notes.length === 0 ? (
+        <p className="mt-4 text-sm text-muted">Nothing yet.</p>
+      ) : (
+        <ul className="mt-4 space-y-3">
+          {notes.map((m) => (
+            <li
+              key={m.at}
+              className="rounded-2xl border-2 border-terracotta/25 bg-surface/60 p-5"
+            >
+              <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1 text-xs text-muted">
+                <span className="text-ink/80">{m.from?.name || m.from?.email || "someone"}</span>
+                <span>{agoLabel(m.at)}</span>
+                {m.context?.version && <span>v{m.context.version}</span>}
+                {m.context?.device && <span>{m.context.device}</span>}
+              </div>
+              {m.prompt && <p className="mt-2 text-xs italic text-muted/80">{m.prompt}</p>}
+              <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-ink/90">
+                {m.message}
+              </p>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      <p className="mt-10 text-xs leading-relaxed text-muted/70">
+        People are shown by the last characters of their Google id in the numbers above, not
+        their name or address. Names appear only on messages they chose to send you.
       </p>
     </main>
   );

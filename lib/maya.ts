@@ -21,7 +21,8 @@ export type MayaMoment =
   | "shaping"
   | "empty"
   | "presence"
-  | "nudge";
+  | "nudge"
+  | "invite";
 
 export interface MayaLine {
   id: number;
@@ -201,6 +202,33 @@ class Maya {
   /** Whether a question is currently waiting on an answer. */
   awaitingAnswer(): boolean {
     return this.answered !== null;
+  }
+
+  /**
+   * Offer something that opens elsewhere — her feedback question.
+   *
+   * Unlike `ask`, silence here is a complete answer and nothing happens on it:
+   * she made an offer, it wasn't taken, and that is the end of it. Kept
+   * distinct from the presence check so ordinary interaction can never
+   * accidentally accept an invitation.
+   */
+  invite(text: string, label: string, onAccept: () => void, hold = 20000): void {
+    if (this.frequency() === "silent") return;
+    if (this.hideTimer !== null) window.clearTimeout(this.hideTimer);
+    this.answered = () => onAccept();
+    this.unanswered = null;
+    this.current = { id: this.nextId++, text, moment: "invite", answers: [label] };
+    this.emit();
+    this.speak(text);
+    this.hideTimer = window.setTimeout(() => {
+      this.answered = null;
+      this.dismiss();
+    }, hold);
+  }
+
+  /** What she is in the middle of, if anything. */
+  moment(): MayaMoment | null {
+    return this.current?.moment ?? null;
   }
 
   /**

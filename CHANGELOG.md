@@ -20,6 +20,45 @@ Newest first. Dates are the day the work landed.
 
 ---
 
+## 0.13.0 — 18 August 2026
+
+### What's new
+
+- **Tell Maya.** A place to say what's annoying, confusing, broken or missing —
+  Settings › Tell Maya, whenever you like.
+- **She asks three times, ever.** After your first entry, after three days, and
+  after two weeks. One question each, never the same one twice, and ignoring her
+  is a complete answer — the question simply isn't asked again.
+- **It is unmistakably different from writing a journal entry.** Different
+  colour, different type, and a sentence at the top of every single one:
+  *whatever you write here is sent, and they will read it. Nothing else you
+  write in biblio ever is.*
+- **You can see what goes with it.** The version and device are shown, and you
+  can untick them.
+
+### Under the hood
+
+- `lib/feedback.ts` holds the three prompts and the once-only bookkeeping;
+  timing is anchored to the first entry and offered at the start of a visit, so
+  it arrives when someone is already here rather than interrupting them into
+  being here.
+- `maya.invite()` is deliberately distinct from `maya.ask()`: an invitation must
+  be taken on purpose, so ordinary interaction can never accidentally accept one
+  the way it answers a presence check.
+- `/api/feedback` writes to `feedback/<sub>/<timestamp>.json` — a separate route
+  and a separate store from anything journal-shaped. Nothing from a journal can
+  reach this path, and nothing on this path is confused with a journal.
+- `/insights` gains a messages section. It is the only place in the whole
+  deployment where anyone's words appear, and they are there because they were
+  sent deliberately.
+
+### Notes
+
+- Set `NEXT_PUBLIC_OWNER_NAME` so the box can say who it goes to by name.
+  Without it, it says so generically rather than pretending nobody reads it.
+
+---
+
 ## 0.12.0 — 18 August 2026
 
 ### What's new

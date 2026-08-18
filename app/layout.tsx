@@ -9,6 +9,7 @@ import AutoSync from "@/components/AutoSync";
 import SessionTracker from "@/components/SessionTracker";
 import Updates from "@/components/Updates";
 import Tour from "@/components/tour/Tour";
+import FeedbackInvite from "@/components/FeedbackInvite";
 import DraftDot from "@/components/DraftDot";
 import BioLock from "@/components/BioLock";
 import Footer from "@/components/Footer";
@@ -60,6 +61,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <SessionTracker />
         <Updates />
         <Tour />
+        <FeedbackInvite />
         <BioLock />
         <header className="fixed inset-x-0 top-0 z-40 h-16 backdrop-blur-md">
           {/* A quiet heartbeat along the header's edge. */}

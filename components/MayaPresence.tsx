@@ -105,7 +105,9 @@ export default function MayaPresence() {
 
     // Any sign of life answers her, not only a tap on the words.
     const stopPresent = onPresent(() => {
-      if (maya.awaitingAnswer()) maya.answer();
+      // Only the presence check is answered by simply being alive. An
+      // invitation has to be taken deliberately.
+      if (maya.awaitingAnswer() && maya.moment() === "presence") maya.answer();
     });
 
     return () => {

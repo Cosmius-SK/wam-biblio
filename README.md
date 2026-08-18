@@ -107,6 +107,7 @@ sample entries"** to explore. Use Chrome/Edge/Safari for voice capture.
 | `USER_DAILY_USD` | no | Per‑person daily AI spend cap (default `0.30`). `0` disables. |
 | `USER_DAILY_IMAGES` | no | Per‑person daily illustrations (default `5`). `0` disables. |
 | `GLOBAL_DAILY_USD` | no | Whole‑deployment daily breaker (default `2.00`). `0` disables. |
+| `NEXT_PUBLIC_OWNER_NAME` | no | Who "Tell Maya" says messages go to. Defaults to a generic phrase. |
 
 ## Access gate — two doors
 

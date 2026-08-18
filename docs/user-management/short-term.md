@@ -111,6 +111,9 @@ definition — portable across projects — is [docs/maya/character.md](../maya/
 
 ## 6. Maya listens back
 
+**Status: built** — `lib/feedback.ts`, `components/TellMaya.tsx`,
+`/api/feedback`, Settings › Tell Maya, and the messages section of `/insights`.
+
 A place for them to say how it is going — because these two will tell Shiva the
 truth, and a Google Form would waste that.
 

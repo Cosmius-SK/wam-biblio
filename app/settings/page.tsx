@@ -16,6 +16,7 @@ const SECTIONS: { href: string; title: string; desc: string }[] = [
   { href: "/settings/security", title: "Security", desc: "App lock with Face ID / fingerprint." },
   { href: "/settings/devices", title: "Devices", desc: "What holds a copy of your journal." },
   { href: "/settings/privacy", title: "Privacy", desc: "What is known about you, and what never is." },
+  { href: "/settings/feedback", title: "Tell Maya", desc: "Say what's working and what isn't." },
   {
     href: "/settings/appearance",
     title: "Appearance & sound",
