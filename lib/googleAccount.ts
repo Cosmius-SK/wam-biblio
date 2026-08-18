@@ -12,6 +12,7 @@ import {
   readAppDataFile,
 } from "./drive";
 import { pullSync, pushSync, type OnSyncProgress } from "./sync";
+import { describeDevice } from "./deviceId";
 
 /**
  * Google-account sync (Option B). Signing in recovers — or creates — a random
@@ -49,6 +50,23 @@ export async function getProfile(): Promise<Profile | null> {
 export async function lastSyncedAt(): Promise<number | null> {
   const v = await getSetting("lastSyncAt");
   return v ? Number(v) : null;
+}
+
+/**
+ * Tell the server who just signed in, so it can issue a session cookie and
+ * register this device. Best effort on purpose: while both doors are open, a
+ * closed or unconfigured session door must never break sync sign-in.
+ */
+async function openSessionDoor(token: string): Promise<void> {
+  try {
+    await fetch("/api/auth/session", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ token, device: describeDevice() }),
+    });
+  } catch {
+    /* the passcode door is still there */
+  }
 }
 
 /** Recover the account's sync secret from appDataFolder, or mint + store one. */
@@ -98,6 +116,7 @@ export async function signInWithGoogle(
   await setSetting("googleConnected", "1");
   await setSetting("driveConnected", "1"); // photos work under the same grant
   if (id.name && !(await getSetting("displayName"))) await setSetting("displayName", id.name);
+  await openSessionDoor(token);
 
   // Sign-in has succeeded here. Key recovery and the first sync can still fail
   // (e.g. no Blob store yet, or a transient Drive error) without undoing the
@@ -117,6 +136,11 @@ export async function signInWithGoogle(
 
 /** Forget the account on this device (keeps the Drive key file for re-sign-in). */
 export async function signOutGoogle(): Promise<void> {
+  try {
+    await fetch("/api/auth/session", { method: "DELETE" });
+  } catch {
+    /* the cookie will expire on its own */
+  }
   await setSetting("googleConnected", "0");
   await setSetting("googleProfile", "");
   await setSetting("googleSyncSecret", "");

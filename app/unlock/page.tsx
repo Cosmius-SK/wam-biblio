@@ -1,6 +1,7 @@
 "use client";
 
 import { Suspense, useState } from "react";
+import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
 
@@ -66,6 +67,14 @@ function UnlockCard() {
       >
         {busy ? "Opening…" : "Come in"}
       </button>
+
+      <p className="mt-5 text-xs text-muted/80">
+        Been invited?{" "}
+        <Link href="/welcome" className="text-lavender underline-offset-2 hover:underline">
+          Sign in with Google
+        </Link>
+        .
+      </p>
     </motion.form>
   );
 }

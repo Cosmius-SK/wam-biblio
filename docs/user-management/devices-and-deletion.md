@@ -1,5 +1,9 @@
 # Devices and deletion
 
+**Status:** the **registry is built** (`lib/users/devices.ts`,
+Settings › Devices) — listing, renaming, disconnecting. **Deletion is not**:
+none of the four radii below exist yet.
+
 These are one topic. **Deletion is the same operation at four radii**, and the
 radius only means something once devices are visible.
 

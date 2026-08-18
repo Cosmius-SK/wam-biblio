@@ -101,12 +101,27 @@ sample entries"** to explore. Use Chrome/Edge/Safari for voice capture.
 | `APP_PASSCODE` | no | Set to lock the public URL. Unset → gate is off. |
 | `BLOB_READ_WRITE_TOKEN` | for sync | Auto‑added when you connect a Vercel Blob store. |
 | `NEXT_PUBLIC_GOOGLE_CLIENT_ID` | for photos | OAuth Web client ID for Drive photo attachments (an identifier, not a secret). |
+| `AUTH_SECRET` | for sign‑in | Signs the session cookie. Falls back to `APP_PASSCODE`; with neither, Google sign‑in is off. |
+| `ALLOWED_USERS` | for sign‑in | Comma‑separated emails allowed in. Seeds the list; after that, manage it in the app. |
+| `OWNER_EMAIL` | no | Always allowed in, and the future owner‑only views. |
 
-## Access gate (passcode)
+## Access gate — two doors
 
-Set `APP_PASSCODE` to require a passcode. `middleware.ts` then gates every page
+**Passcode.** Set `APP_PASSCODE` to require one. `middleware.ts` gates every page
 and the spend‑capable API routes; visitors get the `/unlock` screen. The auth
 cookie stores a derived token, not the passcode. Unset → no gate (fail‑open).
+
+**Sign in with Google.** Set `AUTH_SECRET` and list at least one address in
+`ALLOWED_USERS`, and `/welcome` offers a door that identifies *who* is asking —
+which is what per‑person limits and a device list need. `/api/auth/session`
+verifies the token with Google, checks the list, and sets a signed HttpOnly
+cookie.
+
+Both doors stay open. The passcode is not removed in the same release that adds
+sign‑in: if the new door were broken in production, nobody could fix it from
+inside an app the middleware is blocking. With no allowlist configured the
+Google door stays shut, so turning it on is always deliberate. See
+`docs/releases.md`, "Cutovers".
 
 ## Encrypted sync
 

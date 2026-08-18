@@ -20,6 +20,52 @@ Newest first. Dates are the day the work landed.
 
 ---
 
+## 0.7.0 — 18 August 2026
+
+### What's new
+
+- **Sign in with Google.** There's now a proper front door at `/welcome`. Your
+  Google account is how biblio knows which journal is yours — no shared secret,
+  nothing to remember, and it stays yours across future versions.
+- **Your passcode still works.** Nothing has been taken away; both ways in are
+  open.
+- **See your devices.** Settings › Devices lists everything you've signed in on
+  and when each was last used. You can rename them, and disconnect one you no
+  longer have.
+- **Honest about what disconnecting does.** It stops that device syncing and
+  asks it to clear itself next time it's opened. It cannot reach a phone that's
+  switched off or never opened again — the screen says so, in those words.
+
+### Under the hood
+
+- `lib/users/session.ts` signs an HttpOnly cookie with Web Crypto HMAC, so the
+  Edge middleware can verify it without a Node dependency or a round trip to
+  Google on every request.
+- `/api/auth/session` verifies the access token with Google once, checks the
+  allowlist, registers the device and issues the cookie.
+- The allowlist lives in the Blob store (`users/allowed.json`) with
+  `ALLOWED_USERS` as a first-deploy seed — people are not deployment secrets.
+- **Both doors open at once, on purpose.** The passcode is not removed in the
+  release that adds sign-in; see `docs/releases.md`, "Cutovers".
+- With no allowlist configured the Google door stays shut, so enabling it is
+  always a deliberate act rather than a side effect of deploying.
+
+### Fixed
+
+- **Drafts could not actually sync.** The sync API only accepted record types
+  `e`, `p`, `r` and `k`, so every draft push was rejected with a 400 the client
+  never showed. Drafts saved locally but never left the device.
+
+### Notes
+
+- Two new environment variables: `AUTH_SECRET` (falls back to `APP_PASSCODE`)
+  and `ALLOWED_USERS`. Without them, sign-in simply isn't offered and everything
+  behaves exactly as before.
+- Everyone signing in must also be a **Test user** on the Google OAuth consent
+  screen, or Google blocks them before biblio ever sees the request.
+
+---
+
 ## 0.6.0 — 18 August 2026
 
 ### What's new

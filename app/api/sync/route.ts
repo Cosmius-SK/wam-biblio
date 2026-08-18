@@ -14,7 +14,8 @@ function validId(id: unknown): id is string {
 }
 
 function validKey(key: unknown): key is string {
-  return typeof key === "string" && /^[eprk]\/[A-Za-z0-9._-]{1,200}$/.test(key);
+  // "d" is the in-progress draft; it syncs like any other record.
+  return typeof key === "string" && /^[eprkd]\/[A-Za-z0-9._-]{1,200}$/.test(key);
 }
 
 function notConfigured() {
