@@ -44,45 +44,52 @@ export default function Footer() {
 
         <AnimatePresence>
           {line && (
-            <motion.button
+            <motion.div
               key={line.id}
-              type="button"
-              onClick={() => {
-                maya.stopSpeaking();
-                // A question is answered by being touched at all — the chips
-                // are the affordance, not a hoop.
-                if (line.answers) maya.answer();
-                else maya.dismiss();
-              }}
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -6 }}
               transition={{ duration: 0.5, ease: "easeOut" }}
-              aria-label={line.answers ? "Still here" : "Dismiss"}
               className="absolute inset-0 flex items-center justify-center gap-3"
             >
-              <span
-                aria-hidden
-                className={`h-6 w-6 shrink-0 rounded-full bg-gradient-to-br from-terracotta/70 via-lavender/70 to-sage/70 ${
-                  speaking ? "animate-pulse-soft" : "animate-breathe"
-                }`}
-              />
-              <span className="font-serif text-base italic leading-snug text-ink/90">
-                {line.text}
-              </span>
-              {line.answers && (
-                <span className="flex shrink-0 items-center gap-1.5">
-                  {line.answers.map((a) => (
-                    <span
-                      key={a}
-                      className="rounded-full border border-hairline bg-surface/70 px-2.5 py-1 text-sm leading-none text-ink/80"
-                    >
-                      {a}
-                    </span>
-                  ))}
+              <button
+                type="button"
+                onClick={() => {
+                  maya.stopSpeaking();
+                  // Touching the words at all is an answer; the marks are an
+                  // affordance, not a hoop.
+                  if (line.answers) maya.answer();
+                  else maya.dismiss();
+                }}
+                aria-label={line.answers ? "Still here" : "Dismiss"}
+                className="flex min-w-0 items-center gap-3"
+              >
+                <span
+                  aria-hidden
+                  className={`h-6 w-6 shrink-0 rounded-full bg-gradient-to-br from-terracotta/70 via-lavender/70 to-sage/70 ${
+                    speaking ? "animate-pulse-soft" : "animate-breathe"
+                  }`}
+                />
+                <span className="font-serif text-base italic leading-snug text-ink/90">
+                  {line.text}
                 </span>
-              )}
-            </motion.button>
+              </button>
+
+              {line.answers?.map((a) => (
+                <button
+                  key={a}
+                  type="button"
+                  onClick={() => {
+                    maya.stopSpeaking();
+                    maya.answer(a);
+                  }}
+                  aria-label={`Still here — ${a}`}
+                  className="shrink-0 rounded-full border border-hairline bg-surface/70 px-2.5 py-1 text-sm leading-none text-ink/80 transition-transform active:scale-95"
+                >
+                  {a}
+                </button>
+              ))}
+            </motion.div>
           )}
         </AnimatePresence>
       </div>

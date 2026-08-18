@@ -20,6 +20,46 @@ Newest first. Dates are the day the work landed.
 
 ---
 
+## 0.11.0 — 18 August 2026
+
+### What's new
+
+- **A page that shows you exactly what biblio knows about you.**
+  Settings › Privacy. Two numbers a day — entries written, minutes spent — and
+  it shows the real record, not a description of one.
+- **And what it never knows**: your words, your photos, your questions, and —
+  deliberately — your moods and themes. Those look like plain metadata but are
+  worked out from what you wrote, and would say more about your week than a
+  paragraph would.
+- **One switch to keep the numbers on your device.** Nothing is sent, and the
+  app behaves identically either way.
+
+### Under the hood
+
+- `lib/insights/schema.ts` is the contract in code: if a field is not in that
+  file it is not collected, and adding one is a deliberate edit to a file whose
+  only purpose is to be read by someone checking. It also lists what is never
+  gathered, because a list of what *is* gathered is easy to extend quietly.
+- Totals are **absolute per day per device**, not increments — a retry or a lost
+  response cannot inflate anything, and two devices cannot overwrite each other.
+- The API re-derives the permitted shape rather than trusting the body, so the
+  contract is enforced and not merely documented.
+- The raw session timeline never leaves the device. Only the daily sum does:
+  "opened at 2am, seven times" is exactly what this is designed not to hold.
+- The presence-check answer has a real recording site that returns immediately
+  while `COLLECT_ANSWERS` is false — nothing written down, rather than written
+  down and withheld. Maya's marks are now separate buttons, so the wiring is
+  genuine rather than notional.
+- Owner-only `/insights`, gated to the owner's Google account and returning a
+  404 to everyone else so its existence isn't advertised.
+
+### Notes
+
+- People appear in the owner view as the last few characters of their Google id,
+  never a name or address.
+
+---
+
 ## 0.10.0 — 18 August 2026
 
 ### What's new

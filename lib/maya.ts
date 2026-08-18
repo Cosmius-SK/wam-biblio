@@ -111,7 +111,7 @@ class Maya {
   private current: MayaLine | null = null;
   private nextId = 1;
   private hideTimer: number | null = null;
-  private answered: (() => void) | null = null;
+  private answered: ((answer?: string) => void) | null = null;
   private unanswered: (() => void) | null = null;
 
   // ---- what she's saying right now -------------------------------------
@@ -165,7 +165,7 @@ class Maya {
   ask(
     text: string,
     answers: string[],
-    onAnswer: () => void,
+    onAnswer: (answer?: string) => void,
     onSilence: () => void,
     hold = 45000,
   ): void {
@@ -185,14 +185,17 @@ class Maya {
     }, hold);
   }
 
-  /** They're there. Resolves a pending ask, however they showed it. */
-  answer(): void {
+  /**
+   * They're there. Resolves a pending ask, however they showed it — a tapped
+   * mark, or simply moving. `answer` is which mark, when there was one.
+   */
+  answer(answer?: string): void {
     const cb = this.answered;
     this.answered = null;
     this.unanswered = null;
     if (!cb) return;
     this.dismiss();
-    cb();
+    cb(answer);
   }
 
   /** Whether a question is currently waiting on an answer. */

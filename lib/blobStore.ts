@@ -1,4 +1,4 @@
-import { get, put } from "@vercel/blob";
+import { get, list, put } from "@vercel/blob";
 
 /**
  * Server-side Blob helpers that adapt to the store's access mode. Vercel Blob
@@ -70,4 +70,14 @@ export async function readSyncJson(urlOrPathname: string, token: string): Promis
     }
   }
   throw lastErr;
+}
+
+/** Every blob under a prefix, as pathname + url pairs. `list` takes no access
+ * mode — the token alone identifies the store. */
+export async function listPrefix(
+  prefix: string,
+  token: string,
+): Promise<{ pathname: string; url: string }[]> {
+  const res = await list({ prefix, limit: 1000, token });
+  return res.blobs.map((b) => ({ pathname: b.pathname, url: b.url }));
 }

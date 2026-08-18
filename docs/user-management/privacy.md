@@ -1,5 +1,10 @@
 # Privacy — the line, drawn precisely
 
+**Status: built.** `lib/insights/schema.ts` (the contract in code),
+`lib/insights/collect.ts`, `/api/insights`, Settings › Privacy, and the
+owner-only `/insights`. The answer-recording site exists and is inert —
+`COLLECT_ANSWERS` is false and is checked before anything is written.
+
 > **Numbers and settings, never words.**
 
 They own their words. The owner owns the counts. Everything below follows from

@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import { onSessionStart, startSessions } from "@/lib/session";
 import { describeDevice } from "@/lib/deviceId";
+import { sendToday } from "@/lib/insights/collect";
 
 /**
  * Starts the attended-use clock, and tells the device registry this device is
@@ -22,10 +23,24 @@ export default function SessionTracker() {
         /* not signed in, or offline — the list simply won't move */
       });
     };
-    const stop = onSessionStart(touch);
+    // Totals are absolute, so sending them twice cannot inflate anything —
+    // which is what lets this fire at whatever moment happens to be quiet.
+    const report = () => void sendToday();
+    const onHide = () => {
+      if (document.visibilityState === "hidden") report();
+    };
+    const stop = onSessionStart(() => {
+      touch();
+      report();
+    });
+    document.addEventListener("visibilitychange", onHide);
     startSessions();
     touch();
-    return stop;
+    report();
+    return () => {
+      stop();
+      document.removeEventListener("visibilitychange", onHide);
+    };
   }, []);
   return null;
 }

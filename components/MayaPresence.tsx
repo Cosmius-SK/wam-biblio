@@ -8,6 +8,7 @@ import { draftNudgeLine, greetingLine, presenceAsk, surfaceOf, OBSERVANT_FROM } 
 import { observe } from "@/lib/mayaObserve";
 import { confirmPresence, markAbsent, onIdle, onPresent, onSessionStart } from "@/lib/session";
 import { flushDraft, loadDraft } from "@/lib/drafts";
+import { noteAnswer } from "@/lib/insights/collect";
 import { agoLabel } from "@/lib/format";
 import { isBiometricEnabled, relock } from "@/lib/biometric";
 
@@ -80,10 +81,17 @@ export default function MayaPresence() {
       void (async () => {
         const name = (await getSetting("displayName")) ?? undefined;
         const { text, answers } = presenceAsk(surfaceOf(pathRef.current), name);
+        const surface = surfaceOf(pathRef.current);
         maya.ask(
           text,
           answers,
-          () => confirmPresence(),
+          (mark) => {
+            // Dormant by design: noteAnswer returns immediately while
+            // COLLECT_ANSWERS is false, so nothing is written down — not
+            // written down and withheld. See lib/insights/schema.ts.
+            if (mark) noteAnswer(surface, mark);
+            confirmPresence();
+          },
           () => {
             void (async () => {
               await flushDraft(true);
