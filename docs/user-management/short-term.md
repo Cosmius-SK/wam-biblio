@@ -42,10 +42,18 @@ var. Adding someone is a tap in the owner view, not a redeploy. This matters
 more than it sounds: env-var-per-person is hardcoding by another name, and it
 scales to about nobody.
 
-**Console note:** each person must be a **Test user** on the OAuth consent
-screen or Google blocks sign-in outright. They will click past an "unverified
-app" warning once. At two or three people this is a non-issue; the 100-user cap
-belongs to the mid-term doc.
+**Console note:** the OAuth app is **published (In production, External)**, so
+there is no Test users list and nobody needs adding to one — any Google account
+can reach the consent screen, and **biblio's own allowlist is the gate.** They
+will click past an "unverified app" warning once.
+
+Staying in production rather than reverting to Testing is deliberate: Testing
+mode expires refresh tokens after seven days, which would make people re-consent
+constantly. The cost is the **OAuth user cap** — while sensitive scopes are
+unverified, the number of accounts that may ever grant consent is limited **over
+the project's lifetime and cannot be reset**. Check the figure on the Audience
+page and treat it as a budget, not a rate limit. Verification is what lifts it,
+and it belongs in the mid-term doc.
 
 ## 2. Cost — his accounts, capped per person per day
 

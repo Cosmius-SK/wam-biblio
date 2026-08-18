@@ -24,7 +24,8 @@ stack trace. *"biblio isn't open yet — ask Shiva."*
 
 1. **Google sign-in.** One consent covers identity, Drive (photos) and
    `appDataFolder` (the key). They will click past an "unverified app" warning
-   once while the project is in Testing mode.
+   once, until the project is verified. Nobody needs adding to a Test users
+   list — the app is published, and biblio's allowlist is what decides.
 2. The token posts to `/api/auth/session`; the allowlist is checked; the session
    cookie is set. From here on the server knows who is asking.
 3. **Maya asks what to call them.** A nickname, not a form field — it is the

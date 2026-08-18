@@ -14,10 +14,13 @@ testing — which community is still an open question.
    being sane somewhere around fifteen, even without a redeploy. Needs invite
    links or self-serve sign-up with approval — the first thing that genuinely
    requires a **user store** rather than a list.
-2. **Google's Testing mode caps at 100 users.** Past that the app must be
-   published and pass Google's verification review — a privacy policy, a
-   homepage, and a wait measured in weeks. **Start this early; it is the longest
-   lead time in the whole plan and it blocks everything.**
+2. **Google's OAuth user cap.** The app is already published, so the Testing
+   limit never applies — but while its sensitive scopes are unverified there is
+   a cap on how many accounts may **ever** grant consent, counted over the
+   project's lifetime and **not resettable**. Lifting it means passing Google's
+   verification review: a privacy policy, a homepage, and a wait measured in
+   weeks. **Start this early; it is the longest lead time in the whole plan and
+   it blocks everything.**
 3. **The economics.** At ~75¢–$1 per active person per month, a hundred people
    is **$75–300/month, indefinitely, out of pocket.** This is the wall, and it
    is not a technical one.
