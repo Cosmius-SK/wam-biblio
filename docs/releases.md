@@ -49,6 +49,43 @@ or two.** Therefore:
 
 That discipline is the real work. The changelog is the easy part.
 
+## Cutovers — when the door itself changes
+
+The rule above protects **data** across versions. It does not protect **access**,
+and that is a different failure mode with a much worse ending.
+
+A lagging client is normally a safety net: the old build keeps working until it
+updates. That net does not exist when the *gate* changes, because every client —
+old and new — is behind the same middleware. Swap the passcode gate for the
+session gate and get any part of it wrong, and nobody can get in, **including the
+person who deployed it**, with no way to fix it from inside the app.
+
+Four rules, and they are the same additive instinct applied to authentication
+rather than to data:
+
+**1. Never remove the old door in the deploy that adds the new one.** Accept the
+session cookie *or* the passcode cookie. Ship. Confirm the new door works on
+real devices. Remove the old path in a **later** release.
+
+**2. Keep a break-glass path that is not the app.** If middleware is broken you
+cannot fix it from a screen the middleware is blocking. `APP_PASSCODE` survives
+as an owner-only override, checked last, for one release cycle beyond the
+cutover. It costs nothing and it is the difference between redeploying a fix and
+being locked out of your own production.
+
+**3. Key migration is additive until proven.** Write the v2 envelopes
+**alongside** the v1 `{ secret }`, never over it. Only delete the plaintext after
+unwrapping has been confirmed on a second device.
+
+This is the one genuinely irreversible step in the whole plan. Everything else
+can be fixed with another deploy; **a lost `K` is a lost journal.** The local
+cached copy in `googleSyncSecret` is the only other place it exists, and it is
+not a backup.
+
+**4. One cutover per release.** The door change and the key change ship
+separately, each with its own verification. Individually both are recoverable.
+Together they are a maze with no lights.
+
 ## Ways of working
 
 **One source of truth.** A `CHANGELOG.md` at the repo root: version, date, and

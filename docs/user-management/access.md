@@ -68,7 +68,14 @@ attacker would already need to be inside the Google account to try at all.
 ### Migration
 
 Existing installs hold a v1 `{ secret }` file. On next sign-in we detect v1, ask
-for a passcode, and rewrap to v2. No re-sync, no data movement.
+for a passcode, and write v2. No re-sync, no data movement.
+
+**Write v2 alongside v1, never over it**, and delete the plaintext only after
+unwrapping has been confirmed on a second device. This is the one irreversible
+step in the plan — everything else can be fixed with another deploy, but a lost
+`K` is a lost journal. See [cutovers](../releases.md#cutovers--when-the-door-itself-changes)
+for the rest of the sequencing, including why the door change and the key change
+must not ship together.
 
 ## 3. Forgetting the passcode
 
