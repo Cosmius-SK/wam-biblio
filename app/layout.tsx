@@ -7,6 +7,7 @@ import MayaPresence from "@/components/MayaPresence";
 import ThemeSync from "@/components/ThemeSync";
 import AutoSync from "@/components/AutoSync";
 import SessionTracker from "@/components/SessionTracker";
+import Updates from "@/components/Updates";
 import DraftDot from "@/components/DraftDot";
 import BioLock from "@/components/BioLock";
 import Footer from "@/components/Footer";
@@ -56,6 +57,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <MayaPresence />
         <AutoSync />
         <SessionTracker />
+        <Updates />
         <BioLock />
         <header className="fixed inset-x-0 top-0 z-40 h-16 backdrop-blur-md">
           {/* A quiet heartbeat along the header's edge. */}

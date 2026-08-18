@@ -20,6 +20,42 @@ Newest first. Dates are the day the work landed.
 
 ---
 
+## 0.10.0 — 18 August 2026
+
+### What's new
+
+- **biblio works offline now.** Open it on a plane, in a basement, on a train
+  through a tunnel — your journal is on the device and the app around it now
+  comes with it. Anything you write is saved and syncs when you're back.
+- **Updates wait for you.** When a newer version is ready, a small note appears
+  and you refresh when you're ready. It will never reload the page out from
+  under you mid-sentence, and your draft is saved before it does.
+- **A short note on what changed**, once, after an update. This is it.
+- **A version and build number** in Settings › About, worth quoting if you ever
+  report something odd.
+
+### Under the hood
+
+- `public/sw.js`, hand-written and small enough to read in one sitting.
+  Content-hashed build output is cached outright; pages are network-first with
+  the last good copy behind them; `/api/*` is never cached, because a stale
+  answer from a model or a store is worse than no answer.
+- The worker deliberately does **not** call `skipWaiting()` on install. Waiting
+  is what gives the reader the say.
+- `/sw.js` and `/offline` are public in the middleware — a worker that cached a
+  redirect to the unlock screen would be worse than no worker.
+- Version and release notes are read from `package.json` and `CHANGELOG.md` at
+  **build time** in `next.config.mjs`, so the in-app card cannot drift from the
+  file and no host-specific runtime file access is involved.
+
+### Notes
+
+- The "what's new" card never appears on a first-ever visit; there is no before.
+- Settings › About no longer claims the app works offline as if it always did.
+  It does now.
+
+---
+
 ## 0.9.0 — 18 August 2026
 
 ### What's new

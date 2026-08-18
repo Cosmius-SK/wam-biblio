@@ -24,6 +24,7 @@ export async function middleware(req: NextRequest) {
     pathname.startsWith("/unlock") ||
     pathname.startsWith("/api/unlock") ||
     pathname.startsWith("/welcome") ||
+    pathname.startsWith("/offline") ||
     pathname.startsWith("/api/auth/")
   ) {
     return NextResponse.next();
@@ -54,5 +55,5 @@ export async function middleware(req: NextRequest) {
 
 export const config = {
   // Run on everything except Next internals, Vercel instrumentation, and static files.
-  matcher: ["/((?!_next/static|_next/image|_vercel|favicon.ico|icon.svg|manifest.webmanifest).*)"],
+  matcher: ["/((?!_next/static|_next/image|_vercel|favicon.ico|icon.svg|sw.js|manifest.webmanifest).*)"],
 };

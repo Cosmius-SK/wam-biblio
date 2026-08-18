@@ -1,13 +1,18 @@
 # Releases — and how we work from here
 
+**Status: built.** `public/sw.js` (offline + a controlled update), the version
+and build stamp in Settings › About, and the what's-new card fed from
+`CHANGELOG.md` at build time. The discipline below — additive APIs,
+forward-only migrations — is the standing part, not a task.
+
 The ask: something like an app store. A version, a note about what changed, and
 some say in when it arrives.
 
-## The finding
+## The finding that prompted this
 
-**biblio has no service worker.** `app/manifest.ts` exists, but nothing caches
-anything and nothing holds a version in place. Two consequences, neither of
-which the app has ever told anyone:
+**biblio had no service worker.** `app/manifest.ts` existed, but nothing cached
+anything and nothing held a version in place. Two consequences, neither of
+which the app ever told anyone:
 
 - **It does not work offline.** A local-first journal that cannot open on a
   plane or in a basement is a broken promise — and nobody will report it as a
