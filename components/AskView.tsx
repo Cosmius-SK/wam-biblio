@@ -45,8 +45,12 @@ export default function AskView() {
         body: JSON.stringify({ question: query, entries: top }),
       });
       if (!res.ok) {
-        const data = (await res.json().catch(() => ({}))) as { error?: string };
-        throw new Error(data.error || `Something went wrong (${res.status}).`);
+        const data = (await res.json().catch(() => ({}))) as { error?: string; hint?: string };
+        throw new Error(
+          [data.error || `Something went wrong (${res.status}).`, data.hint]
+            .filter(Boolean)
+            .join(" "),
+        );
       }
       const data = (await res.json()) as AskResponse;
       if (data.usage) void logAi({ feature: "ask", model: data.model, usage: data.usage });

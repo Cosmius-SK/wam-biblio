@@ -103,7 +103,10 @@ sample entries"** to explore. Use Chrome/Edge/Safari for voice capture.
 | `NEXT_PUBLIC_GOOGLE_CLIENT_ID` | for photos | OAuth Web client ID for Drive photo attachments (an identifier, not a secret). |
 | `AUTH_SECRET` | for sign‑in | Signs the session cookie. Falls back to `APP_PASSCODE`; with neither, Google sign‑in is off. |
 | `ALLOWED_USERS` | for sign‑in | Comma‑separated emails allowed in. Seeds the list; after that, manage it in the app. |
-| `OWNER_EMAIL` | no | Always allowed in, and the future owner‑only views. |
+| `OWNER_EMAIL` | no | Always allowed in, exempt from personal caps, and the future owner‑only views. |
+| `USER_DAILY_USD` | no | Per‑person daily AI spend cap (default `0.30`). `0` disables. |
+| `USER_DAILY_IMAGES` | no | Per‑person daily illustrations (default `5`). `0` disables. |
+| `GLOBAL_DAILY_USD` | no | Whole‑deployment daily breaker (default `2.00`). `0` disables. |
 
 ## Access gate — two doors
 

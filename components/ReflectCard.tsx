@@ -32,8 +32,12 @@ export default function ReflectCard() {
         body: JSON.stringify({ entries: refs.map(toRef) }),
       });
       if (!res.ok) {
-        const data = (await res.json().catch(() => ({}))) as { error?: string };
-        throw new Error(data.error || `Something went wrong (${res.status}).`);
+        const data = (await res.json().catch(() => ({}))) as { error?: string; hint?: string };
+        throw new Error(
+          [data.error || `Something went wrong (${res.status}).`, data.hint]
+            .filter(Boolean)
+            .join(" "),
+        );
       }
       const data = (await res.json()) as SynthesisResponse;
       if (data.usage) void logAi({ feature: "reflect", model: data.model, usage: data.usage });

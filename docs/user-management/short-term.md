@@ -65,7 +65,7 @@ Language requests/day. Hard stops nothing can code around.
 model call, recorded after using the real token usage the routes already return
 (reuse `estimateCost`). Wired into all four AI routes.
 
-**Agreed numbers:**
+**Agreed numbers** (built — `lib/users/limits.ts`, wired into all four AI routes):
 
 | Limit | Value | Worst case |
 |---|---|---|

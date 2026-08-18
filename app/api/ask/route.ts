@@ -3,6 +3,7 @@ import type { AskRequest } from "@/lib/types";
 import { answerQuestion } from "@/lib/ai/ask";
 import { aiLive } from "@/lib/ai/mode";
 import { sampleAsk } from "@/lib/sample";
+import { checkCaps, costOf, currentUser, recordUsage } from "@/lib/users/limits";
 
 export const runtime = "nodejs";
 
@@ -34,11 +35,18 @@ export async function POST(request: Request) {
     return NextResponse.json(sampleAsk(body));
   }
 
+  // Who is asking, and may they? The check is before the spend, the record is
+  // after it — so a call that fails costs nobody anything.
+  const asker = await currentUser();
+  const denied = await checkCaps(asker, "text");
+  if (denied) return NextResponse.json(denied, { status: 429 });
+
   try {
     const result = await answerQuestion({
       question: body.question.trim(),
       entries: body.entries,
     });
+    await recordUsage(asker, "text", costOf(result.model, result.usage));
     return NextResponse.json(result);
   } catch (err) {
     const message = err instanceof Error ? err.message : "Failed to answer";

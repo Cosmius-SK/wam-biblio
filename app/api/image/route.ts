@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { checkCaps, costOf, currentUser, imageCost, recordUsage } from "@/lib/users/limits";
 import { aiLive } from "@/lib/ai/mode";
 
 export const runtime = "nodejs";
@@ -269,6 +270,12 @@ export async function POST(request: Request) {
   const styleKey = typeof reqBody.style === "string" ? reqBody.style : DEFAULT_STYLE;
   const text = (STYLES[styleKey] ?? STYLES[DEFAULT_STYLE]) + prompt;
 
+  // Images are 4-10x the cost of everything else, so this is the cap that
+  // actually matters.
+  const asker = await currentUser();
+  const denied = await checkCaps(asker, "image");
+  if (denied) return NextResponse.json(denied, { status: 429 });
+
   const key = process.env.GEMINI_API_KEY;
   if (!key) {
     return NextResponse.json(
@@ -286,7 +293,10 @@ export async function POST(request: Request) {
   // another. Auto mode (no choice) falls through to best-available discovery.
   if (chosen) {
     const result = await generateWith(key, chosen, text);
-    if (result.ok) return NextResponse.json({ image: result.image, model: chosen });
+    if (result.ok) {
+      await recordUsage(asker, "image", imageCost());
+      return NextResponse.json({ image: result.image, model: chosen });
+    }
     if (result.code === "model_unavailable") modelCache = null;
     return NextResponse.json(
       { error: result.error, code: result.code, hint: result.hint },
@@ -313,6 +323,7 @@ export async function POST(request: Request) {
     const result = await generateWith(key, model, text);
     if (result.ok) {
       modelCache = { ids: [model, ...models.filter((m) => m !== model)], at: Date.now() };
+      await recordUsage(asker, "image", imageCost());
       return NextResponse.json({ image: result.image, model });
     }
     last = result;

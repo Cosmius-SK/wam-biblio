@@ -20,6 +20,45 @@ Newest first. Dates are the day the work landed.
 
 ---
 
+## 0.8.0 — 18 August 2026
+
+### What's new
+
+- **Daily limits, so nobody can run up someone else's bill.** Each person has a
+  gentle ceiling on how much AI they use in a day, and a separate one for
+  illustrations — which cost several times more than everything else.
+- **Hitting a limit is not a failure.** Maya says so plainly: *"That's all the
+  drawing I can do today — it comes back tomorrow."* You can still write, still
+  save, still read. Nothing you wrote is affected.
+- **The person paying isn't rationed.** The deployment owner is exempt from the
+  personal limits.
+
+### Under the hood
+
+- `lib/users/limits.ts` keeps counters at `meter/<UTC date>/<sub>.json` in the
+  Blob store, plus a `_deployment` counter as a whole-app circuit breaker.
+- Checked **before** the model call, recorded **after** it, from the real token
+  usage the routes already return — so a call that fails costs nobody anything.
+- Wired into all four AI routes. Listing image models is not metered; it makes
+  no image.
+- Defaults: `USER_DAILY_USD=0.30`, `USER_DAILY_IMAGES=5`,
+  `GLOBAL_DAILY_USD=2.00`. Any of them set to `0` disables that limit.
+- Personal caps apply to identified people who are not the owner. Traffic
+  through the older passcode door is unidentified, so only the deployment-wide
+  breaker covers it — which is fine while both doors are open and testers only
+  arrive through Google.
+- Capture, Ask and Reflect now render the `hint` alongside the error, so
+  "it comes back tomorrow" actually reaches the reader.
+
+### Notes
+
+- **These limits are the second line of defence, not the first.** Set a monthly
+  spend limit on the Anthropic workspace and a daily request quota on the Google
+  project. Those do not depend on this code being correct.
+- UTC days, so a counter cannot be rolled by changing a device clock.
+
+---
+
 ## 0.7.0 — 18 August 2026
 
 ### What's new

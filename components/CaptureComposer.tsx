@@ -165,8 +165,14 @@ export default function CaptureComposer() {
         }),
       });
       if (!res.ok) {
-        const data = (await res.json().catch(() => ({}))) as { error?: string };
-        throw new Error(data.error || `Something went wrong (${res.status}).`);
+        const data = (await res.json().catch(() => ({}))) as { error?: string; hint?: string };
+        // A refused cap comes with a way forward; showing only the error would
+        // turn "it comes back tomorrow" into a bare failure.
+        throw new Error(
+          [data.error || `Something went wrong (${res.status}).`, data.hint]
+            .filter(Boolean)
+            .join(" "),
+        );
       }
       const data = (await res.json()) as StructureResponse;
       if (data.usage) void logAi({ feature: "shape", model: data.model, usage: data.usage });

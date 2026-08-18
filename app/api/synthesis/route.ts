@@ -3,6 +3,7 @@ import type { SynthesisRequest } from "@/lib/types";
 import { synthesize } from "@/lib/ai/synthesis";
 import { aiLive } from "@/lib/ai/mode";
 import { sampleSynthesis } from "@/lib/sample";
+import { checkCaps, costOf, currentUser, recordUsage } from "@/lib/users/limits";
 
 export const runtime = "nodejs";
 
@@ -30,8 +31,15 @@ export async function POST(request: Request) {
     return NextResponse.json(sampleSynthesis(body));
   }
 
+  // Who is asking, and may they? The check is before the spend, the record is
+  // after it — so a call that fails costs nobody anything.
+  const asker = await currentUser();
+  const denied = await checkCaps(asker, "text");
+  if (denied) return NextResponse.json(denied, { status: 429 });
+
   try {
     const result = await synthesize({ entries: body.entries });
+    await recordUsage(asker, "text", costOf(result.model, result.usage));
     return NextResponse.json(result);
   } catch (err) {
     const message = err instanceof Error ? err.message : "Failed to reflect";
