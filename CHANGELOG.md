@@ -20,6 +20,44 @@ Newest first. Dates are the day the work landed.
 
 ---
 
+## 0.12.0 — 18 August 2026
+
+### What's new
+
+- **Maya shows you around the first time.** Nine short cards: who she is, what
+  happens to your words, where things are, and how to keep the journal safe.
+  Then she gets out of the way.
+- **She points at real things.** The steps about the write button, the tabs and
+  Settings light up the actual button on your screen, not a picture of one.
+- **Skippable, and it remembers.** Leave halfway and it picks up where you left
+  it. Finish it and it never asks again.
+- **Run it again whenever** — Settings › Maya → *Maya, show me around*.
+- **She reads it aloud** if her voice is on, and stays quiet if it isn't.
+
+### Under the hood
+
+- `components/tour/` — `steps.ts` holds her words, `Tour.tsx` the driver. The
+  spotlight cuts a hole in the scrim with a large-spread box shadow, and picks
+  the visible copy of a target when one renders in both the phone and laptop
+  bars.
+- It never starts unprompted on `/welcome`, `/unlock`, `/offline` or `/capture`:
+  the doors, and a blank page someone may already be writing on.
+- Progress lives in local settings, but a second device doesn't re-run it —
+  a device that pulled down a journal with entries in it plainly belongs to
+  someone who has been here before. That is a better signal than a flag, and it
+  needs no new state.
+- The passcode and biometric steps **link** to Settings rather than repeating
+  those flows, so there is one place those settings live and it is the place
+  people will look for them later.
+
+### Notes
+
+- The private-voice choice from the onboarding design is deliberately not here
+  yet. On-device transcription doesn't exist, and offering a choice we can't
+  honour would be worse than not offering it.
+
+---
+
 ## 0.11.0 — 18 August 2026
 
 ### What's new

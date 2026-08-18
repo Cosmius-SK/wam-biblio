@@ -1,5 +1,17 @@
 # Onboarding — the whole thing, in one line
 
+**Status: mostly built.** Act 0 (`/welcome`), Act 1 (sign-in), Act 2 (passcode
+and recovery phrase, in Settings › Security), Act 3 (biometric), Act 4 (Maya's
+walkthrough — `components/tour/`), Act 6 and the install prompt.
+
+**Act 5 — the private-voice choice — is deliberately absent** until on-device
+transcription exists. Offering a choice we cannot yet honour would be worse
+than not offering it.
+
+Acts 2 and 3 are reached from the walkthrough by a link rather than performed
+inside it, so there is one place those settings live and it is the place people
+will look for them later.
+
 Every access mechanism, every disclosure and every choice, stitched into one
 sequence rather than six features standing next to each other. **Maya narrates
 throughout.** Nothing is a wall of text.

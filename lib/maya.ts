@@ -203,6 +203,17 @@ class Maya {
     return this.answered !== null;
   }
 
+  /**
+   * Read something aloud without taking the footer.
+   *
+   * For places that show her words themselves — the walkthrough — so she
+   * doesn't say the same thing twice in two places.
+   */
+  speakAside(text: string): void {
+    if (this.frequency() === "silent") return;
+    this.speak(text);
+  }
+
   dismiss(): void {
     if (this.hideTimer !== null) {
       window.clearTimeout(this.hideTimer);

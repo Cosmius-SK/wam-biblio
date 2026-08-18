@@ -14,6 +14,7 @@ export default function Nav({ className = "mx-auto mb-6 mt-1" }: { className?: s
   const pathname = usePathname();
   return (
     <nav
+      data-tour="tabs"
       className={`${className} flex w-fit gap-1 rounded-full border border-hairline/70 bg-surface/60 p-1 backdrop-blur-sm`}
     >
       {TABS.map((tab) => {

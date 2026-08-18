@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import { maya, type MayaFrequency } from "@/lib/maya";
 import { idleMinutes, setIdleMinutes } from "@/lib/session";
+import { restartTour } from "@/lib/tour";
+import Tour from "./tour/Tour";
 
 /** How long a quiet screen waits before she asks. 0 means she never does. */
 const IDLE_CHOICES: { value: number; label: string }[] = [
@@ -28,6 +30,7 @@ export default function MayaCard() {
   const [voice, setVoice] = useState("auto");
   const [freq, setFreq] = useState<MayaFrequency>("quiet");
   const [idle, setIdle] = useState(10);
+  const [showTour, setShowTour] = useState(false);
   const canSpeak = maya.canSpeak();
 
   useEffect(() => {
@@ -142,6 +145,25 @@ export default function MayaCard() {
           This browser has no speech built in — Maya will write instead of speaking.
         </p>
       )}
+
+      <div className="mt-6 border-t border-hairline/60 pt-5">
+        <h3 className="text-sm font-medium text-ink">A look around</h3>
+        <p className="mt-1 text-sm text-muted">
+          She&rsquo;ll walk you through biblio again from the beginning — useful after an
+          update, or if you&rsquo;d rather not have skipped it the first time.
+        </p>
+        <button
+          type="button"
+          onClick={() => {
+            void restartTour();
+            setShowTour(true);
+          }}
+          className="mt-3 rounded-full border border-hairline bg-paper/50 px-4 py-2 text-sm text-ink transition-colors hover:border-lavender/40"
+        >
+          Maya, show me around
+        </button>
+        {showTour && <Tour force onClose={() => setShowTour(false)} />}
+      </div>
 
       <div className="mt-6 border-t border-hairline/60 pt-5">
         <h3 className="text-sm font-medium text-ink">If the page goes quiet</h3>
