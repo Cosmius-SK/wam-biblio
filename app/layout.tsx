@@ -6,6 +6,8 @@ import AmbientBackground from "@/components/AmbientBackground";
 import MayaPresence from "@/components/MayaPresence";
 import ThemeSync from "@/components/ThemeSync";
 import AutoSync from "@/components/AutoSync";
+import SessionTracker from "@/components/SessionTracker";
+import DraftDot from "@/components/DraftDot";
 import BioLock from "@/components/BioLock";
 import Footer from "@/components/Footer";
 import MusicToggle from "@/components/MusicToggle";
@@ -53,6 +55,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <AmbientBackground />
         <MayaPresence />
         <AutoSync />
+        <SessionTracker />
         <BioLock />
         <header className="fixed inset-x-0 top-0 z-40 h-16 backdrop-blur-md">
           {/* A quiet heartbeat along the header's edge. */}
@@ -70,8 +73,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 href="/capture"
                 aria-label="New thought"
                 title="New thought"
-                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-ink/90 text-paper shadow-soft transition-transform hover:scale-105 active:scale-95"
+                className="relative flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-ink/90 text-paper shadow-soft transition-transform hover:scale-105 active:scale-95"
               >
+                <DraftDot />
                 <svg
                   width="15"
                   height="15"

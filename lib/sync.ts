@@ -1,7 +1,7 @@
 "use client";
 
 import { db, getSetting, setSetting, suppressSync } from "./db";
-import type { JournalEntry, Portrait, Reflection } from "./types";
+import type { Draft, JournalEntry, Portrait, Reflection } from "./types";
 import { decryptJSON, encryptJSON, isEncryptedBlob, syncId } from "./crypto";
 
 /**
@@ -34,7 +34,7 @@ export type OnSyncProgress = (p: SyncProgress) => void;
 const ZERO: SyncCounts = { entries: 0, reflections: 0, portraits: 0, photos: 0 };
 const TOMBSTONE = "__deleted__";
 
-type RecType = "e" | "p" | "r" | "k";
+type RecType = "e" | "p" | "r" | "k" | "d";
 interface Rec {
   type: RecType;
   id: string;
@@ -77,6 +77,10 @@ async function localRecords(): Promise<Rec[]> {
   ];
   const mediaKey = await getSetting("mediaKey");
   if (mediaKey) recs.push({ type: "k", id: "media", data: { mediaKey } });
+  // The in-progress draft travels with everything else, so a thought begun on
+  // one device can be finished on another.
+  const draft = await db.drafts.get("draft");
+  if (draft) recs.push({ type: "d", id: draft.id, data: draft });
   return recs;
 }
 
@@ -97,7 +101,7 @@ async function currentCounts(): Promise<SyncCounts> {
 }
 
 function parsePath(pathname: string): { type: RecType; id: string } | null {
-  const m = pathname.match(/\/([eprk])\/(.+)\.json$/);
+  const m = pathname.match(/\/([eprkd])\/(.+)\.json$/);
   return m ? { type: m[1] as RecType, id: m[2] } : null;
 }
 
@@ -195,6 +199,48 @@ export async function pushSync(secret: string, onProgress?: OnSyncProgress): Pro
   return counts.entries;
 }
 
+/**
+ * Merge an incoming draft. There is only ever one, so two devices can genuinely
+ * diverge — and the one thing this must never do is pick a winner and throw the
+ * loser's sentence away.
+ *
+ * The ledger remembers the content hash we last agreed on. If the local copy
+ * still matches it, nothing was written here since, so the incoming copy simply
+ * wins. If BOTH sides moved on, we keep both and let the writer tidy it.
+ * Slightly untidy beats losing words.
+ */
+async function mergeDraft(incoming: Draft, id: string): Promise<void> {
+  const local = await db.drafts.get(id);
+  if (!local) {
+    await db.drafts.put(incoming);
+    return;
+  }
+  if (local.text === incoming.text) {
+    if (incoming.updatedAt > local.updatedAt) await db.drafts.put(incoming);
+    return;
+  }
+  const agreed = (await db.syncled.get(id))?.hash;
+  const localUntouched = agreed !== undefined && (await hashOf(local)) === agreed;
+  if (localUntouched) {
+    await db.drafts.put(incoming);
+    return;
+  }
+  // True divergence. Newest goes last, so the most recent thought reads as the
+  // continuation rather than the interruption.
+  const [first, second] =
+    local.updatedAt <= incoming.updatedAt ? [local, incoming] : [incoming, local];
+  const seen = new Set<string>();
+  const photos = [...first.photos, ...second.photos].filter((p) =>
+    seen.has(p.id) ? false : (seen.add(p.id), true),
+  );
+  await db.drafts.put({
+    ...second,
+    text: `${first.text.trimEnd()}\n\n· · ·\n\n${second.text.trimStart()}`,
+    photos,
+    updatedAt: Date.now(),
+  });
+}
+
 /** Apply one pulled record (or tombstone) locally and update the ledger. */
 async function applyRecord(type: RecType, id: string, data: unknown, uploadedAt: number) {
   const deleted = (data as { __deleted?: boolean })?.__deleted === true;
@@ -203,10 +249,12 @@ async function applyRecord(type: RecType, id: string, data: unknown, uploadedAt:
       if (type === "e") await db.entries.delete(id);
       else if (type === "p") await db.portraits.delete(id);
       else if (type === "r") await db.reflections.delete(id);
+      else if (type === "d") await db.drafts.delete(id);
     } else if (type === "e") await db.entries.put(data as JournalEntry);
     else if (type === "p") await db.portraits.put(data as Portrait);
     else if (type === "r") await db.reflections.put(data as Reflection);
     else if (type === "k") await adoptMediaKey((data as { mediaKey?: string }).mediaKey);
+    else if (type === "d") await mergeDraft(data as Draft, id);
   });
   const hash = deleted ? TOMBSTONE : await hashOf(data);
   await db.syncled.put({ key: id, type, hash, pulledUp: uploadedAt });

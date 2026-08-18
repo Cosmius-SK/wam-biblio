@@ -8,15 +8,25 @@ import WhenWhere, { nowForInput } from "./WhenWhere";
 import PhotoAttach from "./PhotoAttach";
 import { db, recentContext, saveEntry } from "@/lib/db";
 import type {
+  Draft,
   EntryPhoto,
   EntryPlace,
   JournalEntry,
   StructuredEntry,
   StructureResponse,
 } from "@/lib/types";
-import { estimateCost, formatCost, formatDate, modelLabel } from "@/lib/format";
+import { agoLabel, estimateCost, formatCost, formatDate, modelLabel } from "@/lib/format";
 import { placeLabel } from "@/lib/geo";
-import { uploadPhotos, type PendingPhoto } from "@/lib/media";
+import {
+  STALE_MS,
+  clearDraft,
+  discardDraft,
+  draftFrom,
+  flushDraft,
+  loadDraft,
+  queueDraftSave,
+} from "@/lib/drafts";
+import { noteEntryWritten } from "@/lib/session";
 import { logAi } from "@/lib/usage";
 import { maya } from "@/lib/maya";
 import { savedLine } from "@/lib/mayaLines";
@@ -58,7 +68,11 @@ export default function CaptureComposer() {
   const [live, setLive] = useState(false);
   const [when, setWhen] = useState<string>(() => nowForInput());
   const [place, setPlace] = useState<EntryPlace | null>(null);
-  const [photos, setPhotos] = useState<PendingPhoto[]>([]);
+  const [photos, setPhotos] = useState<EntryPhoto[]>([]);
+  /** When set, these words were carried over rather than typed just now. */
+  const [resumedAt, setResumedAt] = useState<number | null>(null);
+  /** A draft old enough that restoring it silently would ambush a new thought. */
+  const [stale, setStale] = useState<Draft | null>(null);
   const [saveProgress, setSaveProgress] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<StructureResponse | null>(null);
@@ -69,8 +83,67 @@ export default function CaptureComposer() {
 
   const baseTextRef = useRef("");
   const usedVoiceRef = useRef(false);
+  /** Nothing is written back until the stored draft has had its say. */
+  const loadedRef = useRef(false);
 
   useEffect(() => setLive(aiIsLive()), []);
+
+  // Pick up whatever was left behind. Recent drafts simply reappear in the
+  // fields — no dialog, nothing to accept. An old one is offered instead, so a
+  // fragment from last month never ambushes a new thought.
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      const d = await loadDraft();
+      if (cancelled) {
+        loadedRef.current = true;
+        return;
+      }
+      if (d && Date.now() - d.updatedAt > STALE_MS) {
+        setStale(d);
+      } else if (d) {
+        restore(d);
+      }
+      loadedRef.current = true;
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  function restore(d: Draft) {
+    setText(d.text);
+    setAiMode(d.aiMode);
+    setIllustrate(d.illustrate);
+    setWhen(d.when);
+    setPlace(d.place ?? null);
+    setPhotos(d.photos);
+    setResumedAt(d.updatedAt);
+    setStale(null);
+  }
+
+  // Save at typing speed, locally. The push to the cloud happens at the quiet
+  // moments instead (see lib/drafts.ts) — words must survive a dropped phone,
+  // not a dropped connection.
+  useEffect(() => {
+    if (!loadedRef.current) return;
+    queueDraftSave(draftFrom(text, aiMode, illustrate, when, place, photos));
+  }, [text, aiMode, illustrate, when, place, photos]);
+
+  // Leaving the screen counts as putting it down.
+  useEffect(() => () => void flushDraft(true), []);
+
+  async function startFresh() {
+    await discardDraft(stale?.photos ?? photos);
+    setText("");
+    setPhotos([]);
+    setPlace(null);
+    setWhen(nowForInput());
+    setIllustrate(false);
+    setResumedAt(null);
+    setStale(null);
+    setError(null);
+  }
 
   async function shape() {
     if (!text.trim()) return;
@@ -110,19 +183,10 @@ export default function CaptureComposer() {
   /** Upload any photos, build the entry, persist it, and go to the timeline. */
   async function commit(structured: StructuredEntry, model: string) {
     setError(null);
-    let entryPhotos: EntryPhoto[] | undefined;
-    if (photos.length > 0) {
-      try {
-        setSaveProgress(`Securing photo 1 of ${photos.length}…`);
-        entryPhotos = await uploadPhotos(photos, (done, total) => {
-          setSaveProgress(done < total ? `Securing photo ${done + 1} of ${total}…` : "Keeping…");
-        });
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Couldn't upload the photos.");
-        setSaveProgress(null);
-        return;
-      }
-    }
+    // Photos were encrypted and uploaded the moment they were attached, so
+    // keeping an entry is now just a local write.
+    const entryPhotos: EntryPhoto[] | undefined = photos.length > 0 ? photos : undefined;
+    setSaveProgress("Keeping…");
     const entry: JournalEntry = {
       ...structured,
       id: crypto.randomUUID(),
@@ -137,6 +201,10 @@ export default function CaptureComposer() {
       significant: structured.significant,
     };
     await saveEntry(entry);
+    noteEntryWritten();
+    // The draft became this entry; its photos belong to the entry now, so only
+    // the draft row goes.
+    await clearDraft();
     // Maya marks the keeping — a landmark if this one is, otherwise a quiet nod.
     void db.entries.count().then((total) => {
       const landmark = milestoneFor(total);
@@ -209,6 +277,40 @@ export default function CaptureComposer() {
         >
           <h1 className="font-serif text-3xl text-ink">What&rsquo;s on your mind?</h1>
           <p className="mt-1 text-muted">Speak or type. Don&rsquo;t worry how it comes out.</p>
+
+          {stale && (
+            <div className="mt-5 rounded-2xl border border-hairline/70 bg-surface/60 p-4 shadow-soft">
+              <p className="text-sm text-muted">
+                You left something unfinished {agoLabel(stale.updatedAt)}.
+              </p>
+              <p className="mt-2 line-clamp-2 font-serif text-[1.05rem] leading-relaxed text-ink/80">
+                {stale.text.trim().slice(0, 160)}
+                {stale.text.trim().length > 160 ? "…" : ""}
+              </p>
+              <div className="mt-3 flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => restore(stale)}
+                  className="rounded-full bg-ink/90 px-4 py-2 text-sm font-medium text-paper transition-transform active:scale-95"
+                >
+                  Pick it up
+                </button>
+                <button
+                  type="button"
+                  onClick={startFresh}
+                  className="rounded-full border border-hairline bg-surface/60 px-4 py-2 text-sm font-medium text-muted transition-colors hover:text-ink"
+                >
+                  Let it go
+                </button>
+              </div>
+            </div>
+          )}
+
+          {resumedAt !== null && (
+            <p className="mt-3 text-xs text-muted">
+              Picking up where you left off · {agoLabel(resumedAt)}
+            </p>
+          )}
 
           <textarea
             value={text}
@@ -291,6 +393,16 @@ export default function CaptureComposer() {
                   ? "Polish my words"
                   : "Shape this into an entry")}
           </button>
+
+          {(text.trim().length > 0 || photos.length > 0) && (
+            <button
+              type="button"
+              onClick={startFresh}
+              className="mx-auto mt-4 block text-xs text-muted underline-offset-2 transition-colors hover:text-terracotta hover:underline"
+            >
+              Discard this draft
+            </button>
+          )}
         </motion.div>
       )}
 

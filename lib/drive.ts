@@ -266,6 +266,15 @@ export async function downloadEncrypted(token: string, fileId: string): Promise<
   return new Uint8Array(await res.arrayBuffer());
 }
 
+/** Delete a file this app created. Best effort: a file that is already gone,
+ * or a Drive that is momentarily unreachable, is not worth surfacing. */
+export async function deleteDriveFile(token: string, fileId: string): Promise<void> {
+  await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}`, {
+    method: "DELETE",
+    headers: auth(token),
+  });
+}
+
 export interface GoogleIdentity {
   sub: string;
   email?: string;

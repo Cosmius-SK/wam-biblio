@@ -1,7 +1,7 @@
 "use client";
 
 import Dexie, { type Table } from "dexie";
-import type { JournalEntry, EntryContext, Portrait, Reflection } from "./types";
+import type { Draft, JournalEntry, EntryContext, Portrait, Reflection } from "./types";
 
 /**
  * Local-first store. Entries live in the browser (IndexedDB) and are the
@@ -19,9 +19,20 @@ interface Setting {
  * uploadedAt (ms) we last pulled, so unchanged records aren't re-fetched. */
 export interface SyncLedgerRow {
   key: string; // record id
-  type: "e" | "p" | "r" | "k";
+  type: "e" | "p" | "r" | "k" | "d";
   hash: string;
   pulledUp: number;
+}
+
+/** One period of attended use. Numbers only, and never synced — see
+ * docs/sessions.md for what "attended" means and why it is measured this way. */
+export interface SessionRow {
+  id: string;
+  startedAt: number;
+  endedAt: number;
+  /** Time the app was actually visible and attended, in ms. */
+  activeMs: number;
+  entriesWritten: number;
 }
 
 /** One logged AI action on this device — the itemised usage ledger. */
@@ -45,6 +56,8 @@ class JournalDB extends Dexie {
   portraits!: Table<Portrait, string>;
   syncled!: Table<SyncLedgerRow, string>;
   ailog!: Table<AiLogRow, string>;
+  drafts!: Table<Draft, string>;
+  sessions!: Table<SessionRow, string>;
 
   constructor() {
     super("wam-biblio");
@@ -72,6 +85,12 @@ class JournalDB extends Dexie {
     this.version(6).stores({
       ailog: "id, at, feature",
     });
+    // v7 adds the single in-progress draft (synced) and the session log
+    // (device-local). Additive only — an older build ignores both.
+    this.version(7).stores({
+      drafts: "id",
+      sessions: "id, startedAt",
+    });
   }
 }
 
@@ -93,6 +112,16 @@ function emitChange() {
 export function onDataChange(cb: ChangeListener): () => void {
   changeListeners.add(cb);
   return () => changeListeners.delete(cb);
+}
+
+/**
+ * Ask for a sync push explicitly. Drafts deliberately do NOT hook the table
+ * events: they change on every keystroke, and pushing that often would be
+ * absurd. They save locally at typing speed and are pushed at the quiet
+ * moments instead (see lib/drafts.ts).
+ */
+export function notifyDataChanged(): void {
+  emitChange();
 }
 
 /** Run writes without emitting change events (used while merging a pull). */

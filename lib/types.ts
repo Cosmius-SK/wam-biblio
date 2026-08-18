@@ -172,3 +172,21 @@ export interface Reflection {
   reflection: string;
   themes: string[];
 }
+
+/**
+ * The single in-progress capture. One per journal, not per device: it is
+ * persisted locally the moment it changes and synced like any other record, so
+ * a thought started on a phone can be finished on a laptop.
+ */
+export interface Draft {
+  id: "draft";
+  text: string;
+  aiMode: "deep" | "rephrase" | "none";
+  illustrate: boolean;
+  /** The composer's datetime-local string, kept verbatim. */
+  when: string;
+  place?: EntryPlace;
+  /** Already encrypted and uploaded — attaching, not keeping, does that now. */
+  photos: EntryPhoto[];
+  updatedAt: number;
+}

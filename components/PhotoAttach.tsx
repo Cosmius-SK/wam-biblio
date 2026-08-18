@@ -3,21 +3,28 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { driveConfigured, isDriveConnected } from "@/lib/drive";
-import { prepareImage, type PendingPhoto } from "@/lib/media";
+import { deletePhotos, prepareImage, uploadPhotos } from "@/lib/media";
+import type { EntryPhoto } from "@/lib/types";
 
 const MAX_PHOTOS = 8;
 
 /**
- * Photo picker for the capture screen. Photos are compressed on-device the
- * moment they're chosen; encryption + upload to Drive happen when the entry
- * is kept. Requires Drive to be connected (see the vault).
+ * Photo picker for the capture screen. Photos are compressed, encrypted and
+ * uploaded to the writer's own Drive the moment they're chosen — not when the
+ * entry is kept.
+ *
+ * That timing is the point: a draft then carries references rather than
+ * megabytes, so it can sync, and an entry begun on a phone can be finished on a
+ * laptop that never saw the photo. It also moves the wait to while they're
+ * still writing instead of at the moment they press keep. Requires Drive to be
+ * connected (see the vault).
  */
 export default function PhotoAttach({
   photos,
   onChange,
 }: {
-  photos: PendingPhoto[];
-  onChange: (photos: PendingPhoto[]) => void;
+  photos: EntryPhoto[];
+  onChange: (photos: EntryPhoto[]) => void;
 }) {
   const [ready, setReady] = useState<"loading" | "unconfigured" | "disconnected" | "ready">(
     "loading",
@@ -52,9 +59,13 @@ export default function PhotoAttach({
         break;
       }
       try {
-        next.push(await prepareImage(file));
-      } catch {
-        setError("One of the files couldn't be read as an image.");
+        const [uploaded] = await uploadPhotos([await prepareImage(file)]);
+        next.push(uploaded);
+        onChange([...next]);
+      } catch (err) {
+        setError(
+          err instanceof Error ? err.message : "That photo couldn't be kept — try again.",
+        );
       }
     }
     onChange(next);
@@ -107,9 +118,9 @@ export default function PhotoAttach({
             <rect x="3" y="5" width="18" height="14" rx="3" />
             <circle cx="12" cy="12" r="3.5" />
           </svg>
-          {busy ? "Preparing…" : "Add photos"}
+          {busy ? "Keeping…" : "Add photos"}
         </button>
-        <span className="text-xs text-muted/80">Encrypted into your Drive when you keep the entry.</span>
+        <span className="text-xs text-muted/80">Encrypted into your own Drive as you add them.</span>
       </div>
 
       {photos.length > 0 && (
@@ -124,7 +135,10 @@ export default function PhotoAttach({
               />
               <button
                 type="button"
-                onClick={() => onChange(photos.filter((x) => x.id !== p.id))}
+                onClick={() => {
+                  onChange(photos.filter((x) => x.id !== p.id));
+                  void deletePhotos([p]);
+                }}
                 aria-label="Remove photo"
                 className="absolute -right-1.5 -top-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-ink/80 text-[10px] text-paper"
               >

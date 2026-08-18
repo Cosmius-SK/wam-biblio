@@ -3,7 +3,14 @@
 import type { EntryPhoto, Portrait } from "./types";
 import { getSetting, setSetting } from "./db";
 import { decryptBytes, encryptBytes, generateMediaKey, importMediaKey } from "./crypto";
-import { RECONNECT, downloadEncrypted, ensureFolder, getAccessToken, uploadEncrypted } from "./drive";
+import {
+  RECONNECT,
+  deleteDriveFile,
+  downloadEncrypted,
+  ensureFolder,
+  getAccessToken,
+  uploadEncrypted,
+} from "./drive";
 
 /**
  * The photo pipeline: compress on-device → encrypt with the journal's media
@@ -120,6 +127,27 @@ export async function uploadPhotos(
   }
   onProgress?.(pending.length, pending.length);
   return photos;
+}
+
+/**
+ * Remove photos nothing will ever reference again — an abandoned draft's
+ * attachments. Best effort by design: failing to tidy Drive must never stop
+ * someone from starting fresh, and an orphaned encrypted blob is inert.
+ */
+export async function deletePhotos(photos: EntryPhoto[]): Promise<void> {
+  if (photos.length === 0) return;
+  try {
+    const token = await driveUploadToken();
+    for (const p of photos) {
+      try {
+        await deleteDriveFile(token, p.driveFileId);
+      } catch {
+        /* already gone, or offline — it will simply sit there */
+      }
+    }
+  } catch {
+    /* no token right now; the blobs stay, harmlessly */
+  }
 }
 
 /** Encrypt + upload one self-portrait; returns the metadata to store locally.
