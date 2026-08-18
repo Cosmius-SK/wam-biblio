@@ -19,12 +19,16 @@ export type MayaMoment =
   | "saved"
   | "milestone"
   | "shaping"
-  | "empty";
+  | "empty"
+  | "presence"
+  | "nudge";
 
 export interface MayaLine {
   id: number;
   text: string;
   moment: MayaMoment;
+  /** Ways to answer her, when the line is a question. */
+  answers?: string[];
 }
 
 export type MayaFrequency = "quiet" | "often" | "silent";
@@ -107,6 +111,8 @@ class Maya {
   private current: MayaLine | null = null;
   private nextId = 1;
   private hideTimer: number | null = null;
+  private answered: (() => void) | null = null;
+  private unanswered: (() => void) | null = null;
 
   // ---- what she's saying right now -------------------------------------
 
@@ -146,6 +152,52 @@ class Maya {
     if (hold > 0) {
       this.hideTimer = window.setTimeout(() => this.dismiss(), hold);
     }
+  }
+
+  /**
+   * Ask something that wants an answer — the presence check.
+   *
+   * Silence is a real answer here, so `onSilence` fires if the words time out
+   * untouched. Anything else the person does counts as being present, which is
+   * why callers also resolve this from ordinary interaction rather than
+   * insisting on a tap.
+   */
+  ask(
+    text: string,
+    answers: string[],
+    onAnswer: () => void,
+    onSilence: () => void,
+    hold = 45000,
+  ): void {
+    if (this.frequency() === "silent") return;
+    if (this.hideTimer !== null) window.clearTimeout(this.hideTimer);
+    this.answered = onAnswer;
+    this.unanswered = onSilence;
+    this.current = { id: this.nextId++, text, moment: "presence", answers };
+    this.emit();
+    this.speak(text);
+    this.hideTimer = window.setTimeout(() => {
+      const silent = this.unanswered;
+      this.answered = null;
+      this.unanswered = null;
+      this.dismiss();
+      silent?.();
+    }, hold);
+  }
+
+  /** They're there. Resolves a pending ask, however they showed it. */
+  answer(): void {
+    const cb = this.answered;
+    this.answered = null;
+    this.unanswered = null;
+    if (!cb) return;
+    this.dismiss();
+    cb();
+  }
+
+  /** Whether a question is currently waiting on an answer. */
+  awaitingAnswer(): boolean {
+    return this.answered !== null;
   }
 
   dismiss(): void {

@@ -1,10 +1,10 @@
 # Sessions
 
-**Status:** the clock is **built** (`lib/session.ts`) — visibility tracking,
-the reading credit, delta clamping, session boundaries, and the `onSessionStart`
-/ `onIdle` subscriptions. **Maya's presence check is not built yet**: until it
-is, going idle simply stops the clock rather than asking. The contextual lines,
-the smileys and the idle setting all hang off `onIdle`.
+**Status: built.** The clock (`lib/session.ts`), the contextual presence check
+with its answer chips (`lib/mayaLines.ts`, `components/MayaPresence.tsx`,
+`components/Footer.tsx`), the growing interval, and the setting in
+Settings › Maya. Still open: a `card` surface, since reading an entry has no
+route of its own to detect.
 
 One module, four consumers. `lib/session.ts` is the first thing to build — the
 app lock, Maya's draft nudge, draft freshness and (later) insights all sit on

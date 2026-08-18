@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import {
+  RELOCK_EVENT,
   isBiometricEnabled,
   lockHintOn,
   markUnlocked,
@@ -54,6 +55,11 @@ export default function BioLock() {
       });
     }
 
+    const onExternalRelock = () => {
+      if (lockHintOn()) setLocked(true);
+    };
+    window.addEventListener(RELOCK_EVENT, onExternalRelock);
+
     const onVisibility = () => {
       if (document.hidden) {
         hiddenAt.current = Date.now();
@@ -70,7 +76,10 @@ export default function BioLock() {
       hiddenAt.current = null;
     };
     document.addEventListener("visibilitychange", onVisibility);
-    return () => document.removeEventListener("visibilitychange", onVisibility);
+    return () => {
+      document.removeEventListener("visibilitychange", onVisibility);
+      window.removeEventListener(RELOCK_EVENT, onExternalRelock);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

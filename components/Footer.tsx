@@ -49,13 +49,16 @@ export default function Footer() {
               type="button"
               onClick={() => {
                 maya.stopSpeaking();
-                maya.dismiss();
+                // A question is answered by being touched at all — the chips
+                // are the affordance, not a hoop.
+                if (line.answers) maya.answer();
+                else maya.dismiss();
               }}
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -6 }}
               transition={{ duration: 0.5, ease: "easeOut" }}
-              aria-label="Dismiss"
+              aria-label={line.answers ? "Still here" : "Dismiss"}
               className="absolute inset-0 flex items-center justify-center gap-3"
             >
               <span
@@ -67,6 +70,18 @@ export default function Footer() {
               <span className="font-serif text-base italic leading-snug text-ink/90">
                 {line.text}
               </span>
+              {line.answers && (
+                <span className="flex shrink-0 items-center gap-1.5">
+                  {line.answers.map((a) => (
+                    <span
+                      key={a}
+                      className="rounded-full border border-hairline bg-surface/70 px-2.5 py-1 text-sm leading-none text-ink/80"
+                    >
+                      {a}
+                    </span>
+                  ))}
+                </span>
+              )}
             </motion.button>
           )}
         </AnimatePresence>

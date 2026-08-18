@@ -3,8 +3,8 @@
 **Status:** persistence, restore, discard, the header dot and cross-device sync
 are **built** (`lib/drafts.ts`, `components/CaptureComposer.tsx`, record type
 `"d"` in `lib/sync.ts`). Photos now upload at attach time, so they travel with
-the draft. Still to come: **Maya's nudge**, and persisting the *shaped* result
-so walking away mid-review does not cost the AI call.
+the draft. **Maya's nudge is built** too. Still to come: persisting the
+*shaped* result, so walking away mid-review does not cost the AI call.
 
 ## The problem
 

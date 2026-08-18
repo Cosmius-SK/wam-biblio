@@ -15,6 +15,8 @@ import { getSetting, setSetting } from "./db";
  */
 const LS_FLAG = "biblio_bio";
 const SS_OK = "biblio_bio_ok";
+/** Fired when something elsewhere decides the app should lock again. */
+export const RELOCK_EVENT = "biblio-relock";
 
 // TS 5.7's generic typed arrays don't always unify with the DOM's BufferSource.
 const bs = (u: Uint8Array): BufferSource => u as BufferSource;
@@ -144,5 +146,12 @@ export function relock(): void {
     sessionStorage.removeItem(SS_OK);
   } catch {
     /* ignore */
+  }
+  // The lock screen holds its own state, so tell it rather than waiting for
+  // the next visibility change to notice.
+  try {
+    window.dispatchEvent(new Event(RELOCK_EVENT));
+  } catch {
+    /* not in a browser */
   }
 }

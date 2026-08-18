@@ -24,11 +24,44 @@ import type { SessionRow } from "./db";
 const GAP_MS = 30 * 60_000;
 /** Below this, it was navigation rather than use. */
 const MIN_MS = 10_000;
-/** Stillness (while visible) after which we stop believing anyone is there. */
-const IDLE_MS = 5 * 60_000;
-/** How much of that stillness still counts — enough for a long read. */
+/** How much stillness counts unasked — enough for a long read. */
 const IDLE_CREDIT_MS = 2 * 60_000;
+/** No single delta longer than this is believable as attendance. */
+const CLAMP_MS = 5 * 60_000;
 const TICK_MS = 15_000;
+/** Stillness before she asks. Settable; 0 means never ask. */
+const IDLE_KEY = "biblio_idle_min";
+const DEFAULT_IDLE_MIN = 10;
+
+export function idleMinutes(): number {
+  try {
+    const raw = localStorage.getItem(IDLE_KEY);
+    if (raw === null) return DEFAULT_IDLE_MIN;
+    const n = Number(raw);
+    return Number.isFinite(n) && n >= 0 ? n : DEFAULT_IDLE_MIN;
+  } catch {
+    return DEFAULT_IDLE_MIN;
+  }
+}
+
+export function setIdleMinutes(n: number): void {
+  try {
+    localStorage.setItem(IDLE_KEY, String(n));
+  } catch {
+    /* private mode */
+  }
+}
+
+/**
+ * The window grows each time they confirm. Someone who has said "still here"
+ * twice is settled in with a long entry, and asking six times in an hour is
+ * exactly how this stops being kind.
+ */
+function idleWindowMs(): number {
+  const base = idleMinutes();
+  if (base <= 0) return 0;
+  return base * 60_000 * (1 + Math.min(confirmations, 2));
+}
 
 interface Live {
   id: string;
@@ -42,11 +75,13 @@ let lastTick = 0;
 let lastInteraction = 0;
 let hiddenAt = 0;
 let idle = false;
+let confirmations = 0;
 let tickTimer: number | null = null;
 let started = false;
 
 const startListeners = new Set<() => void>();
 const idleListeners = new Set<() => void>();
+const presentListeners = new Set<() => void>();
 
 const visible = () => typeof document !== "undefined" && document.visibilityState === "visible";
 
@@ -64,7 +99,7 @@ function accrue(now = Date.now()): void {
   const ceiling = Math.max(lastTick, lastInteraction + IDLE_CREDIT_MS);
   const upto = Math.min(now, ceiling);
   const delta = upto - lastTick;
-  if (delta > 0 && delta <= IDLE_MS) live.activeMs += delta;
+  if (delta > 0 && delta <= CLAMP_MS) live.activeMs += delta;
   lastTick = now;
 }
 
@@ -73,6 +108,7 @@ function begin(now = Date.now()): void {
   lastTick = now;
   lastInteraction = now;
   idle = false;
+  confirmations = 0;
   startListeners.forEach((cb) => cb());
 }
 
@@ -96,15 +132,55 @@ async function end(now = Date.now()): Promise<void> {
   }
 }
 
+/**
+ * The stillness they just ended was attended after all — they confirmed it at
+ * the end of it. That is the whole reason for asking rather than guessing: the
+ * only uncertain minutes we ever count are the ones someone vouched for.
+ */
+function creditIdleSpan(now: number): void {
+  if (!live) return;
+  const uncredited = now - (lastInteraction + IDLE_CREDIT_MS);
+  if (uncredited > 0) live.activeMs += uncredited;
+}
+
 function touch(): void {
-  lastInteraction = Date.now();
+  const now = Date.now();
+  if (!live && started && visible()) {
+    // The last session ended while they were away. Coming back — by any
+    // means, not only by switching tabs — starts a new one.
+    begin(now);
+    return;
+  }
+  if (idle) {
+    creditIdleSpan(now);
+    confirmations++;
+    idle = false;
+    presentListeners.forEach((cb) => cb());
+  }
+  lastInteraction = now;
+  lastTick = now;
+}
+
+/** They answered. Same as any other sign of life. */
+export function confirmPresence(): void {
+  touch();
+}
+
+/**
+ * Nobody answered. The session ends at the last real interaction, so the
+ * minutes they were not there never enter the total.
+ */
+export async function markAbsent(): Promise<void> {
   idle = false;
+  await end(lastInteraction + IDLE_CREDIT_MS);
+  hiddenAt = Date.now();
 }
 
 function tick(): void {
   const now = Date.now();
   accrue(now);
-  if (live && visible() && !idle && now - lastInteraction > IDLE_MS) {
+  const window = idleWindowMs();
+  if (window > 0 && live && visible() && !idle && now - lastInteraction > window) {
     idle = true;
     idleListeners.forEach((cb) => cb());
   }
@@ -114,8 +190,8 @@ function onVisibility(): void {
   const now = Date.now();
   if (visible()) {
     // Away longer than the gap makes this a new session, not a continuation.
-    if (hiddenAt && now - hiddenAt > GAP_MS) {
-      void end(hiddenAt).then(() => begin(now));
+    if (!live || (hiddenAt && now - hiddenAt > GAP_MS)) {
+      void end(hiddenAt || now).then(() => begin(now));
     } else {
       lastTick = now;
       touch();
@@ -157,6 +233,12 @@ export function onSessionStart(cb: () => void): () => void {
 export function onIdle(cb: () => void): () => void {
   idleListeners.add(cb);
   return () => idleListeners.delete(cb);
+}
+
+/** Fires when a stillness ends — however they showed they were there. */
+export function onPresent(cb: () => void): () => void {
+  presentListeners.add(cb);
+  return () => presentListeners.delete(cb);
 }
 
 export function noteEntryWritten(): void {

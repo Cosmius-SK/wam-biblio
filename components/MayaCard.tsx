@@ -2,6 +2,16 @@
 
 import { useEffect, useState } from "react";
 import { maya, type MayaFrequency } from "@/lib/maya";
+import { idleMinutes, setIdleMinutes } from "@/lib/session";
+
+/** How long a quiet screen waits before she asks. 0 means she never does. */
+const IDLE_CHOICES: { value: number; label: string }[] = [
+  { value: 5, label: "After 5 minutes" },
+  { value: 10, label: "After 10 minutes" },
+  { value: 20, label: "After 20 minutes" },
+  { value: 30, label: "After 30 minutes" },
+  { value: 0, label: "Never ask" },
+];
 
 const FREQUENCIES: { key: MayaFrequency; label: string; hint: string }[] = [
   { key: "quiet", label: "Quiet", hint: "Moments that matter" },
@@ -17,11 +27,13 @@ export default function MayaCard() {
   const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
   const [voice, setVoice] = useState("auto");
   const [freq, setFreq] = useState<MayaFrequency>("quiet");
+  const [idle, setIdle] = useState(10);
   const canSpeak = maya.canSpeak();
 
   useEffect(() => {
     setVoice(maya.voiceSetting());
     setFreq(maya.frequency());
+    setIdle(idleMinutes());
     if (!maya.canSpeak()) return;
     const load = () => setVoices(maya.femaleVoices());
     load();
@@ -47,6 +59,11 @@ export default function MayaCard() {
   function chooseFrequency(f: MayaFrequency) {
     setFreq(f);
     maya.setFrequency(f);
+  }
+
+  function chooseIdle(n: number) {
+    setIdle(n);
+    setIdleMinutes(n);
   }
 
   return (
@@ -125,6 +142,32 @@ export default function MayaCard() {
           This browser has no speech built in — Maya will write instead of speaking.
         </p>
       )}
+
+      <div className="mt-6 border-t border-hairline/60 pt-5">
+        <h3 className="text-sm font-medium text-ink">If the page goes quiet</h3>
+        <p className="mt-1 text-sm text-muted">
+          When nothing has moved for a while, Maya asks whether you&rsquo;re still there.
+          Answer and she leaves you alone for longer next time; say nothing and she closes
+          the book — your writing is already saved either way.
+        </p>
+        <select
+          value={idle}
+          onChange={(e) => chooseIdle(Number(e.target.value))}
+          aria-label="When Maya asks if you're still there"
+          className="mt-3 w-full cursor-pointer rounded-xl border border-hairline bg-paper/50 px-4 py-3 text-ink focus:border-lavender/60 focus:outline-none"
+        >
+          {IDLE_CHOICES.map((c) => (
+            <option key={c.value} value={c.value}>
+              {c.label}
+            </option>
+          ))}
+        </select>
+        {idle === 0 && (
+          <p className="mt-2 text-xs text-terracotta/90">
+            Your journal stays open until you close it yourself.
+          </p>
+        )}
+      </div>
     </div>
   );
 }
