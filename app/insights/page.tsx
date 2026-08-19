@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { blobToken, listPrefix, readSyncJson } from "@/lib/blobStore";
 import { agoLabel } from "@/lib/format";
+import HealthCard from "@/components/HealthCard";
 import { currentUser } from "@/lib/users/limits";
 import { ownerEmail } from "@/lib/users/allowlist";
 
@@ -112,6 +113,10 @@ export default async function InsightsPage() {
           </ul>
         </>
       )}
+
+      <div className="mt-10">
+        <HealthCard />
+      </div>
 
       <h2 className="mt-12 font-serif text-2xl text-ink">What people said</h2>
       <p className="mt-1 text-sm text-muted">

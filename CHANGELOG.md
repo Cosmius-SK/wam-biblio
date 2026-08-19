@@ -20,6 +20,29 @@ Newest first. Dates are the day the work landed.
 
 ---
 
+## 0.14.0 — 19 August 2026
+
+### What's new
+
+- **A connections check on the owner page.** One button, and it tells you
+  whether Anthropic, Gemini and the storage are actually answering — with the
+  real error when something isn't, rather than a shrug.
+- It also reports the things that quietly decide who gets in: whether sign-in is
+  configured, who is on the allowlist, whether the owner address matches, and
+  what the daily limits are set to.
+
+### Under the hood
+
+- `/api/health`, owner-gated and 404 to everyone else. Anthropic is exercised
+  with a real one-token request — the only way to know a key genuinely works —
+  Gemini with a free model listing that also reports which models can draw, and
+  the Blob store with a write-and-read-back.
+- Keys are described by prefix and length. Nothing prints a secret.
+- Flags an `OWNER_EMAIL` that is set but missing from the allowlist, which would
+  otherwise present as a mysterious 404 on this very page.
+
+---
+
 ## 0.13.0 — 18 August 2026
 
 ### What's new
