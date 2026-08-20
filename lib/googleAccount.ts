@@ -80,10 +80,18 @@ async function ensureSecret(token: string): Promise<string> {
   return secret;
 }
 
-/** Is this journal sealed, in the clear, or mid-migration? */
-export async function keyState(): Promise<KeyState | "unknown"> {
+/**
+ * Is this journal sealed, in the clear, or mid-migration?
+ *
+ * "unknown" means we could not find out — usually because a silent token
+ * refresh needs the user present. It must never be treated as "unsealed":
+ * telling someone their journal is unprotected when we simply could not look
+ * would invite them to re-seal it, which mints a new recovery phrase and
+ * quietly invalidates the one they wrote down.
+ */
+export async function keyState(interactive = false): Promise<KeyState | "unknown"> {
   try {
-    const token = await getAccessToken(false);
+    const token = await getAccessToken(interactive);
     const { file } = await loadKeyFile(token);
     return stateOf(file);
   } catch {

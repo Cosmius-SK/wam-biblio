@@ -31,12 +31,12 @@ export default function JournalKeyCard() {
   const [error, setError] = useState<string | null>(null);
   const [note, setNote] = useState<string | null>(null);
 
-  const refresh = useCallback(async () => {
+  const refresh = useCallback(async (interactive = false) => {
     const on = await isGoogleConnected();
     setConnected(on);
     if (!on) return;
     setHere(await isUnlockedHere());
-    setState(await keyState());
+    setState(await keyState(interactive));
   }, []);
 
   useEffect(() => {
@@ -91,6 +91,8 @@ export default function JournalKeyCard() {
   }
 
   const sealed = state === "protected" || state === "protected-migrating";
+  // Only offer to seal when we have actually established that it isn't.
+  const unsealed = state === "plain";
 
   return (
     <Card>
@@ -214,6 +216,26 @@ export default function JournalKeyCard() {
             </button>
           </div>
         </>
+      ) : state === "unknown" ? (
+        <>
+          <p className="mt-2 text-sm leading-relaxed text-muted">
+            biblio can&rsquo;t reach your Google account from this browser at the moment, so
+            it can&rsquo;t tell whether your journal is sealed — and it won&rsquo;t guess.
+          </p>
+          {error && <p className="mt-3 text-sm text-terracotta">{error}</p>}
+          <button
+            type="button"
+            onClick={() => {
+              setError(null);
+              setBusy(true);
+              void refresh(true).finally(() => setBusy(false));
+            }}
+            disabled={busy}
+            className="mt-4 rounded-full bg-ink/90 px-5 py-2.5 text-sm font-medium text-paper shadow-soft transition-transform active:scale-95 disabled:opacity-50"
+          >
+            {busy ? "Checking…" : "Check now"}
+          </button>
+        </>
       ) : (
         <>
           <p className="mt-2 text-sm leading-relaxed text-muted">
@@ -234,6 +256,7 @@ export default function JournalKeyCard() {
               setNote(null);
               setStage(sealed && !here ? "unlocking" : "setting");
             }}
+            disabled={!sealed && !unsealed}
             className="mt-4 rounded-full bg-ink/90 px-5 py-2.5 text-sm font-medium text-paper shadow-soft transition-transform active:scale-95"
           >
             {sealed ? (here ? "Change passcode" : "Enter passcode") : "Protect my journal"}

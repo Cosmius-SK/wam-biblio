@@ -20,6 +20,19 @@ Newest first. Dates are the day the work landed.
 
 ---
 
+## 0.14.2 — 20 August 2026
+
+### Fixed
+
+- **Settings › Security could claim a sealed journal was unprotected.** When a
+  browser couldn't quietly reach your Google account, biblio treated "couldn't
+  check" as "not sealed" and offered to seal it again — which would have minted
+  a fresh recovery phrase and silently invalidated the six words you'd written
+  down. It now says it can't tell, and offers to check properly instead of
+  guessing.
+
+---
+
 ## 0.14.1 — 20 August 2026
 
 ### Fixed
