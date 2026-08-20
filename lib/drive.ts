@@ -89,6 +89,11 @@ function loadGis(): Promise<void> {
   return gisLoading;
 }
 
+/** A token already in hand, if any. Synchronous, so it costs no gesture. */
+export function cachedAccessToken(): string | null {
+  return cachedToken();
+}
+
 function cachedToken(): string | null {
   try {
     const raw = localStorage.getItem(TOKEN_KEY);

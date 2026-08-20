@@ -11,21 +11,26 @@ function releaseInfo() {
   let notes = [];
   try {
     const md = readFileSync("./CHANGELOG.md", "utf8");
-    // The newest entry, and only its user-facing half.
     const entry = md.split(/^## /m)[1] ?? "";
-    const whatsNew = entry.split(/^### /m).find((s) => s.startsWith("What's new")) ?? "";
 
-    // Bullets wrap across lines in the file; fold the continuations back in so
-    // a note never arrives in the app cut off mid-sentence.
+    // Only the halves a reader is the audience for. "Under the hood" is for
+    // whoever maintains this, and "For the owner" is about running the
+    // deployment — costs, keys, admin tools. None of that should appear in
+    // someone else's journal.
+    const READER_SECTIONS = ["What's new", "Fixed"];
     const bullets = [];
-    for (const raw of whatsNew.split("\n")) {
-      const line = raw.trim();
-      if (line.startsWith("- ")) bullets.push(line.slice(2));
-      else if (line && bullets.length > 0 && !line.startsWith("#")) {
-        bullets[bullets.length - 1] += ` ${line}`;
-      } else if (!line && bullets.length > 0) {
-        // A blank line ends the list; anything after it is prose.
-        break;
+    for (const section of entry.split(/^### /m)) {
+      if (!READER_SECTIONS.some((h) => section.startsWith(h))) continue;
+      for (const raw of section.split("\n")) {
+        const line = raw.trim();
+        if (line.startsWith("- ")) bullets.push(line.slice(2));
+        // Bullets wrap across lines in the file; fold the continuations back
+        // in so a note never arrives cut off mid-sentence.
+        else if (line && bullets.length > 0 && !line.startsWith("#")) {
+          bullets[bullets.length - 1] += ` ${line}`;
+        } else if (!line && bullets.length > 0) {
+          break; // a blank line ends the list; what follows is prose
+        }
       }
     }
     notes = bullets

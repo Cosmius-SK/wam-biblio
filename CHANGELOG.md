@@ -6,8 +6,13 @@ never a second copy to drift.
 
 Each entry has two halves, because it has two audiences:
 
-- **What's new** — for the person using biblio. Plain words, no jargon, no file
-  names. If a sentence needs a developer to explain it, rewrite it.
+- **What's new** and **Fixed** — for the person using biblio. Plain words, no
+  jargon, no file names. If a sentence needs a developer to explain it, rewrite
+  it. **These two are the only sections shown inside the app**, so nothing here
+  may mention costs, keys, admin tools or anything else that is the deployment
+  owner's business rather than the reader's.
+- **For the owner** — anything about running the deployment. Never shown to
+  anyone else.
 - **Under the hood** — for whoever maintains it. Still plain, but specific.
 
 And, where it applies, **Notes** — anything that behaves differently, needs a
@@ -20,27 +25,59 @@ Newest first. Dates are the day the work landed.
 
 ---
 
+## 0.15.1 — 20 August 2026
+
+### Fixed
+
+- **A draft written on a phone now leaves the phone.** It was being saved, but
+  the moment you switched away the upload was cut off mid-flight — so it
+  travelled from a laptop but never from a phone.
+- **Photos attach on the first try.** biblio kept asking you to reconnect Drive
+  no matter how many times you did.
+
+### Under the hood
+
+- Phones freeze a backgrounded page immediately, killing any request in
+  progress. A pre-encrypted copy of the draft is now kept ready and sent with
+  `sendBeacon`, which survives the freeze. Drafts carrying photo thumbnails can
+  exceed the beacon size limit and fall back to the ordinary push.
+- The Drive upload path was spending its user gesture on a silent token refresh
+  of up to eight seconds; the popup that followed was then blocked as
+  unsolicited. It now uses a token already in hand, or asks outright while the
+  tap still counts.
+
+### For the owner
+
+- **Release notes now have an audience.** Only "What's new" and "Fixed" reach
+  the in-app card. A new "For the owner" section — costs, keys, admin tools —
+  is never shown to anyone else. The previous card told every reader about a 4¢
+  test button on a page they cannot open.
+
+---
+
 ## 0.15.0 — 20 August 2026
 
 ### Fixed
 
-- **Drafts never reached your other device.** They uploaded correctly, but the
-  route that fetches a record back rejected the draft type outright, so every
-  pull was refused before it started. Start-on-phone, finish-on-laptop works
-  now. The list of record types lives in one file so this cannot happen a third
-  time.
-- **Invited people were shown the wrong door.** Anyone arriving without a
-  session landed on the passcode screen — asked for a secret they were never
-  given — with sign-in as a small link underneath. Now, once Google sign-in is
-  configured, they meet the invitation. The passcode screen is still there at
-  `/unlock`, and each door links to the other.
-- **Attaching a photo failed with a bare "Upload failed (403)".** Google's
-  consent screen lets you untick the Drive permissions separately and still
-  hands back a valid sign-in, so the failure surfaced much later and said
-  nothing useful. biblio now records what was actually granted, says so before
-  you try, and offers a button to grant it.
+- **An unfinished entry now really does follow you between devices.** Start
+  something on your phone and it will be waiting on your laptop.
+- **A friendlier first screen.** Anyone opening biblio for the first time was
+  being asked for a passcode nobody had given them. Now they get the welcome.
+- **Photos wouldn't attach**, and said only "upload failed". Google asks about
+  saving files to your Drive as a separate tick, and it's easy to miss — biblio
+  now notices, explains, and offers to sort it out.
 
-### What's new
+### Under the hood
+
+- The draft was uploading fine but the route that reads a record back rejected
+  its type, so every pull was refused before it started. The list of record
+  types now lives in one file that every part imports.
+- Middleware picks the door by whether Google sign-in is configured; `/unlock`
+  stays reachable and the two doors link to each other.
+- Granted scopes are recorded at sign-in, so a missing Drive grant is caught
+  before a 403 rather than after one.
+
+### For the owner
 
 - **Draw a test image** on the owner page. Listing models proves a key is valid;
   it doesn't prove anything can be drawn with it — quotas, safety filters and

@@ -6,6 +6,7 @@ import { decryptBytes, encryptBytes, generateMediaKey, importMediaKey } from "./
 import {
   DRIVE_FORBIDDEN,
   RECONNECT,
+  cachedAccessToken,
   deleteDriveFile,
   downloadEncrypted,
   ensureFolder,
@@ -88,15 +89,24 @@ export async function prepareImage(file: File): Promise<PendingPhoto> {
  * first, and if that fails (an expired token, no Google session in a PWA) fall
  * back to the interactive consent popup while their tap is still fresh.
  */
+/**
+ * A token for a Drive write.
+ *
+ * These calls come from a tap, and a browser only counts that tap as a user
+ * gesture for a moment. Trying a silent refresh first spends up to eight
+ * seconds of it, and the popup that follows is then blocked — which surfaced
+ * as "Drive needs reconnecting" no matter how many times someone reconnected.
+ *
+ * So: use a token already in hand, and otherwise ask outright while the tap
+ * still counts.
+ */
 async function driveUploadToken(): Promise<string> {
+  const cached = cachedAccessToken();
+  if (cached) return cached;
   try {
-    return await getAccessToken(false);
+    return await getAccessToken(true);
   } catch {
-    try {
-      return await getAccessToken(true);
-    } catch {
-      throw new Error(FRIENDLY_RECONNECT);
-    }
+    throw new Error(FRIENDLY_RECONNECT);
   }
 }
 

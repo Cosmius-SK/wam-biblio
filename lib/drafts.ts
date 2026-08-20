@@ -1,6 +1,8 @@
 "use client";
 
 import { db, notifyDataChanged } from "./db";
+import { encryptJSON, syncId } from "./crypto";
+import { cachedKey } from "./keyvault";
 import { deletePhotos } from "./media";
 import type { Draft, EntryPhoto, EntryPlace } from "./types";
 
@@ -71,6 +73,8 @@ async function write(input: DraftInput): Promise<void> {
   }
   await db.drafts.put({ ...input, id: ID, updatedAt: Date.now() });
   setHint(true);
+  // Get the escape route ready while there is still time to prepare it.
+  void prepareBeacon();
 }
 
 async function removeRow(): Promise<void> {
@@ -78,6 +82,53 @@ async function removeRow(): Promise<void> {
   // into a tombstone on the next push, so the other device loses it too.
   await db.drafts.delete(ID);
   setHint(false);
+  beacon = null;
+}
+
+/**
+ * A pre-encrypted copy of the draft, ready to leave without any async work.
+ *
+ * A phone freezes the page the moment it is backgrounded, so a debounced
+ * upload — or any upload started at that instant — is simply killed. That is
+ * why a draft written on a phone reached nothing, while one written on a
+ * laptop arrived: the laptop kept running long enough to finish.
+ *
+ * `sendBeacon` exists for exactly this and survives the freeze, but it cannot
+ * await encryption, so the ciphertext is prepared in advance each time the
+ * draft is saved.
+ */
+let beacon: string | null = null;
+/** Beacons are refused above roughly 64KB; a draft carrying photo thumbnails
+ * can exceed that, and those fall back to the ordinary push. */
+const BEACON_MAX = 50_000;
+
+async function prepareBeacon(): Promise<void> {
+  try {
+    const draft = await db.drafts.get(ID);
+    const secret = await cachedKey();
+    if (!draft || !secret) {
+      beacon = null;
+      return;
+    }
+    const body = JSON.stringify({
+      id: await syncId(secret),
+      key: "d/draft",
+      blob: await encryptJSON(draft, secret),
+    });
+    beacon = body.length <= BEACON_MAX ? body : null;
+  } catch {
+    beacon = null;
+  }
+}
+
+/** Fire the prepared copy. Returns whether anything was sent. */
+function sendBeaconNow(): boolean {
+  if (!beacon || typeof navigator === "undefined" || !navigator.sendBeacon) return false;
+  try {
+    return navigator.sendBeacon("/api/sync", new Blob([beacon], { type: "application/json" }));
+  } catch {
+    return false;
+  }
 }
 
 function ensureListeners(): void {
@@ -86,9 +137,14 @@ function ensureListeners(): void {
   // The reliable one. `beforeunload` is not dependable in an installed PWA,
   // and this is exactly the "put the phone down" moment.
   document.addEventListener("visibilitychange", () => {
-    if (document.visibilityState === "hidden") void flushDraft(true);
+    if (document.visibilityState !== "hidden") return;
+    sendBeaconNow();
+    void flushDraft(true);
   });
-  window.addEventListener("pagehide", () => void flushDraft(true));
+  window.addEventListener("pagehide", () => {
+    sendBeaconNow();
+    void flushDraft(true);
+  });
 }
 
 /** Save at typing speed. Cheap, local, debounced. */
