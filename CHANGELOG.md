@@ -20,6 +20,35 @@ Newest first. Dates are the day the work landed.
 
 ---
 
+## 0.15.0 — 20 August 2026
+
+### Fixed
+
+- **Drafts never reached your other device.** They uploaded correctly, but the
+  route that fetches a record back rejected the draft type outright, so every
+  pull was refused before it started. Start-on-phone, finish-on-laptop works
+  now. The list of record types lives in one file so this cannot happen a third
+  time.
+- **Invited people were shown the wrong door.** Anyone arriving without a
+  session landed on the passcode screen — asked for a secret they were never
+  given — with sign-in as a small link underneath. Now, once Google sign-in is
+  configured, they meet the invitation. The passcode screen is still there at
+  `/unlock`, and each door links to the other.
+- **Attaching a photo failed with a bare "Upload failed (403)".** Google's
+  consent screen lets you untick the Drive permissions separately and still
+  hands back a valid sign-in, so the failure surfaced much later and said
+  nothing useful. biblio now records what was actually granted, says so before
+  you try, and offers a button to grant it.
+
+### What's new
+
+- **Draw a test image** on the owner page. Listing models proves a key is valid;
+  it doesn't prove anything can be drawn with it — quotas, safety filters and
+  model availability all fail at generation time. Now you can find that out in
+  one tap instead of by writing a real entry and hoping. About 4¢ a press.
+
+---
+
 ## 0.14.2 — 20 August 2026
 
 ### Fixed

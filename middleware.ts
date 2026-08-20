@@ -43,13 +43,25 @@ export async function middleware(req: NextRequest) {
     return NextResponse.next();
   }
 
-  // Locked. API calls get a clean 401; pages redirect to the unlock screen.
+  // Locked. API calls get a clean 401; pages go to a door.
   if (pathname.startsWith("/api/")) {
     return NextResponse.json({ error: "Locked — unlock the journal first." }, { status: 401 });
   }
+
+  // Which door depends on who is likely knocking. Once Google sign-in is
+  // configured, an invited person should meet the invitation — not a passcode
+  // screen asking for a secret they were never given. The passcode screen
+  // stays reachable at /unlock, and each door links to the other.
   const url = req.nextUrl.clone();
-  url.pathname = "/unlock";
-  url.search = pathname && pathname !== "/" ? `?from=${encodeURIComponent(pathname)}` : "";
+  const googleDoor = !!process.env.AUTH_SECRET && !!process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
+  const from = pathname && pathname !== "/" ? pathname : "";
+  if (googleDoor) {
+    url.pathname = "/welcome";
+    url.search = from ? `?next=${encodeURIComponent(from)}` : "";
+  } else {
+    url.pathname = "/unlock";
+    url.search = from ? `?from=${encodeURIComponent(from)}` : "";
+  }
   return NextResponse.redirect(url);
 }
 

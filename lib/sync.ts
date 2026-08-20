@@ -3,6 +3,7 @@
 import { db, getSetting, setSetting, suppressSync } from "./db";
 import type { Draft, JournalEntry, Portrait, Reflection } from "./types";
 import { decryptJSON, encryptJSON, isEncryptedBlob, syncId } from "./crypto";
+import { parseRecordPath } from "./syncKeys";
 
 /**
  * Differential (delta) sync. Each entry, portrait, and reflection is its own
@@ -101,8 +102,8 @@ async function currentCounts(): Promise<SyncCounts> {
 }
 
 function parsePath(pathname: string): { type: RecType; id: string } | null {
-  const m = pathname.match(/\/([eprkd])\/(.+)\.json$/);
-  return m ? { type: m[1] as RecType, id: m[2] } : null;
+  const hit = parseRecordPath(pathname);
+  return hit ? { type: hit.type as RecType, id: hit.id } : null;
 }
 
 /** POST one small encrypted record through our own server (which writes it to

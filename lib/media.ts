@@ -4,6 +4,7 @@ import type { EntryPhoto, Portrait } from "./types";
 import { getSetting, setSetting } from "./db";
 import { decryptBytes, encryptBytes, generateMediaKey, importMediaKey } from "./crypto";
 import {
+  DRIVE_FORBIDDEN,
   RECONNECT,
   deleteDriveFile,
   downloadEncrypted,

@@ -21,6 +21,7 @@ const SCOPE = [
 ].join(" ");
 const FOLDER_NAME = "biblio-journal";
 const TOKEN_KEY = "biblio_drive_token";
+const SCOPE_KEY = "biblio_drive_scopes";
 const APPDATA = "appDataFolder";
 
 /** Sentinel error message: the user needs to (re)connect interactively. */
@@ -30,6 +31,8 @@ interface TokenResponse {
   access_token?: string;
   expires_in?: number;
   error?: string;
+  /** What Google actually granted, which may be less than we asked for. */
+  scope?: string;
 }
 interface TokenError {
   type?: string;
@@ -140,6 +143,11 @@ export async function getAccessToken(interactive: boolean): Promise<string> {
           TOKEN_KEY,
           JSON.stringify({ t: r.access_token, exp: Date.now() + ((r.expires_in ?? 3600) - 120) * 1000 }),
         );
+        // Google's consent screen lets people untick the Drive permissions
+        // separately, and hands back a perfectly valid token without them. The
+        // failure then surfaces as a 403 much later, while attaching a photo —
+        // so record what was actually granted and say so up front instead.
+        if (r.scope) localStorage.setItem(SCOPE_KEY, r.scope);
       } catch {
         /* private mode — token stays in-memory via GIS */
       }
@@ -187,10 +195,29 @@ export async function disconnectDrive(): Promise<void> {
 export function clearCachedToken(): void {
   try {
     localStorage.removeItem(TOKEN_KEY);
+    localStorage.removeItem(SCOPE_KEY);
   } catch {
     /* ignore */
   }
 }
+
+/**
+ * Whether Drive access was actually granted. `null` means we have not seen a
+ * grant yet and cannot say — which must not be reported as "no".
+ */
+export function driveGranted(): boolean | null {
+  try {
+    const raw = localStorage.getItem(SCOPE_KEY);
+    if (!raw) return null;
+    return raw.includes("drive.file");
+  } catch {
+    return null;
+  }
+}
+
+/** The message for a Drive call refused for lack of permission. */
+export const DRIVE_FORBIDDEN =
+  "Google didn't grant biblio permission to save files to your Drive. Reconnect and leave the Drive box ticked on the consent screen.";
 
 function auth(token: string): Record<string, string> {
   return { Authorization: `Bearer ${token}` };
@@ -227,7 +254,11 @@ export async function ensureFolder(token: string): Promise<string> {
     headers: { ...auth(token), "Content-Type": "application/json" },
     body: JSON.stringify({ name: FOLDER_NAME, mimeType: "application/vnd.google-apps.folder" }),
   });
-  if (!create.ok) throw new Error(`Couldn't create the Drive folder (${create.status}).`);
+  if (!create.ok) {
+    throw new Error(
+      create.status === 403 ? DRIVE_FORBIDDEN : `Couldn't create the Drive folder (${create.status}).`,
+    );
+  }
   const folder = (await create.json()) as { id: string };
   await setSetting("driveFolderId", folder.id);
   return folder.id;
@@ -254,7 +285,9 @@ export async function uploadEncrypted(
       body,
     },
   );
-  if (!res.ok) throw new Error(`Upload failed (${res.status}).`);
+  if (!res.ok) {
+    throw new Error(res.status === 403 ? DRIVE_FORBIDDEN : `Upload failed (${res.status}).`);
+  }
   return ((await res.json()) as { id: string }).id;
 }
 

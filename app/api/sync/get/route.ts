@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { blobToken, readSyncJson } from "@/lib/blobStore";
+import { isRecordKey } from "@/lib/syncKeys";
 
 export const runtime = "nodejs";
 
@@ -23,7 +24,7 @@ export async function GET(request: Request) {
   if (!id || !/^[a-f0-9]{8,64}$/.test(id)) {
     return NextResponse.json({ error: "Bad sync id." }, { status: 400 });
   }
-  if (!key || !/^[eprk]\/[A-Za-z0-9._-]{1,200}$/.test(key)) {
+  if (!isRecordKey(key)) {
     return NextResponse.json({ error: "Bad record key." }, { status: 400 });
   }
 

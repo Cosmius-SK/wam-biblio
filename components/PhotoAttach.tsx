@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { driveConfigured, isDriveConnected } from "@/lib/drive";
+import { clearCachedToken, driveConfigured, driveGranted, getAccessToken, isDriveConnected } from "@/lib/drive";
 import { deletePhotos, prepareImage, uploadPhotos } from "@/lib/media";
 import type { EntryPhoto } from "@/lib/types";
 
@@ -26,9 +26,9 @@ export default function PhotoAttach({
   photos: EntryPhoto[];
   onChange: (photos: EntryPhoto[]) => void;
 }) {
-  const [ready, setReady] = useState<"loading" | "unconfigured" | "disconnected" | "ready">(
-    "loading",
-  );
+  const [ready, setReady] = useState<
+    "loading" | "unconfigured" | "disconnected" | "no-permission" | "ready"
+  >("loading");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -41,7 +41,14 @@ export default function PhotoAttach({
         return;
       }
       const connected = await isDriveConnected();
-      if (!cancelled) setReady(connected ? "ready" : "disconnected");
+      if (cancelled) return;
+      if (!connected) {
+        setReady("disconnected");
+        return;
+      }
+      // A grant we have seen and that lacks Drive is the one case worth
+      // catching early; never having seen one is not evidence of anything.
+      setReady(driveGranted() === false ? "no-permission" : "ready");
     })();
     return () => {
       cancelled = true;
@@ -74,6 +81,31 @@ export default function PhotoAttach({
   }
 
   if (ready === "loading") return null;
+
+  if (ready === "no-permission") {
+    return (
+      <div className="mt-4">
+        <p className="text-xs leading-relaxed text-terracotta">
+          Google didn&rsquo;t grant biblio permission to save files to your Drive, so photos
+          can&rsquo;t be attached. It&rsquo;s a separate tick box on the consent screen and
+          it&rsquo;s easy to miss.
+        </p>
+        <button
+          type="button"
+          onClick={() => {
+            clearCachedToken();
+            void getAccessToken(true)
+              .then(() => setReady(driveGranted() === false ? "no-permission" : "ready"))
+              .catch(() => setError("That didn't work — try again."));
+          }}
+          className="mt-2 rounded-full border border-hairline bg-surface/60 px-4 py-2 text-sm text-ink transition-colors hover:border-lavender/40"
+        >
+          Grant Drive access
+        </button>
+        {error && <p className="mt-2 text-xs text-terracotta">{error}</p>}
+      </div>
+    );
+  }
 
   if (ready !== "ready") {
     return (
