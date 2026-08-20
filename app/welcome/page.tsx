@@ -7,7 +7,15 @@ export const metadata = { title: "biblio — welcome" };
  * The only page that does not need a way in. Three lines about what this is,
  * and one door.
  */
-export default function WelcomePage() {
+export default async function WelcomePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ next?: string }>;
+}) {
+  // Only same-site paths, so this can never become an open redirect.
+  const raw = (await searchParams)?.next;
+  const next = raw && raw.startsWith("/") && !raw.startsWith("//") ? raw : "/";
+
   return (
     <main className="mx-auto flex min-h-dvh max-w-md flex-col justify-center px-6 py-20">
       <h1 className="font-serif text-4xl text-ink">biblio</h1>
@@ -21,7 +29,7 @@ export default function WelcomePage() {
       </p>
 
       <div className="mt-8">
-        <GoogleDoor />
+        <GoogleDoor next={next} />
       </div>
 
       <p className="mt-6 text-xs leading-relaxed text-muted/80">

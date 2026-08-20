@@ -20,6 +20,23 @@ Newest first. Dates are the day the work landed.
 
 ---
 
+## 0.14.1 — 20 August 2026
+
+### Fixed
+
+- **The owner page showed a dead 404 to anyone not signed in**, including the
+  owner themselves. It now sends you to the sign-in door and brings you back
+  afterwards. A signed-in visitor who isn't the owner still gets the 404, which
+  is the case where hiding the page actually matters.
+
+### Notes
+
+- Changing `AUTH_SECRET` invalidates every existing session cookie by design.
+  After changing it, sign in with Google again — the old cookie can no longer
+  be verified, which is the whole point of the secret.
+
+---
+
 ## 0.14.0 — 19 August 2026
 
 ### What's new

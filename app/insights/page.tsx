@@ -1,4 +1,4 @@
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { blobToken, listPrefix, readSyncJson } from "@/lib/blobStore";
 import { agoLabel } from "@/lib/format";
 import HealthCard from "@/components/HealthCard";
@@ -76,7 +76,11 @@ async function gather(): Promise<Row[]> {
 export default async function InsightsPage() {
   const user = await currentUser();
   const owner = ownerEmail();
-  if (!user || !owner || user.email?.toLowerCase() !== owner) notFound();
+  // Nobody signed in is an ordinary visitor: send them to the door rather than
+  // to a 404 they cannot act on. Only a signed-in NON-owner gets the 404, which
+  // is where hiding this page actually matters.
+  if (!user) redirect(`/welcome?next=${encodeURIComponent("/insights")}`);
+  if (!owner || user.email?.toLowerCase() !== owner) notFound();
 
   const [rows, notes] = await Promise.all([gather(), messages()]);
   const people = [...new Set(rows.map((r) => r.sub))];
