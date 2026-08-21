@@ -83,7 +83,11 @@ export default function HealthCard() {
         const id = await ensureFolder(token);
         folder = `folder ready (${id.slice(0, 8)}…)`;
       } catch (e) {
-        folder = `FOLDER FAILED — ${e instanceof Error ? e.message : String(e)}`;
+        const detail = (e as { detail?: string })?.detail;
+        const status = (e as { status?: number })?.status;
+        folder = `FOLDER FAILED${status ? ` (${status})` : ""} — ${
+          e instanceof Error ? e.message : String(e)
+        }${detail ? `\n\nGoogle said:\n${detail}` : ""}`;
       }
       setDrive(`granted: ${scopes}\n${folder}`);
     } catch (e) {

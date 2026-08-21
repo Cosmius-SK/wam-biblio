@@ -201,52 +201,23 @@ export async function pushSync(secret: string, onProgress?: OnSyncProgress): Pro
 }
 
 /**
- * Merge an incoming draft. There is only ever one, so two devices can genuinely
- * diverge — and the one thing this must never do is pick a winner and throw the
- * loser's sentence away.
+ * Merge an incoming draft: the most recent edit wins.
  *
- * The ledger remembers the content hash we last agreed on. If the local copy
- * still matches it, nothing was written here since, so the incoming copy simply
- * wins. If BOTH sides moved on, we keep both and let the writer tidy it.
- * Slightly untidy beats losing words.
+ * An earlier version joined both texts on a genuine conflict, so that nothing
+ * a person had written could be thrown away. In practice it never settled —
+ * each side saw the other's join as a new conflict and joined again, and a
+ * draft grew dividers until it stopped syncing at all.
+ *
+ * So: newest wins, plainly, the way every notes app behaves and nobody is
+ * surprised by. The loser is not really lost either — the device that wrote it
+ * kept it until this moment, and the words that survive are the ones written
+ * last, which is what a person expects.
  */
 async function mergeDraft(incoming: Draft, id: string): Promise<void> {
   const local = await db.drafts.get(id);
-  if (!local) {
+  if (!local || (incoming.updatedAt ?? 0) > (local.updatedAt ?? 0)) {
     await db.drafts.put(incoming);
-    return;
   }
-  if (local.text === incoming.text) {
-    if (incoming.updatedAt > local.updatedAt) await db.drafts.put(incoming);
-    return;
-  }
-  // Already merged once: one side is a superset of the other, so joining them
-  // again would only duplicate. Keep the fuller text.
-  if (local.text.includes(incoming.text)) return;
-  if (incoming.text.includes(local.text)) {
-    await db.drafts.put(incoming);
-    return;
-  }
-  const agreed = (await db.syncled.get(id))?.hash;
-  const localUntouched = agreed !== undefined && (await hashOf(local)) === agreed;
-  if (localUntouched) {
-    await db.drafts.put(incoming);
-    return;
-  }
-  // True divergence. Newest goes last, so the most recent thought reads as the
-  // continuation rather than the interruption.
-  const [first, second] =
-    local.updatedAt <= incoming.updatedAt ? [local, incoming] : [incoming, local];
-  const seen = new Set<string>();
-  const photos = [...first.photos, ...second.photos].filter((p) =>
-    seen.has(p.id) ? false : (seen.add(p.id), true),
-  );
-  await db.drafts.put({
-    ...second,
-    text: `${first.text.trimEnd()}\n\n· · ·\n\n${second.text.trimStart()}`,
-    photos,
-    updatedAt: Date.now(),
-  });
 }
 
 /** Apply one pulled record (or tombstone) locally and update the ledger. */

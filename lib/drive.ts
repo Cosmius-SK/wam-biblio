@@ -234,6 +234,34 @@ export function driveGranted(): boolean | null {
   }
 }
 
+/**
+ * A Drive failure that still carries what Google said.
+ *
+ * The friendly sentence is what a writer should see; the raw body is what
+ * actually diagnoses it — a disabled API, a wrong project and a declined
+ * permission all arrive as 403 and mean completely different things. Replacing
+ * one with the other made the diagnostic useless.
+ */
+export class DriveError extends Error {
+  readonly status: number;
+  readonly detail: string;
+  constructor(message: string, status: number, detail: string) {
+    super(message);
+    this.name = "DriveError";
+    this.status = status;
+    this.detail = detail;
+  }
+}
+
+async function driveFail(res: Response, friendly: string): Promise<never> {
+  const body = await res.text().catch(() => "");
+  throw new DriveError(
+    res.status === 403 ? DRIVE_FORBIDDEN : friendly,
+    res.status,
+    body.slice(0, 600),
+  );
+}
+
 /** The message for a Drive call refused for lack of permission. */
 export const DRIVE_FORBIDDEN =
   "Google didn't grant biblio permission to save files to your Drive. Reconnect and leave the Drive box ticked on the consent screen.";
@@ -273,11 +301,7 @@ export async function ensureFolder(token: string): Promise<string> {
     headers: { ...auth(token), "Content-Type": "application/json" },
     body: JSON.stringify({ name: FOLDER_NAME, mimeType: "application/vnd.google-apps.folder" }),
   });
-  if (!create.ok) {
-    throw new Error(
-      create.status === 403 ? DRIVE_FORBIDDEN : `Couldn't create the Drive folder (${create.status}).`,
-    );
-  }
+  if (!create.ok) await driveFail(create, `Couldn't create the Drive folder (${create.status}).`);
   const folder = (await create.json()) as { id: string };
   await setSetting("driveFolderId", folder.id);
   return folder.id;
@@ -304,9 +328,7 @@ export async function uploadEncrypted(
       body,
     },
   );
-  if (!res.ok) {
-    throw new Error(res.status === 403 ? DRIVE_FORBIDDEN : `Upload failed (${res.status}).`);
-  }
+  if (!res.ok) await driveFail(res, `Upload failed (${res.status}).`);
   return ((await res.json()) as { id: string }).id;
 }
 

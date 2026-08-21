@@ -25,6 +25,30 @@ Newest first. Dates are the day the work landed.
 
 ---
 
+## 0.16.1 — 21 August 2026
+
+### Fixed
+
+- **An unfinished entry now simply keeps your most recent edit.** When the same
+  draft was changed on two devices, biblio tried to keep both versions by
+  joining them — and the two devices then kept re-joining each other's joins
+  until the draft filled with dividers and stopped travelling altogether. The
+  newest edit wins now, the way you'd expect.
+
+### Under the hood
+
+- Drive errors kept Google's own explanation instead of replacing it with a
+  friendly sentence. A disabled API, the wrong project and a declined
+  permission all arrive as 403 and mean entirely different things — the
+  friendly text goes to the writer, the raw body to the owner's diagnostic.
+
+### For the owner
+
+- **"Check Google Drive" now prints what Google actually said.** It previously
+  showed only biblio's own wording, which was the same for every cause.
+
+---
+
 ## 0.16.0 — 21 August 2026
 
 ### What's new
