@@ -25,6 +25,26 @@ Newest first. Dates are the day the work landed.
 
 ---
 
+## 0.17.1 — 21 August 2026
+
+### Fixed
+
+- **Trying a photo again is now actually a different attempt.** When Google
+  turned an upload away, biblio kept the same refused permission slip for
+  another hour and used it again — so granting access appeared to change
+  nothing.
+
+### For the owner
+
+- **"Check Google Drive" now uploads a few bytes and deletes them again.**
+  Creating the folder and writing into it fail for different reasons, and only
+  the second one was ever the problem — the check was passing while the app
+  failed.
+- When an attachment is refused, the picker shows Google's own words beneath
+  it, to you only.
+
+---
+
 ## 0.17.0 — 21 August 2026
 
 ### What's new

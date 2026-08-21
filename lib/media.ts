@@ -7,6 +7,7 @@ import {
   DRIVE_FORBIDDEN,
   RECONNECT,
   cachedAccessToken,
+  clearCachedToken,
   deleteDriveFile,
   downloadEncrypted,
   ensureFolder,
@@ -122,6 +123,21 @@ async function mediaCryptoKey(): Promise<CryptoKey> {
 
 /** Encrypt + upload pending photos; returns the metadata to store on the entry. */
 export async function uploadPhotos(
+  pending: PendingPhoto[],
+  onProgress?: (done: number, total: number) => void,
+): Promise<EntryPhoto[]> {
+  try {
+    return await runUpload(pending, onProgress);
+  } catch (e) {
+    // A token minted before a permission was granted, or before the Drive API
+    // was switched on, is valid and useless — and cached for the best part of
+    // an hour. Throw it away so the next attempt is not the same attempt.
+    if (e instanceof Error && e.message === DRIVE_FORBIDDEN) clearCachedToken();
+    throw e;
+  }
+}
+
+async function runUpload(
   pending: PendingPhoto[],
   onProgress?: (done: number, total: number) => void,
 ): Promise<EntryPhoto[]> {

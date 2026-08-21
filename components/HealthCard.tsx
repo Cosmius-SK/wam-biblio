@@ -1,7 +1,14 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { clearCachedToken, ensureFolder, getAccessToken, grantedScopes } from "@/lib/drive";
+import {
+  clearCachedToken,
+  deleteDriveFile,
+  ensureFolder,
+  getAccessToken,
+  grantedScopes,
+  uploadEncrypted,
+} from "@/lib/drive";
 
 interface Check {
   id: string;
@@ -78,18 +85,39 @@ export default function HealthCard() {
         .split(" ")
         .map((x) => x.replace("https://www.googleapis.com/auth/", ""))
         .join(", ");
-      let folder = "";
-      try {
-        const id = await ensureFolder(token);
-        folder = `folder ready (${id.slice(0, 8)}…)`;
-      } catch (e) {
+      const say = (label: string, e: unknown) => {
         const detail = (e as { detail?: string })?.detail;
         const status = (e as { status?: number })?.status;
-        folder = `FOLDER FAILED${status ? ` (${status})` : ""} — ${
+        return `${label} FAILED${status ? ` (${status})` : ""} — ${
           e instanceof Error ? e.message : String(e)
         }${detail ? `\n\nGoogle said:\n${detail}` : ""}`;
+      };
+
+      let folder = "";
+      let folderId = "";
+      try {
+        folderId = await ensureFolder(token);
+        folder = `folder ready (${folderId.slice(0, 8)}…)`;
+      } catch (e) {
+        folder = say("FOLDER", e);
       }
-      setDrive(`granted: ${scopes}\n${folder}`);
+
+      // Creating the folder is not the step that breaks — uploading into it
+      // is, and the two fail for different reasons. Write a few real bytes and
+      // then take them away again.
+      let upload = "";
+      if (folderId) {
+        try {
+          const probe = new Uint8Array([1, 2, 3, 4]);
+          const id = await uploadEncrypted(token, folderId, "biblio-drive-check.bin", probe);
+          upload = `upload ok (${id.slice(0, 8)}…)`;
+          await deleteDriveFile(token, id).catch(() => {});
+        } catch (e) {
+          upload = say("UPLOAD", e);
+        }
+      }
+
+      setDrive(`granted: ${scopes}\n${folder}${upload ? `\n${upload}` : ""}`);
     } catch (e) {
       setDrive(`sign-in failed — ${e instanceof Error ? e.message : String(e)}`);
     } finally {

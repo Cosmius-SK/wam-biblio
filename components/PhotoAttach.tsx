@@ -11,6 +11,7 @@ import {
 } from "@/lib/drive";
 import { deletePhotos, prepareImage, uploadPhotos } from "@/lib/media";
 import type { EntryPhoto } from "@/lib/types";
+import { isOwner } from "@/lib/owner";
 
 const MAX_PHOTOS = 8;
 
@@ -37,7 +38,14 @@ export default function PhotoAttach({
   >("loading");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  /** Google's own words, shown only to whoever can act on them. */
+  const [detail, setDetail] = useState<string | null>(null);
+  const [owner, setOwner] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    void isOwner().then(setOwner);
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -80,6 +88,9 @@ export default function PhotoAttach({
         if (msg === DRIVE_FORBIDDEN) {
           setReady("no-permission");
           setError(null);
+          const raw = (err as { detail?: string })?.detail;
+          const status = (err as { status?: number })?.status;
+          setDetail(raw ? `${status ?? ""} ${raw}`.trim() : null);
           break;
         }
         setError(msg || "That photo couldn't be kept — try again.");
@@ -117,6 +128,11 @@ export default function PhotoAttach({
           Grant Drive access
         </button>
         {error && <p className="mt-2 text-xs text-terracotta">{error}</p>}
+        {owner && detail && (
+          <pre className="mt-2 max-h-40 overflow-auto whitespace-pre-wrap break-words rounded-lg bg-paper/40 p-3 font-mono text-[0.65rem] leading-relaxed text-muted">
+            {detail}
+          </pre>
+        )}
       </div>
     );
   }
