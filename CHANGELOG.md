@@ -27,6 +27,28 @@ Newest first. Dates are the day the work landed.
 
 ---
 
+## 0.19.3 — 21 August 2026
+
+### Fixed
+
+- **Choosing a voice sticks.** Saying yes to Maya during the walkthrough was
+  quietly resetting her back to the default, so everything after the second
+  card was spoken by the wrong voice.
+- **Maya no longer talks over herself.** Her greeting and the walkthrough were
+  arriving at the same moment, so a nudge appeared with walkthrough controls
+  attached to it. Whoever is speaking as her now keeps her until they've
+  finished.
+
+### Under the hood
+
+- The voice step turns her on only when she is off; "auto" is a starting point
+  for someone who has never chosen, not an answer to "yes please".
+- `maya.claim()` / `release()` — the walkthrough takes her on mount rather than
+  when its first card appears, because the greeting is already on its way by
+  then.
+
+---
+
 ## 0.19.2 — 21 August 2026
 
 ### Fixed

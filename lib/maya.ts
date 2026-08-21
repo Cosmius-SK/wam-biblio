@@ -136,6 +136,14 @@ class Maya {
   private pulseTimer: number | null = null;
   /** Clauses still to say; zeroed to stop her mid-sentence. */
   private queue = 0;
+  /**
+   * Something is already speaking as her — the walkthrough, for one.
+   *
+   * A greeting and a nudge arriving over the top of it is not two features
+   * being helpful, it is one person interrupting herself, and it reads as
+   * software. Whoever has her keeps her until they let go.
+   */
+  private claimed = false;
   private current: MayaLine | null = null;
   private nextId = 1;
   private hideTimer: number | null = null;
@@ -210,7 +218,18 @@ class Maya {
    * Say something. Shows the line, and speaks it when her voice is on.
    * `hold` is how long the words linger, in ms.
    */
+  /** Take her over — the walkthrough speaks as her and must not be talked across. */
+  claim(): void {
+    this.claimed = true;
+    this.dismiss();
+  }
+
+  release(): void {
+    this.claimed = false;
+  }
+
   say(text: string, moment: MayaMoment = "observation", hold = 7000): void {
+    if (this.claimed) return;
     if (this.frequency() === "silent" && moment !== "empty") return;
     if (this.hideTimer !== null) window.clearTimeout(this.hideTimer);
     this.current = { id: this.nextId++, text, moment };
@@ -236,7 +255,7 @@ class Maya {
     onSilence: () => void,
     hold = 45000,
   ): void {
-    if (this.frequency() === "silent") return;
+    if (this.claimed || this.frequency() === "silent") return;
     if (this.hideTimer !== null) window.clearTimeout(this.hideTimer);
     this.answered = onAnswer;
     this.unanswered = onSilence;
@@ -279,7 +298,7 @@ class Maya {
    * accidentally accept an invitation.
    */
   invite(text: string, label: string, onAccept: () => void, hold = 20000): void {
-    if (this.frequency() === "silent") return;
+    if (this.claimed || this.frequency() === "silent") return;
     if (this.hideTimer !== null) window.clearTimeout(this.hideTimer);
     this.answered = () => onAccept();
     this.unanswered = null;

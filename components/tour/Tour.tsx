@@ -55,6 +55,13 @@ export default function Tour({
 }) {
   const pathname = usePathname();
   const [open, setOpen] = useState(force);
+
+  // A forced replay claims her the moment it mounts.
+  useEffect(() => {
+    if (!force) return;
+    maya.claim();
+    return () => maya.release();
+  }, [force]);
   const [index, setIndex] = useState(0);
   const [rect, setRect] = useState<Rect | null>(null);
   const [name, setName] = useState<string | undefined>();
@@ -71,8 +78,16 @@ export default function Tour({
       const at = await tourProgress();
       if (cancelled) return;
       setIndex(Math.min(at, STEPS.length - 1));
-      // Let the page settle before she says anything.
-      window.setTimeout(() => !cancelled && setOpen(true), 1200);
+      // Claim her now rather than when the card appears: her greeting is
+      // already on its way, and it would otherwise arrive underneath.
+      maya.claim();
+      window.setTimeout(() => {
+        if (cancelled) {
+          maya.release();
+          return;
+        }
+        setOpen(true);
+      }, 1200);
     })();
     return () => {
       cancelled = true;
@@ -116,6 +131,7 @@ export default function Tour({
     async (complete: boolean) => {
       setOpen(false);
       maya.stopSpeaking();
+      maya.release();
       if (complete) await finishTour();
       else await saveTourProgress(index);
       onClose?.();
@@ -215,7 +231,10 @@ export default function Tour({
                 <button
                   type="button"
                   onClick={() => {
-                    maya.setVoice("auto");
+                    // Turning her on must not undo a voice someone has already
+                    // chosen. "Auto" is a starting point for people who have
+                    // never picked one, not an answer to "yes please".
+                    if (maya.voiceSetting() === "") maya.setVoice("auto");
                     maya.prime();
                     // Speak the NEXT card here, inside the tap — iOS only
                     // allows speech to begin from a real gesture, and an
