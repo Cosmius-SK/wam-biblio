@@ -42,6 +42,7 @@ type PulseListener = () => void;
 const VOICE_KEY = "biblio_maya_voice"; // "" = off, "auto" = best guess, else voiceURI
 const FREQ_KEY = "biblio_maya_freq";
 const GREET_KEY = "biblio_maya_greeted"; // the day she last said hello
+const RATE_KEY = "biblio_maya_rate";
 
 function read(key: string, fallback: string): string {
   try {
@@ -126,27 +127,6 @@ function preferredVoice(voices: SpeechSynthesisVoice[]): SpeechSynthesisVoice | 
   const english = pool.filter((v) => v.lang?.toLowerCase().startsWith("en"));
   const shortlist = english.length > 0 ? english : pool;
   return [...shortlist].sort((a, b) => voiceQuality(b) - voiceQuality(a))[0];
-}
-
-/**
- * Break a line where a person would draw breath.
- *
- * Synthesised speech sounds mechanical largely because it does not stop. It
- * runs a sentence end into the next word at exactly the same pace, and no
- * human does that. Speaking clause by clause, with a real gap after each, does
- * more for how alive she sounds than any amount of tuning.
- */
-function breaths(text: string): { say: string; pause: number }[] {
-  const parts: { say: string; pause: number }[] = [];
-  const re = /[^,;:—.!?…]+[,;:—.!?…]*/g;
-  for (const raw of text.match(re) ?? [text]) {
-    const say = raw.trim();
-    if (!say) continue;
-    const last = say.slice(-1);
-    const pause = /[.!?…]/.test(last) ? 420 : /[—;:]/.test(last) ? 300 : /,/.test(last) ? 200 : 120;
-    parts.push({ say, pause });
-  }
-  return parts.length > 0 ? parts : [{ say: text, pause: 0 }];
 }
 
 class Maya {
@@ -389,6 +369,21 @@ class Maya {
     write(FREQ_KEY, v);
   }
 
+  /**
+   * How fast she talks.
+   *
+   * A preference rather than a constant, because "too fast" and "too slow"
+   * were both true and neither was a bug — they were two people's ears.
+   */
+  rate(): number {
+    const n = Number(read(RATE_KEY, "0.92"));
+    return Number.isFinite(n) && n >= 0.6 && n <= 1.3 ? n : 0.92;
+  }
+
+  setRate(n: number): void {
+    write(RATE_KEY, String(n));
+  }
+
   private speak(text: string, retried = false): void {
     const setting = this.voiceSetting();
     if (setting === "" || !this.canSpeak()) return;
@@ -431,56 +426,40 @@ class Maya {
           ? preferredVoice(all)
           : all.find((v) => v.voiceURI === setting) ?? preferredVoice(all);
 
-      const parts = breaths(text);
-      this.queue = parts.length;
+      // One utterance per line. Splitting at commas to fake breathing sounded
+      // like the idea it was: browsers clip the opening of each utterance, so
+      // she lost a syllable at the start of every clause, and the gaps between
+      // them added up to a drawl.
+      const utterance = new SpeechSynthesisUtterance(text);
+      if (chosen) utterance.voice = chosen;
+      utterance.rate = this.rate();
+      utterance.pitch = 1.0;
+
       let sawBoundary = false;
-
-      const speakPart = (i: number) => {
-        if (i >= parts.length || this.queue === 0) {
-          ambient.unduck();
-          this.stopFallbackPulse();
-          this.emitSpeaking(false);
-          return;
-        }
-        const utterance = new SpeechSynthesisUtterance(parts[i].say);
-        if (chosen) utterance.voice = chosen;
-        // Unhurried. Synthesised speech at conversational speed reads as a
-        // machine getting through something; a little slower reads as someone
-        // who has time.
-        utterance.rate = 0.86;
-        utterance.pitch = 1.0;
-        utterance.onboundary = (e) => {
-          if (e.name && e.name !== "word") return;
-          sawBoundary = true;
-          this.stopFallbackPulse();
-          this.emitPulse();
-        };
-        if (i === 0) {
-          utterance.onstart = () => {
-            ambient.duck();
-            this.emitSpeaking(true);
-            this.emitPulse();
-            window.setTimeout(() => {
-              if (!sawBoundary) this.startFallbackPulse(text);
-            }, 500);
-          };
-        }
-        const next = () => {
-          if (this.queue === 0) return; // stopped
-          // The gap is the point: a beat after a comma, a longer one after a
-          // full stop, so the orb settles and she reads as breathing.
-          window.setTimeout(() => speakPart(i + 1), parts[i].pause);
-        };
-        utterance.onend = next;
-        utterance.onerror = () => {
-          ambient.unduck();
-          this.stopFallbackPulse();
-          this.emitSpeaking(false);
-        };
-        synth.speak(utterance);
+      utterance.onboundary = (e) => {
+        if (e.name && e.name !== "word") return;
+        sawBoundary = true;
+        this.stopFallbackPulse();
+        this.emitPulse();
       };
-
-      speakPart(0);
+      utterance.onstart = () => {
+        ambient.duck();
+        this.emitSpeaking(true);
+        this.emitPulse();
+        // iOS and several remote voices never report boundaries. Give them a
+        // moment to prove otherwise, then keep time ourselves.
+        window.setTimeout(() => {
+          if (!sawBoundary) this.startFallbackPulse(text);
+        }, 500);
+      };
+      const done = () => {
+        ambient.unduck();
+        this.stopFallbackPulse();
+        this.emitSpeaking(false);
+      };
+      utterance.onend = done;
+      utterance.onerror = done;
+      synth.speak(utterance);
     } catch {
       /* speech unavailable or blocked — the words are on screen anyway */
     }

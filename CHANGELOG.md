@@ -27,6 +27,29 @@ Newest first. Dates are the day the work landed.
 
 ---
 
+## 0.19.2 — 21 August 2026
+
+### Fixed
+
+- **Maya stops losing the first syllable of every sentence.** She had been
+  speaking a clause at a time, which was meant to sound like breathing and
+  instead clipped the start of each piece and dragged the whole line out.
+- **She speaks at a normal pace again**, and there's now a slider in
+  Settings › Maya to set it wherever your ear prefers. It speaks as you move
+  it, so you can hear rather than guess.
+
+### Under the hood
+
+- Reverts the clause splitting from 0.18.1. Browsers clip the opening of every
+  utterance, so cutting one line into five multiplied the flaw and added the
+  gaps between them on top.
+- Speaking rate is a stored preference rather than a constant. "Too fast" and
+  "too slow" were both true and neither was a bug.
+- Keeps the part that mattered: she still picks the most human voice available
+  rather than the oldest one.
+
+---
+
 ## 0.19.1 — 21 August 2026
 
 ### Fixed

@@ -31,12 +31,14 @@ export default function MayaCard() {
   const [freq, setFreq] = useState<MayaFrequency>("quiet");
   const [idle, setIdle] = useState(10);
   const [showTour, setShowTour] = useState(false);
+  const [rate, setRate] = useState(0.92);
   const canSpeak = maya.canSpeak();
 
   useEffect(() => {
     setVoice(maya.voiceSetting());
     setFreq(maya.frequency());
     setIdle(idleMinutes());
+    setRate(maya.rate());
     if (!maya.canSpeak()) return;
     // Best first: every platform ships old formant voices alongside neural
     // ones, and the list order is no guide to which is which.
@@ -65,6 +67,13 @@ export default function MayaCard() {
   function chooseFrequency(f: MayaFrequency) {
     setFreq(f);
     maya.setFrequency(f);
+  }
+
+  function chooseRate(n: number) {
+    setRate(n);
+    maya.setRate(n);
+    maya.prime();
+    maya.say("This is how quickly I'll say things.", "observation", 5000);
   }
 
   function chooseIdle(n: number) {
@@ -124,6 +133,28 @@ export default function MayaCard() {
               </option>
             ))}
           </select>
+
+          {voice !== "" && (
+            <div className="mt-4">
+              <label className="text-sm text-muted" htmlFor="maya-rate">
+                How quickly she speaks
+              </label>
+              <input
+                id="maya-rate"
+                type="range"
+                min={0.7}
+                max={1.15}
+                step={0.02}
+                value={rate}
+                onChange={(e) => chooseRate(Number(e.target.value))}
+                className="mt-2 w-full accent-lavender"
+              />
+              <div className="flex justify-between text-xs text-muted/70">
+                <span>Unhurried</span>
+                <span>Brisk</span>
+              </div>
+            </div>
+          )}
 
           {voice !== "" && (
             <button
