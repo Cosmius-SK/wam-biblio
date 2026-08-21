@@ -95,17 +95,58 @@ export function isFemaleVoice(v: SpeechSynthesisVoice): boolean {
   return FEMALE_NAMES.some((f) => n.includes(f));
 }
 
-/** Her voice: a woman's, English where possible, and preferably on-device. */
+/**
+ * How human a voice is likely to sound.
+ *
+ * Every platform now ships two generations side by side: the old formant
+ * voices — Zira, Samantha, David — and neural ones that are not really
+ * comparable. They are distinguished only by a word in the name, so that is
+ * what this reads.
+ *
+ * An earlier version preferred `localService`, which reliably picked the worse
+ * one: the good voices are usually the network ones. That single line is why
+ * she sounded like a station announcement.
+ */
+export function voiceQuality(v: SpeechSynthesisVoice): number {
+  const n = v.name.toLowerCase();
+  let score = 0;
+  if (/(natural|neural|wavenet|journey|studio|premium|enhanced)/.test(n)) score += 100;
+  if (/online/.test(n)) score += 40;
+  if (/google/.test(n)) score += 25; // Google's web voices are decidedly better
+  if (/siri/.test(n)) score += 30;
+  if (/(compact|eloquence|espeak)/.test(n)) score -= 80; // the tinny ones
+  if (v.localService) score -= 10; // a tiebreak, never a preference
+  return score;
+}
+
+/** Her voice: the most human woman's voice available, English where possible. */
 function preferredVoice(voices: SpeechSynthesisVoice[]): SpeechSynthesisVoice | undefined {
   const women = voices.filter(isFemaleVoice);
   const pool = women.length > 0 ? women : voices;
   const english = pool.filter((v) => v.lang?.toLowerCase().startsWith("en"));
   const shortlist = english.length > 0 ? english : pool;
-  for (const name of ["samantha", "serena", "karen", "moira", "female", "zira"]) {
-    const hit = shortlist.find((v) => v.name.toLowerCase().includes(name));
-    if (hit) return hit;
+  return [...shortlist].sort((a, b) => voiceQuality(b) - voiceQuality(a))[0];
+}
+
+/**
+ * Break a line where a person would draw breath.
+ *
+ * Synthesised speech sounds mechanical largely because it does not stop. It
+ * runs a sentence end into the next word at exactly the same pace, and no
+ * human does that. Speaking clause by clause, with a real gap after each, does
+ * more for how alive she sounds than any amount of tuning.
+ */
+function breaths(text: string): { say: string; pause: number }[] {
+  const parts: { say: string; pause: number }[] = [];
+  const re = /[^,;:—.!?…]+[,;:—.!?…]*/g;
+  for (const raw of text.match(re) ?? [text]) {
+    const say = raw.trim();
+    if (!say) continue;
+    const last = say.slice(-1);
+    const pause = /[.!?…]/.test(last) ? 420 : /[—;:]/.test(last) ? 300 : /,/.test(last) ? 200 : 120;
+    parts.push({ say, pause });
   }
-  return shortlist.find((v) => v.localService) ?? shortlist[0];
+  return parts.length > 0 ? parts : [{ say: text, pause: 0 }];
 }
 
 class Maya {
@@ -113,6 +154,8 @@ class Maya {
   private speakingListeners = new Set<SpeakingListener>();
   private pulseListeners = new Set<PulseListener>();
   private pulseTimer: number | null = null;
+  /** Clauses still to say; zeroed to stop her mid-sentence. */
+  private queue = 0;
   private current: MayaLine | null = null;
   private nextId = 1;
   private hideTimer: number | null = null;
@@ -368,46 +411,69 @@ class Maya {
     try {
       synth.cancel(); // never let her talk over herself
       synth.resume(); // iOS suspends synthesis in the background
-      const utterance = new SpeechSynthesisUtterance(text);
       const all = synth.getVoices();
       const chosen =
         setting === "auto"
           ? preferredVoice(all)
           : all.find((v) => v.voiceURI === setting) ?? preferredVoice(all);
-      if (chosen) utterance.voice = chosen;
-      utterance.rate = 0.94; // unhurried
-      utterance.pitch = 1.02;
+
+      const parts = breaths(text);
+      this.queue = parts.length;
       let sawBoundary = false;
-      utterance.onboundary = (e) => {
-        if (e.name && e.name !== "word") return;
-        sawBoundary = true;
-        this.stopFallbackPulse();
-        this.emitPulse();
+
+      const speakPart = (i: number) => {
+        if (i >= parts.length || this.queue === 0) {
+          ambient.unduck();
+          this.stopFallbackPulse();
+          this.emitSpeaking(false);
+          return;
+        }
+        const utterance = new SpeechSynthesisUtterance(parts[i].say);
+        if (chosen) utterance.voice = chosen;
+        // Unhurried. Synthesised speech at conversational speed reads as a
+        // machine getting through something; a little slower reads as someone
+        // who has time.
+        utterance.rate = 0.86;
+        utterance.pitch = 1.0;
+        utterance.onboundary = (e) => {
+          if (e.name && e.name !== "word") return;
+          sawBoundary = true;
+          this.stopFallbackPulse();
+          this.emitPulse();
+        };
+        if (i === 0) {
+          utterance.onstart = () => {
+            ambient.duck();
+            this.emitSpeaking(true);
+            this.emitPulse();
+            window.setTimeout(() => {
+              if (!sawBoundary) this.startFallbackPulse(text);
+            }, 500);
+          };
+        }
+        const next = () => {
+          if (this.queue === 0) return; // stopped
+          // The gap is the point: a beat after a comma, a longer one after a
+          // full stop, so the orb settles and she reads as breathing.
+          window.setTimeout(() => speakPart(i + 1), parts[i].pause);
+        };
+        utterance.onend = next;
+        utterance.onerror = () => {
+          ambient.unduck();
+          this.stopFallbackPulse();
+          this.emitSpeaking(false);
+        };
+        synth.speak(utterance);
       };
-      utterance.onstart = () => {
-        ambient.duck();
-        this.emitSpeaking(true);
-        this.emitPulse();
-        // iOS and several remote voices never report boundaries. Give them a
-        // moment to prove otherwise, then keep time ourselves.
-        window.setTimeout(() => {
-          if (!sawBoundary) this.startFallbackPulse(text);
-        }, 500);
-      };
-      const done = () => {
-        ambient.unduck();
-        this.stopFallbackPulse();
-        this.emitSpeaking(false);
-      };
-      utterance.onend = done;
-      utterance.onerror = done;
-      synth.speak(utterance);
+
+      speakPart(0);
     } catch {
       /* speech unavailable or blocked — the words are on screen anyway */
     }
   }
 
   stopSpeaking(): void {
+    this.queue = 0;
     this.stopFallbackPulse();
     if (!this.canSpeak()) return;
     try {

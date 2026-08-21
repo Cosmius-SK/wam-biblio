@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { maya, type MayaFrequency } from "@/lib/maya";
+import { maya, voiceQuality, type MayaFrequency } from "@/lib/maya";
 import { idleMinutes, setIdleMinutes } from "@/lib/session";
 import { restartTour } from "@/lib/tour";
 import Tour from "./tour/Tour";
@@ -38,7 +38,10 @@ export default function MayaCard() {
     setFreq(maya.frequency());
     setIdle(idleMinutes());
     if (!maya.canSpeak()) return;
-    const load = () => setVoices(maya.femaleVoices());
+    // Best first: every platform ships old formant voices alongside neural
+    // ones, and the list order is no guide to which is which.
+    const load = () =>
+      setVoices([...maya.femaleVoices()].sort((a, b) => voiceQuality(b) - voiceQuality(a)));
     load();
     // Voices arrive asynchronously in most browsers.
     window.speechSynthesis.addEventListener("voiceschanged", load);
@@ -112,10 +115,11 @@ export default function MayaCard() {
             aria-label="Maya's voice"
             className="mt-2 w-full cursor-pointer rounded-xl border border-hairline bg-paper/50 px-3 py-2.5 text-sm text-ink focus:border-lavender/60 focus:outline-none"
           >
-            <option value="auto">Auto — the calmest woman&rsquo;s voice on this device</option>
+            <option value="auto">Auto — the most human woman&rsquo;s voice on this device</option>
             <option value="">Off — her words appear as text only</option>
             {voices.map((v) => (
               <option key={v.voiceURI} value={v.voiceURI}>
+                {voiceQuality(v) >= 100 ? "★ " : ""}
                 {v.name} ({v.lang})
               </option>
             ))}
@@ -132,8 +136,13 @@ export default function MayaCard() {
           )}
 
           <p className="mt-3 text-xs text-muted/80">
-            Spoken by this device — free, offline, and never sent anywhere. Her words always
-            appear on screen too, so nothing is lost with the sound off.
+            Spoken by this device — free and never sent anywhere. Her words always appear on
+            screen too, so nothing is lost with the sound off.
+          </p>
+          <p className="mt-1.5 text-xs text-muted/70">
+            ★ marks the newer, more human-sounding voices. If none are starred here, your
+            device only has the older robotic ones — iPhone can download better ones under
+            Settings › Accessibility › Spoken Content › Voices.
           </p>
           <p className="mt-1.5 text-xs text-muted/70">
             On iPhone the silent switch mutes her too — if she looks like she&rsquo;s speaking

@@ -25,6 +25,33 @@ Newest first. Dates are the day the work landed.
 
 ---
 
+## 0.18.1 — 21 August 2026
+
+### What's new
+
+- **Maya sounds like a person now.** She was picking the oldest, most robotic
+  voice your device had. She now finds the most human one available, speaks
+  more slowly, and — the part that matters most — **pauses where a person would
+  breathe**, instead of running one sentence into the next at the same pace.
+- **The voice list puts the good ones first**, with a ★ beside the newer,
+  human-sounding voices. If nothing is starred, your device only has the older
+  ones — an iPhone can download better ones under Settings › Accessibility ›
+  Spoken Content › Voices.
+
+### Under the hood
+
+- Voice choice preferred `localService`, which reliably picked the worse of the
+  two generations every platform now ships: the neural voices are usually the
+  network ones. Voices are scored by the words in their names — natural,
+  neural, wavenet, premium, enhanced, online — since that is the only signal
+  the API gives.
+- Lines are spoken clause by clause with a real gap after each: ~420ms at a
+  full stop, ~200ms at a comma. The orb settles in those gaps, which is what
+  makes it read as breathing rather than as an audio meter.
+- Rate 0.94 → 0.86, pitch 1.02 → 1.0.
+
+---
+
 ## 0.18.0 — 21 August 2026
 
 ### What's new
