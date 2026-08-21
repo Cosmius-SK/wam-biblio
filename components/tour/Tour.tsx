@@ -215,11 +215,18 @@ export default function Tour({
                 <button
                   type="button"
                   onClick={() => {
-                    // Speech has to begin inside the tap on iOS, so she starts
-                    // talking here rather than after the next render.
                     maya.setVoice("auto");
                     maya.prime();
-                    maya.speakAside("Lovely. I'll keep it brief.");
+                    // Speak the NEXT card here, inside the tap — iOS only
+                    // allows speech to begin from a real gesture, and an
+                    // effect firing after the render is already too late.
+                    // Saying a throwaway line instead would only cancel itself
+                    // when the next card arrived.
+                    const upcoming = STEPS[Math.min(index + 1, STEPS.length - 1)];
+                    if (upcoming) {
+                      spoken.current = upcoming.id;
+                      maya.speakAside(upcoming.body);
+                    }
                     next();
                   }}
                   className="flex-1 rounded-full bg-ink/90 px-4 py-3 text-sm font-medium text-paper"

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { driveConfigured, getAccessToken } from "@/lib/drive";
+import { completeSignIn } from "@/lib/googleAccount";
 import { describeDevice } from "@/lib/deviceId";
 
 /**
@@ -30,6 +31,9 @@ export default function GoogleDoor({ next = "/", invite }: { next?: string; invi
       });
       const data = (await res.json().catch(() => ({}))) as { error?: string };
       if (!res.ok) throw new Error(data.error || "That didn't work. Try again?");
+      // The cookie only says who they are. This is what makes it *their*
+      // journal on this device: profile, name, Drive, and the key.
+      await completeSignIn(token);
       router.replace(next);
       router.refresh();
     } catch (e) {

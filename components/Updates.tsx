@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { flushDraft } from "@/lib/drafts";
+import { db } from "@/lib/db";
 
 /**
  * Updates, on the reader's terms.
@@ -32,14 +33,24 @@ export default function Updates() {
   const version = process.env.NEXT_PUBLIC_APP_VERSION ?? "";
 
   useEffect(() => {
-    // A first-ever visit has no "what's new" — there is no before.
-    try {
-      const seen = localStorage.getItem(SEEN_KEY);
-      if (!seen) localStorage.setItem(SEEN_KEY, version);
-      else if (seen !== version && notes().length > 0) setWhatsNew(notes());
-    } catch {
-      /* private mode */
-    }
+    // Nobody arriving for the first time wants to hear what changed — there is
+    // no before for them. The stored version is only half the test, because it
+    // belongs to the browser rather than the person: sign in as someone new in
+    // a browser that has been used, and they inherit a note about a version
+    // they never saw. An empty journal is the honest signal.
+    void (async () => {
+      try {
+        const seen = localStorage.getItem(SEEN_KEY);
+        const written = await db.entries.filter((e) => !e.id.startsWith("demo-")).count();
+        if (!seen || written === 0) {
+          localStorage.setItem(SEEN_KEY, version);
+          return;
+        }
+        if (seen !== version && notes().length > 0) setWhatsNew(notes());
+      } catch {
+        /* private mode */
+      }
+    })();
   }, [version]);
 
   useEffect(() => {

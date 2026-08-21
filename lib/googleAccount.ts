@@ -135,6 +135,23 @@ export async function signInWithGoogle(
 ): Promise<{ profile: Profile; syncError: string | null }> {
   clearCachedToken(); // force consent so the new scopes are actually granted
   const token = await getAccessToken(true);
+  return completeSignIn(token, onProgress);
+}
+
+/**
+ * Everything that has to happen on *this device* once a Google token exists.
+ *
+ * Kept separate because there are two ways in now. The account card fetches a
+ * token and calls this; the front door already has one from `/api/auth/session`
+ * and calls this too. When the door skipped it, an invited person got a session
+ * cookie and nothing else — no profile, no sync key, no Drive — so biblio
+ * greeted them by name nowhere, synced nothing, and still offered them a
+ * "Sign in with Google" button they had already used.
+ */
+export async function completeSignIn(
+  token: string,
+  onProgress?: OnSyncProgress,
+): Promise<{ profile: Profile; syncError: string | null }> {
   const id = await getIdentity(token);
   const profile: Profile = { sub: id.sub, email: id.email, name: id.name, picture: id.picture };
   await setSetting("googleProfile", JSON.stringify(profile));

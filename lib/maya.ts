@@ -408,8 +408,22 @@ class Maya {
       return;
     }
 
+    // Cancelling and speaking in the same tick is a long-standing Chrome bug:
+    // the new utterance is swallowed and nothing is heard at all. If she is
+    // mid-sentence, stop her and start again a beat later.
+    if (synth.speaking || synth.pending) {
+      synth.cancel();
+      window.setTimeout(() => this.startSpeaking(text), 140);
+      return;
+    }
+    this.startSpeaking(text);
+  }
+
+  private startSpeaking(text: string): void {
+    const setting = this.voiceSetting();
+    if (setting === "" || !this.canSpeak()) return;
+    const synth = window.speechSynthesis;
     try {
-      synth.cancel(); // never let her talk over herself
       synth.resume(); // iOS suspends synthesis in the background
       const all = synth.getVoices();
       const chosen =

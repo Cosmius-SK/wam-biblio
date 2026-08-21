@@ -11,8 +11,10 @@ Each entry has two halves, because it has two audiences:
   it. **These two are the only sections shown inside the app**, so nothing here
   may mention costs, keys, admin tools or anything else that is the deployment
   owner's business rather than the reader's.
-- **For the owner** — anything about running the deployment. Never shown to
-  anyone else.
+- **For the owner** — anything about *running* the deployment: who gets in,
+  what it costs, keys, admin tools. Never shown to anyone else. The test is
+  whether the sentence is about how the deployment is run — if it is, it goes
+  here even when a reader is affected by it.
 - **Under the hood** — for whoever maintains it. Still plain, but specific.
 
 And, where it applies, **Notes** — anything that behaves differently, needs a
@@ -25,14 +27,47 @@ Newest first. Dates are the day the work landed.
 
 ---
 
+## 0.19.1 — 21 August 2026
+
+### Fixed
+
+- **Signing in through the front door now actually signs you in.** People
+  arriving on an invitation were let through, then found biblio didn't know
+  their name, hadn't fetched their journal, and was still offering them a
+  "Sign in with Google" button they'd just used.
+- **Maya can be heard.** She was being silenced by a browser quirk: stopping
+  one sentence and starting another in the same instant makes Chrome swallow
+  both. She now pauses a beat between them, and her first words begin inside
+  the tap that asked for them, which is the only way iPhones allow speech at
+  all.
+- **No "what changed" note on a first visit.** Someone opening biblio for the
+  first time was being told what was different about a version they had never
+  seen.
+
+### Under the hood
+
+- `completeSignIn(token)` holds everything a device needs after a token exists —
+  profile, name, Drive, key, first sync — and both ways in call it. The door
+  only ever set the session cookie.
+- The what's-new card now tests for an empty journal as well as a stored
+  version, because the stored version belongs to the browser rather than the
+  person.
+
+### For the owner
+
+- The changelog's audience rule now says the deciding test out loud: if a
+  sentence is about how the deployment is *run*, it belongs in this section
+  even when a reader is affected by it. Last release put invitation links in
+  front of everyone.
+
+---
+
 ## 0.19.0 — 21 August 2026
 
-### What's new
+### For the owner
 
 - **An invitation is now a link.** Open it, sign in with your own Google
   account, and you're in — no waiting for anyone to add you first.
-
-### For the owner
 
 - **"Letting people in"** on the owner page: make a link, choose whether it's
   good for one person or several, copy it, revoke it. It also lists who's in,
