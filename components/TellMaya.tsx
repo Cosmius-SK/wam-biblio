@@ -7,11 +7,12 @@ import { contextNow, markAsked, sendFeedback } from "@/lib/feedback";
 /**
  * The one place someone writes *to* a person.
  *
- * Everything else in biblio is private by construction; this is deliberately
- * not, and the interface has to say so every single time — different colour,
- * different type, and a plain sentence at the top. Getting this boundary wrong
- * would poison the trust the rest of the app rests on, so it is stated rather
- * than implied, and what is attached is shown rather than assumed.
+ * They tell Maya, and Maya takes it to whoever makes this — which is how it
+ * actually works, and warmer than being handed a stranger's name and asked to
+ * address them. What must never soften is the fact that a human reads it:
+ * everything else in biblio is private by construction and this deliberately
+ * is not, so the difference is stated every single time in different colour
+ * and different type, and what travels with it is shown rather than assumed.
  */
 const OWNER = process.env.NEXT_PUBLIC_OWNER_NAME || "the person who set this up";
 
@@ -69,7 +70,7 @@ export default function TellMaya({
           className="fixed inset-0 z-[70] flex items-end justify-center bg-ink/40 p-4 backdrop-blur-sm sm:items-center"
           role="dialog"
           aria-modal="true"
-          aria-label={`A message to ${OWNER}`}
+          aria-label="Tell Maya"
         >
           <motion.div
             initial={{ y: 24 }}
@@ -80,18 +81,22 @@ export default function TellMaya({
             className="w-full max-w-md overflow-hidden rounded-2xl border-2 border-terracotta/40 bg-surface font-sans shadow-soft"
           >
             <div className="border-b border-terracotta/30 bg-terracotta/10 px-6 py-4">
-              <p className="text-sm font-semibold text-terracotta">This one leaves biblio</p>
+              <p className="text-sm font-semibold text-terracotta">This one comes to me</p>
               <p className="mt-1 text-sm leading-relaxed text-ink/80">
-                Whatever you write here is sent to {OWNER}, and they will read it.
-                <span className="text-muted"> Nothing else you write in biblio ever is.</span>
+                Tell me and I&rsquo;ll take it to {OWNER}, who makes biblio — they do read
+                these.
+                <span className="text-muted">
+                  {" "}
+                  Your journal they never see; they couldn&rsquo;t if they wanted to.
+                </span>
               </p>
             </div>
 
             {sent ? (
               <div className="px-6 py-8 text-center">
-                <p className="text-base text-ink">Sent. Thank you — genuinely.</p>
+                <p className="text-base text-ink">Got it. Thank you — genuinely.</p>
                 <p className="mt-2 text-sm text-muted">
-                  It goes straight to {OWNER}. Nothing else went with it.
+                  I&rsquo;ll make sure {OWNER} sees it. Nothing else went with it.
                 </p>
                 <button
                   type="button"

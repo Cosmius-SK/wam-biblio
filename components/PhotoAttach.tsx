@@ -2,7 +2,14 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { clearCachedToken, driveConfigured, driveGranted, getAccessToken, isDriveConnected } from "@/lib/drive";
+import {
+  DRIVE_FORBIDDEN,
+  clearCachedToken,
+  driveConfigured,
+  driveGranted,
+  getAccessToken,
+  isDriveConnected,
+} from "@/lib/drive";
 import { deletePhotos, prepareImage, uploadPhotos } from "@/lib/media";
 import type { EntryPhoto } from "@/lib/types";
 
@@ -70,9 +77,15 @@ export default function PhotoAttach({
         next.push(uploaded);
         onChange([...next]);
       } catch (err) {
-        setError(
-          err instanceof Error ? err.message : "That photo couldn't be kept — try again.",
-        );
+        const msg = err instanceof Error ? err.message : "";
+        // Drive refusing us is not a photo problem, and telling someone to go
+        // and reconnect in Settings is a poor answer. Offer the fix here.
+        if (msg === DRIVE_FORBIDDEN) {
+          setReady("no-permission");
+          setError(null);
+          break;
+        }
+        setError(msg || "That photo couldn't be kept — try again.");
       }
     }
     onChange(next);
@@ -94,7 +107,10 @@ export default function PhotoAttach({
           type="button"
           onClick={() => {
             clearCachedToken();
-            void getAccessToken(true)
+            // Forced consent: Google will not re-offer a permission it thinks
+            // it has already asked about, and this is precisely the case where
+            // it needs to ask again.
+            void getAccessToken(true, true)
               .then(() => setReady(driveGranted() === false ? "no-permission" : "ready"))
               .catch(() => setError("That didn't work — try again."));
           }}

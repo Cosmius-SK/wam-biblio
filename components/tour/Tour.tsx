@@ -100,9 +100,13 @@ export default function Tour({
     };
   }, [open, step]);
 
-  // She reads it aloud when her voice is on — the same voice as everywhere else.
+  // She reads it aloud when her voice is on — the same voice as everywhere
+  // else. Never before she has asked, though: speech that starts unbidden in
+  // someone's first minute is startling, and asking is itself part of meeting
+  // her.
   useEffect(() => {
     if (!open || spoken.current === step.id) return;
+    if (step.voiceChoice) return;
     spoken.current = step.id;
     maya.speakAside(step.body);
   }, [open, step, index]);
@@ -198,6 +202,34 @@ export default function Tour({
               </Link>
             )}
 
+            {step.voiceChoice ? (
+              <div className="mt-6 flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    maya.setVoice("");
+                    next();
+                  }}
+                  className="flex-1 rounded-full border border-hairline bg-paper/50 px-4 py-3 text-sm text-muted"
+                >
+                  Text is fine
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    // Speech has to begin inside the tap on iOS, so she starts
+                    // talking here rather than after the next render.
+                    maya.setVoice("auto");
+                    maya.prime();
+                    maya.speakAside("Lovely. I'll keep it brief.");
+                    next();
+                  }}
+                  className="flex-1 rounded-full bg-ink/90 px-4 py-3 text-sm font-medium text-paper"
+                >
+                  Yes, read aloud
+                </button>
+              </div>
+            ) : (
             <div className="mt-6 flex items-center justify-between gap-3">
               <button
                 type="button"
@@ -220,6 +252,7 @@ export default function Tour({
                 </button>
               </div>
             </div>
+            )}
           </motion.div>
         </div>
       </motion.div>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { clearCachedToken, ensureFolder, getAccessToken, grantedScopes } from "@/lib/drive";
 
 interface Check {
   id: string;
@@ -30,6 +31,8 @@ export default function HealthCard() {
   const [report, setReport] = useState<Report | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [drive, setDrive] = useState<string | null>(null);
+  const [driveBusy, setDriveBusy] = useState(false);
   const [drawing, setDrawing] = useState(false);
   const [image, setImage] = useState<{ src: string; model: string } | null>(null);
   const [drawError, setDrawError] = useState<string | null>(null);
@@ -58,6 +61,38 @@ export default function HealthCard() {
    * generation time — so the only honest test is to generate one, here, rather
    * than by writing a real entry and hoping.
    */
+  /**
+   * Drive lives entirely in the browser, so the server-side checks above can
+   * say nothing about it. This asks Google outright, prints exactly which
+   * permissions came back, and then tries the one operation that actually
+   * fails — creating the folder — so a refusal names itself instead of
+   * arriving later as "upload failed".
+   */
+  async function checkDrive() {
+    setDriveBusy(true);
+    setDrive(null);
+    try {
+      clearCachedToken();
+      const token = await getAccessToken(true, true);
+      const scopes = (grantedScopes() ?? "(none reported)")
+        .split(" ")
+        .map((x) => x.replace("https://www.googleapis.com/auth/", ""))
+        .join(", ");
+      let folder = "";
+      try {
+        const id = await ensureFolder(token);
+        folder = `folder ready (${id.slice(0, 8)}…)`;
+      } catch (e) {
+        folder = `FOLDER FAILED — ${e instanceof Error ? e.message : String(e)}`;
+      }
+      setDrive(`granted: ${scopes}\n${folder}`);
+    } catch (e) {
+      setDrive(`sign-in failed — ${e instanceof Error ? e.message : String(e)}`);
+    } finally {
+      setDriveBusy(false);
+    }
+  }
+
   async function draw() {
     setDrawing(true);
     setDrawError(null);
@@ -134,6 +169,25 @@ export default function HealthCard() {
           </ul>
         </>
       )}
+
+      <div className="mt-5 border-t border-hairline/50 pt-5">
+        <div className="flex flex-wrap items-center gap-3">
+          <button
+            type="button"
+            onClick={() => void checkDrive()}
+            disabled={driveBusy}
+            className="rounded-full border border-hairline bg-paper/50 px-4 py-2 text-sm text-ink transition-colors hover:border-lavender/40 disabled:opacity-50"
+          >
+            {driveBusy ? "Asking Google…" : "Check Google Drive"}
+          </button>
+          <span className="text-xs text-muted/70">Shows exactly what was granted</span>
+        </div>
+        {drive && (
+          <pre className="mt-3 whitespace-pre-wrap break-words rounded-xl bg-paper/40 px-4 py-3 font-mono text-xs leading-relaxed text-muted">
+            {drive}
+          </pre>
+        )}
+      </div>
 
       <div className="mt-5 border-t border-hairline/50 pt-5">
         <div className="flex flex-wrap items-center gap-3">

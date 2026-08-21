@@ -25,6 +25,53 @@ Newest first. Dates are the day the work landed.
 
 ---
 
+## 0.16.0 — 21 August 2026
+
+### What's new
+
+- **biblio has a face in your browser tab** at last, instead of a grey globe.
+- **Maya asks before she speaks.** The walkthrough now begins by offering her
+  voice rather than assuming it. Text is a perfectly good answer, and you can
+  change your mind in Settings.
+- **Telling Maya feels like telling Maya.** Say it to her and she takes it to
+  whoever makes biblio — which is how it actually works, and warmer than being
+  handed a stranger's name. That a person reads it is still said every time.
+
+### Fixed
+
+- **An unfinished entry stops going in circles.** Editing the same draft on two
+  devices could leave them arguing with each other, and eventually syncing
+  nothing at all.
+- **Photos: no more trip to Settings.** When Google refuses permission, the fix
+  is now a button where you are, and it asks Google properly rather than being
+  told the question has already been answered.
+
+### Under the hood
+
+- The sync ledger recorded the hash of the record that *arrived* rather than
+  the one that ended up on disk. For a merged draft those differ, so the device
+  re-pushed forever and each pass grew the text. It now hashes what is stored,
+  and a merge where one side already contains the other is a no-op.
+- `getAccessToken(interactive, force)` can send `prompt: "consent"`, which is
+  the only way to re-offer a Drive permission someone declined.
+- A `DRIVE_FORBIDDEN` during upload now flips the picker into its
+  grant-permission state instead of printing an error and stopping.
+
+### For the owner
+
+- **Costs are hidden from everyone but you.** Guests see how many calls they
+  made, not what they cost their host — totting up someone else's money is how
+  a person quietly stops using something. Revisit when the group is no longer
+  a closed one.
+- **"Check Google Drive"** on the owner page asks Google outright and prints
+  exactly which permissions came back, then tries the operation that actually
+  fails. Drive lives entirely in the browser, so the server-side checks could
+  never say anything about it.
+- New `/api/me` answers one question — are you the owner — so owner-only detail
+  can be withheld without publishing your address to every visitor.
+
+---
+
 ## 0.15.1 — 20 August 2026
 
 ### Fixed

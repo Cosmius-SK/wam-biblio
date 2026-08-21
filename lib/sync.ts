@@ -220,6 +220,13 @@ async function mergeDraft(incoming: Draft, id: string): Promise<void> {
     if (incoming.updatedAt > local.updatedAt) await db.drafts.put(incoming);
     return;
   }
+  // Already merged once: one side is a superset of the other, so joining them
+  // again would only duplicate. Keep the fuller text.
+  if (local.text.includes(incoming.text)) return;
+  if (incoming.text.includes(local.text)) {
+    await db.drafts.put(incoming);
+    return;
+  }
   const agreed = (await db.syncled.get(id))?.hash;
   const localUntouched = agreed !== undefined && (await hashOf(local)) === agreed;
   if (localUntouched) {
@@ -257,7 +264,13 @@ async function applyRecord(type: RecType, id: string, data: unknown, uploadedAt:
     else if (type === "k") await adoptMediaKey((data as { mediaKey?: string }).mediaKey);
     else if (type === "d") await mergeDraft(data as Draft, id);
   });
-  const hash = deleted ? TOMBSTONE : await hashOf(data);
+  // The ledger must describe what is ON DISK, not what arrived. A merged
+  // draft differs from the record that triggered the merge, and recording the
+  // incoming hash left the two permanently disagreeing — so the device
+  // re-pushed every cycle, the other side saw divergence again, and the text
+  // grew on each pass instead of settling.
+  const stored = !deleted && type === "d" ? await db.drafts.get(id) : null;
+  const hash = deleted ? TOMBSTONE : await hashOf(stored ?? data);
   await db.syncled.put({ key: id, type, hash, pulledUp: uploadedAt });
 }
 

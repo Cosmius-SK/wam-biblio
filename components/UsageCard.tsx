@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
 import { db, type AiLogRow } from "@/lib/db";
 import { formatCost, formatDate, formatTime, modelLabel } from "@/lib/format";
+import { isOwner } from "@/lib/owner";
 
 const FEATURES: { key: AiLogRow["feature"]; label: string }[] = [
   { key: "shape", label: "Shaped entries" },
@@ -20,6 +21,17 @@ const FEATURES: { key: AiLogRow["feature"]; label: string }[] = [
 export default function UsageCard() {
   const rows = useLiveQuery(() => db.ailog.orderBy("at").reverse().toArray());
   const [showRecent, setShowRecent] = useState(false);
+  /**
+   * Money is the deployment owner's business, not the writer's. Someone using
+   * biblio on an invitation should not be totting up what they are costing
+   * their host — that is how a person quietly stops using something. They see
+   * how much they have used; the owner sees what it cost.
+   */
+  const [owner, setOwner] = useState(false);
+
+  useEffect(() => {
+    void isOwner().then(setOwner);
+  }, []);
 
   if (!rows) return null;
 
@@ -44,14 +56,19 @@ export default function UsageCard() {
       ) : (
         <>
           <div className="mt-4 grid grid-cols-3 gap-2 text-center">
-            {[
-              ["Today", sum(today)],
-              ["This month", sum(month)],
-              ["All time", sum(rows)],
-            ].map(([label, cost]) => (
-              <div key={label as string} className="rounded-xl bg-paper/50 px-2 py-3">
+            {(
+              [
+                ["Today", today],
+                ["This month", month],
+                ["All time", rows],
+              ] as [string, AiLogRow[]][]
+            ).map(([label, list]) => (
+              <div key={label} className="rounded-xl bg-paper/50 px-2 py-3">
                 <p className="text-xs text-muted">{label}</p>
-                <p className="mt-1 font-medium tabular-nums text-ink">{formatCost(cost as number)}</p>
+                <p className="mt-1 font-medium tabular-nums text-ink">
+                  {owner ? formatCost(sum(list)) : list.length}
+                </p>
+                {!owner && <p className="text-[0.65rem] text-muted/70">calls</p>}
               </div>
             ))}
           </div>
@@ -66,8 +83,8 @@ export default function UsageCard() {
                   <span className="text-ink/80">{label}</span>
                   <span className="tabular-nums text-muted">
                     {key === "illustrate"
-                      ? `${images} image${images === 1 ? "" : "s"} · ≈ ${formatCost(sum(of))}`
-                      : `${of.length} × · ${formatCost(sum(of))}`}
+                      ? `${images} image${images === 1 ? "" : "s"}${owner ? ` · ≈ ${formatCost(sum(of))}` : ""}`
+                      : `${of.length} ×${owner ? ` · ${formatCost(sum(of))}` : ""}`}
                   </span>
                 </li>
               );
@@ -97,7 +114,7 @@ export default function UsageCard() {
                     {modelLabel(r.model)}
                   </span>
                   <span className="shrink-0 tabular-nums">
-                    {r.images ? `${r.images} img` : formatCost(r.cost)} ·{" "}
+                    {r.images ? `${r.images} img` : owner ? formatCost(r.cost) : modelLabel(r.model)} ·{" "}
                     {formatDate(r.at)} {formatTime(r.at)}
                   </span>
                 </li>

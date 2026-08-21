@@ -17,15 +17,15 @@ export default function TellMayaCard() {
       </p>
       <p className="mt-3 rounded-xl bg-terracotta/10 px-4 py-3 text-sm leading-relaxed text-ink/80">
         <span className="font-medium text-terracotta">This is the one thing that leaves.</span>{" "}
-        What you send here goes to {OWNER} and they read it. Your journal never does — they
-        couldn&rsquo;t read it if they wanted to.
+        Say it to me and I&rsquo;ll take it to {OWNER}, who makes biblio — they do read these.
+        Your journal they never see; they couldn&rsquo;t if they wanted to.
       </p>
       <button
         type="button"
         onClick={() => setOpen(true)}
         className="mt-4 rounded-full bg-terracotta px-5 py-2.5 text-sm font-medium text-paper transition-transform active:scale-95"
       >
-        Write to them
+        Tell Maya
       </button>
       <TellMaya open={open} onClose={() => setOpen(false)} />
     </div>

@@ -111,9 +111,9 @@ function cachedToken(): string | null {
  * and reject with RECONNECT when Google wants the user present; interactive
  * calls (from the vault's Connect button) may show the Google popup.
  */
-export async function getAccessToken(interactive: boolean): Promise<string> {
+export async function getAccessToken(interactive: boolean, force = false): Promise<string> {
   if (!driveConfigured()) throw new Error(RECONNECT);
-  const cached = cachedToken();
+  const cached = force ? null : cachedToken();
   if (cached) return cached;
   await loadGis();
   const o = oauth2();
@@ -175,7 +175,12 @@ export async function getAccessToken(interactive: boolean): Promise<string> {
     // (common in an installed PWA with no Google session), stop waiting.
     if (!interactive) window.setTimeout(fail, 8000);
     try {
-      tokenClient.requestAccessToken(interactive ? undefined : { prompt: "" });
+      // `consent` forces the permission screen back up even when Google
+      // thinks it has already asked — the only way to re-offer a Drive tick
+      // that was declined the first time.
+      tokenClient.requestAccessToken(
+        interactive ? (force ? { prompt: "consent" } : undefined) : { prompt: "" },
+      );
     } catch (e) {
       detail = e instanceof Error ? e.message : "";
       fail();
@@ -210,6 +215,15 @@ export function clearCachedToken(): void {
  * Whether Drive access was actually granted. `null` means we have not seen a
  * grant yet and cannot say — which must not be reported as "no".
  */
+/** The raw scope string Google last granted, for diagnosis. */
+export function grantedScopes(): string | null {
+  try {
+    return localStorage.getItem(SCOPE_KEY);
+  } catch {
+    return null;
+  }
+}
+
 export function driveGranted(): boolean | null {
   try {
     const raw = localStorage.getItem(SCOPE_KEY);

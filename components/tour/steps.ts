@@ -21,13 +21,21 @@ export interface TourStep {
   action?: { label: string; href: string };
   /** Shown only where it applies. */
   when?: "ios" | "android" | "always";
+  /** This step asks whether she may speak, and is answered rather than paged. */
+  voiceChoice?: boolean;
 }
 
 export const STEPS: TourStep[] = [
   {
     id: "hello",
     title: "Hello. I'm Maya.",
-    body: "I live at the bottom of the screen. I'll say something now and then — when you've written a while, or when the page has gone quiet — and otherwise I'll leave you to it. If you'd rather I were silent, that's a switch in Settings and I won't take it personally.",
+    body: "I live at the bottom of the screen. I'll say something now and then — when you've written a while, or when the page has gone quiet — and otherwise I'll leave you to it.",
+  },
+  {
+    id: "voice",
+    voiceChoice: true,
+    title: "Shall I say it out loud?",
+    body: "I can read this to you, and speak up now and then as you write. Or I can stay in text — my words always appear on screen either way, so nothing is lost by keeping me quiet. You can change your mind any time in Settings.",
   },
   {
     id: "promise",
