@@ -25,6 +25,45 @@ Newest first. Dates are the day the work landed.
 
 ---
 
+## 0.17.0 — 21 August 2026
+
+### What's new
+
+- **The capture screen tells you whether your words have travelled.** A quiet
+  line — *on your other devices*, *saved here, still sending*, or *will send
+  when you're back online*. Sync being silent is right until it isn't working.
+
+### Fixed
+
+- **A device left open now receives what you wrote elsewhere.** biblio only
+  checked for changes when a page was freshly loaded, so a laptop sitting on
+  another tab never learned that anything had happened on your phone. It now
+  also checks when you come back to it.
+- **A draft written on a phone is sent immediately** instead of after a pause
+  long enough for the phone to freeze the page first.
+- **Photos are no longer blocked before you try.** biblio was refusing to offer
+  the picker based on a stale note about what Google had granted — which was
+  wrong often enough to stop people whose Drive worked perfectly well. It now
+  simply tries, and offers to sort out permission only if Google actually
+  objects.
+
+### Under the hood
+
+- `AutoSync` pulls on session start and on returning to a tab after a while,
+  not only on mount.
+- `flushDraft(push)` calls `autoPush()` directly rather than going through the
+  four-second debounce the rest of the app uses.
+- The draft's sync state is derived from the sync ledger's last-pushed hash
+  against what is on disk — no new bookkeeping to drift.
+
+### For the owner
+
+- Enabling the **Google Drive API** in the Cloud project that owns the OAuth
+  client was the missing piece behind every photo failure. "Check Google Drive"
+  now reports `folder ready`, which is what a working Drive looks like.
+
+---
+
 ## 0.16.1 — 21 August 2026
 
 ### Fixed

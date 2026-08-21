@@ -4,6 +4,7 @@ import { db, notifyDataChanged } from "./db";
 import { encryptJSON, syncId } from "./crypto";
 import { cachedKey } from "./keyvault";
 import { deletePhotos } from "./media";
+import { autoPush } from "./googleAccount";
 import type { Draft, EntryPhoto, EntryPlace } from "./types";
 
 /**
@@ -178,7 +179,16 @@ export async function flushDraft(push = false): Promise<void> {
       window.clearTimeout(pushTimer);
       pushTimer = null;
     }
+    // Straight out, not through the four-second debounce the rest of the app
+    // uses. A phone freezes a backgrounded page within a moment, and those
+    // four seconds were long enough for the upload never to start — which is
+    // why a draft written on a phone stayed on the phone.
     notifyDataChanged();
+    try {
+      await autoPush();
+    } catch {
+      /* the beacon and the next visit both still carry it */
+    }
   }
 }
 
@@ -221,4 +231,34 @@ export function draftFrom(
   photos: EntryPhoto[],
 ): DraftInput {
   return { text, aiMode, illustrate, when, place: place ?? undefined, photos };
+}
+
+/**
+ * Whether the draft on this device has reached the cloud yet.
+ *
+ * Sync is silent by design, which is right until something is wrong — and then
+ * there is nothing to look at and every report is a symptom. This is the one
+ * honest signal: the sync ledger's record of what was last pushed, compared
+ * with what is on disk now.
+ */
+export type DraftSync = "none" | "pending" | "synced" | "offline";
+
+export async function draftSyncState(): Promise<DraftSync> {
+  try {
+    if (typeof navigator !== "undefined" && navigator.onLine === false) return "offline";
+    const draft = await db.drafts.get(ID);
+    if (!draft) return "none";
+    const led = await db.syncled.get(ID);
+    if (!led) return "pending";
+    const digest = await crypto.subtle.digest(
+      "SHA-256",
+      new TextEncoder().encode(JSON.stringify(draft)),
+    );
+    const hash = Array.from(new Uint8Array(digest))
+      .map((b) => b.toString(16).padStart(2, "0"))
+      .join("");
+    return led.hash === hash ? "synced" : "pending";
+  } catch {
+    return "pending";
+  }
 }

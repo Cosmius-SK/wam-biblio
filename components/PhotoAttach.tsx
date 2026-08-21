@@ -6,7 +6,6 @@ import {
   DRIVE_FORBIDDEN,
   clearCachedToken,
   driveConfigured,
-  driveGranted,
   getAccessToken,
   isDriveConnected,
 } from "@/lib/drive";
@@ -49,13 +48,11 @@ export default function PhotoAttach({
       }
       const connected = await isDriveConnected();
       if (cancelled) return;
-      if (!connected) {
-        setReady("disconnected");
-        return;
-      }
-      // A grant we have seen and that lacks Drive is the one case worth
-      // catching early; never having seen one is not evidence of anything.
-      setReady(driveGranted() === false ? "no-permission" : "ready");
+      // Deliberately optimistic. An earlier version refused to even offer the
+      // picker when a cached scope string looked wrong — and that string is
+      // not reliable evidence, so it blocked people whose Drive worked
+      // perfectly well. Try, and offer the fix only if Google actually says no.
+      setReady(connected ? "ready" : "disconnected");
     })();
     return () => {
       cancelled = true;
@@ -99,9 +96,7 @@ export default function PhotoAttach({
     return (
       <div className="mt-4">
         <p className="text-xs leading-relaxed text-terracotta">
-          Google didn&rsquo;t grant biblio permission to save files to your Drive, so photos
-          can&rsquo;t be attached. It&rsquo;s a separate tick box on the consent screen and
-          it&rsquo;s easy to miss.
+          Google turned that away. Granting access again usually settles it.
         </p>
         <button
           type="button"
@@ -111,7 +106,10 @@ export default function PhotoAttach({
             // it has already asked about, and this is precisely the case where
             // it needs to ask again.
             void getAccessToken(true, true)
-              .then(() => setReady(driveGranted() === false ? "no-permission" : "ready"))
+              .then(() => {
+                setReady("ready");
+                setError(null);
+              })
               .catch(() => setError("That didn't work — try again."));
           }}
           className="mt-2 rounded-full border border-hairline bg-surface/60 px-4 py-2 text-sm text-ink transition-colors hover:border-lavender/40"

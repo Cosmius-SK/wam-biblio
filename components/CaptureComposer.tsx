@@ -20,6 +20,8 @@ import { placeLabel } from "@/lib/geo";
 import {
   STALE_MS,
   clearDraft,
+  draftSyncState,
+  type DraftSync,
   discardDraft,
   draftFrom,
   flushDraft,
@@ -73,6 +75,8 @@ export default function CaptureComposer() {
   const [resumedAt, setResumedAt] = useState<number | null>(null);
   /** A draft old enough that restoring it silently would ambush a new thought. */
   const [stale, setStale] = useState<Draft | null>(null);
+  /** Whether what's on screen has reached the other devices yet. */
+  const [synced, setSynced] = useState<DraftSync>("none");
   const [saveProgress, setSaveProgress] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<StructureResponse | null>(null);
@@ -132,6 +136,19 @@ export default function CaptureComposer() {
 
   // Leaving the screen counts as putting it down.
   useEffect(() => () => void flushDraft(true), []);
+
+  // Sync is silent, which is right until it isn't working — so say plainly
+  // whether these words have travelled yet.
+  useEffect(() => {
+    let stop = false;
+    const tick = () => void draftSyncState().then((s) => !stop && setSynced(s));
+    tick();
+    const timer = window.setInterval(tick, 5000);
+    return () => {
+      stop = true;
+      window.clearInterval(timer);
+    };
+  }, []);
 
   async function startFresh() {
     await discardDraft(stale?.photos ?? photos);
@@ -312,9 +329,13 @@ export default function CaptureComposer() {
             </div>
           )}
 
-          {resumedAt !== null && (
+          {(resumedAt !== null || synced !== "none") && (
             <p className="mt-3 text-xs text-muted">
-              Picking up where you left off · {agoLabel(resumedAt)}
+              {resumedAt !== null && <>Picking up where you left off · {agoLabel(resumedAt)}</>}
+              {resumedAt !== null && synced !== "none" && " · "}
+              {synced === "synced" && "on your other devices"}
+              {synced === "pending" && "saved here, still sending"}
+              {synced === "offline" && "saved here — will send when you're back online"}
             </p>
           )}
 
