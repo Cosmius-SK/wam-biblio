@@ -253,18 +253,34 @@ export class DriveError extends Error {
   }
 }
 
+/**
+ * Google answers in JSON. A page of HTML means something sat between us and
+ * Google and answered on its behalf — a corporate web filter, a captive
+ * portal, a VPN. Those return 403 too, and telling someone to go and re-tick a
+ * permission box is then both useless and misleading: their account is fine,
+ * their network is not.
+ */
+function intercepted(body: string): boolean {
+  return /^\s*(<!DOCTYPE|<html)/i.test(body);
+}
+
 async function driveFail(res: Response, friendly: string): Promise<never> {
   const body = await res.text().catch(() => "");
-  throw new DriveError(
-    res.status === 403 ? DRIVE_FORBIDDEN : friendly,
-    res.status,
-    body.slice(0, 600),
-  );
+  const message = intercepted(body)
+    ? DRIVE_BLOCKED
+    : res.status === 403
+      ? DRIVE_FORBIDDEN
+      : friendly;
+  throw new DriveError(message, res.status, body.slice(0, 600));
 }
 
 /** The message for a Drive call refused for lack of permission. */
 export const DRIVE_FORBIDDEN =
   "Google didn't grant biblio permission to save files to your Drive. Reconnect and leave the Drive box ticked on the consent screen.";
+
+/** Something on the network answered instead of Google. */
+export const DRIVE_BLOCKED =
+  "Something on this network blocked the upload to Google — usually a company web filter or a VPN. Your account is fine. Try another network, or add the photo from your phone.";
 
 function auth(token: string): Record<string, string> {
   return { Authorization: `Bearer ${token}` };

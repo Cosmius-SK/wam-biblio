@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import {
+  DRIVE_BLOCKED,
   DRIVE_FORBIDDEN,
   clearCachedToken,
   driveConfigured,
@@ -34,7 +35,7 @@ export default function PhotoAttach({
   onChange: (photos: EntryPhoto[]) => void;
 }) {
   const [ready, setReady] = useState<
-    "loading" | "unconfigured" | "disconnected" | "no-permission" | "ready"
+    "loading" | "unconfigured" | "disconnected" | "no-permission" | "blocked" | "ready"
   >("loading");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -85,6 +86,11 @@ export default function PhotoAttach({
         const msg = err instanceof Error ? err.message : "";
         // Drive refusing us is not a photo problem, and telling someone to go
         // and reconnect in Settings is a poor answer. Offer the fix here.
+        if (msg === DRIVE_BLOCKED) {
+          setReady("blocked");
+          setError(null);
+          break;
+        }
         if (msg === DRIVE_FORBIDDEN) {
           setReady("no-permission");
           setError(null);
@@ -102,6 +108,21 @@ export default function PhotoAttach({
   }
 
   if (ready === "loading") return null;
+
+  if (ready === "blocked") {
+    return (
+      <div className="mt-4">
+        <p className="text-xs leading-relaxed text-terracotta">{DRIVE_BLOCKED}</p>
+        <button
+          type="button"
+          onClick={() => setReady("ready")}
+          className="mt-2 rounded-full border border-hairline bg-surface/60 px-4 py-2 text-sm text-ink transition-colors hover:border-lavender/40"
+        >
+          Try again
+        </button>
+      </div>
+    );
+  }
 
   if (ready === "no-permission") {
     return (

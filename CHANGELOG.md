@@ -25,6 +25,24 @@ Newest first. Dates are the day the work landed.
 
 ---
 
+## 0.17.2 — 21 August 2026
+
+### Fixed
+
+- **When a network blocks a photo upload, biblio now says so.** Company web
+  filters and VPNs turn uploads away in a way that looks identical to Google
+  refusing permission — so biblio was telling people to go and re-tick a box
+  that was already ticked. It now recognises the difference and says your
+  account is fine and the network isn't.
+
+### Under the hood
+
+- Google answers in JSON; a page of HTML means something answered on its
+  behalf. That is the tell, and it is enough to separate an intercepted request
+  from a genuine refusal.
+
+---
+
 ## 0.17.1 — 21 August 2026
 
 ### Fixed

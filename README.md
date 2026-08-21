@@ -169,6 +169,13 @@ One-time setup:
 > journal) and every existing photo stops loading, while still sitting in
 > Drive. Moving it is a data migration, not a config change.
 >
+> **Corporate networks can block photo uploads.** Filters such as Zscaler
+> intercept `googleapis.com/upload/...` — the file-upload endpoint — while
+> leaving every other Drive call alone, so folders create fine and only
+> attachments fail, with a 403 carrying an HTML block page instead of
+> Google's JSON. biblio detects this and says so; there is nothing to fix in
+> the app. Use another network, or add the photo from a phone.
+>
 > The Gemini key and the OAuth client do **not** need to live in the same Cloud
 > project. They are unrelated, and the Gemini key often lives elsewhere so its
 > billing can be capped separately.
