@@ -108,6 +108,8 @@ sample entries"** to explore. Use Chrome/Edge/Safari for voice capture.
 | `USER_DAILY_IMAGES` | no | Per‑person daily illustrations (default `5`). `0` disables. |
 | `GLOBAL_DAILY_USD` | no | Whole‑deployment daily breaker (default `2.00`). `0` disables. |
 | `NEXT_PUBLIC_OWNER_NAME` | no | Who "Tell Maya" says messages go to. Defaults to a generic phrase. |
+| `ANDROID_PACKAGE` | for the Android app | Package id of the TWA build. |
+| `ANDROID_CERT_FINGERPRINTS` | for the Android app | SHA‑256 signing fingerprint(s), comma‑separated. See [docs/android.md](docs/android.md). |
 
 ## Access gate — two doors
 

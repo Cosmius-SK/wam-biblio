@@ -27,6 +27,22 @@ Newest first. Dates are the day the work landed.
 
 ---
 
+## 0.20.0 — 21 August 2026
+
+### For the owner
+
+- **biblio can be packaged as an Android app.** Everything the tooling needs is
+  now in the repo: proper PNG icons at 192 and 512, a maskable one padded for
+  launcher cropping, a fuller manifest, and a `/.well-known/assetlinks.json`
+  that reads the signing fingerprint from an environment variable.
+- Steps in [docs/android.md](docs/android.md). It is a Trusted Web Activity, not
+  a WebView wrapper — Google blocks OAuth sign-in inside embedded WebViews, so a
+  Capacitor build would look like an app and fail at the front door.
+- The APK is a shell; biblio still loads from Vercel, so every deploy reaches
+  the app with nothing to reinstall.
+
+---
+
 ## 0.19.3 — 21 August 2026
 
 ### Fixed

@@ -25,6 +25,7 @@ export async function middleware(req: NextRequest) {
     pathname.startsWith("/api/unlock") ||
     pathname.startsWith("/welcome") ||
     pathname.startsWith("/offline") ||
+    pathname.startsWith("/.well-known/") ||
     pathname.startsWith("/api/auth/")
   ) {
     return NextResponse.next();
