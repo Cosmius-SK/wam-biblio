@@ -161,6 +161,18 @@ One-time setup:
 4. Put the client ID in `NEXT_PUBLIC_GOOGLE_CLIENT_ID` (Vercel env var) and
    redeploy, then tap **Connect Google Drive** in the vault.
 
+> **Never change the OAuth client ID afterwards.** Two things are tied to the
+> app's identity rather than to the person: the hidden `appDataFolder` that
+> holds the sync key, and `drive.file`, which can only see files *this* app
+> created. A client in a different Cloud project is a different app — so the
+> sync key becomes invisible (biblio would mint a new one and start an empty
+> journal) and every existing photo stops loading, while still sitting in
+> Drive. Moving it is a data migration, not a config change.
+>
+> The Gemini key and the OAuth client do **not** need to live in the same Cloud
+> project. They are unrelated, and the Gemini key often lives elsewhere so its
+> billing can be capped separately.
+
 ## Deploy
 
 Push to the repo and import it in Vercel (zero‑config Next.js). Set the env vars
