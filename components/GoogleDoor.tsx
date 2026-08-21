@@ -12,7 +12,7 @@ import { describeDevice } from "@/lib/deviceId";
  * which asks Google who it belongs to and checks the list before issuing a
  * session. Someone not on the list gets a warm sentence, not a stack trace.
  */
-export default function GoogleDoor({ next = "/" }: { next?: string }) {
+export default function GoogleDoor({ next = "/", invite }: { next?: string; invite?: string }) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -26,7 +26,7 @@ export default function GoogleDoor({ next = "/" }: { next?: string }) {
       const res = await fetch("/api/auth/session", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ token, device: describeDevice() }),
+        body: JSON.stringify({ token, device: describeDevice(), invite }),
       });
       const data = (await res.json().catch(() => ({}))) as { error?: string };
       if (!res.ok) throw new Error(data.error || "That didn't work. Try again?");

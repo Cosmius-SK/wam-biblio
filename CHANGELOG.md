@@ -25,6 +25,36 @@ Newest first. Dates are the day the work landed.
 
 ---
 
+## 0.19.0 — 21 August 2026
+
+### What's new
+
+- **An invitation is now a link.** Open it, sign in with your own Google
+  account, and you're in — no waiting for anyone to add you first.
+
+### For the owner
+
+- **"Letting people in"** on the owner page: make a link, choose whether it's
+  good for one person or several, copy it, revoke it. It also lists who's in,
+  who came in on which link, and lets you remove someone.
+- Links expire after a fortnight and are spent as they're used, so a forwarded
+  one doesn't stay open indefinitely.
+- Addresses set in `ALLOWED_USERS` still work and can only be removed there;
+  everyone else lives in the Blob store and is managed here.
+
+### Under the hood
+
+- Leaving the door open would have been the simpler answer and the wrong one:
+  every entry spends real money, and the OAuth consent cap is counted for the
+  project's lifetime and cannot be reset — so a stranger costs something
+  permanent. A link is the middle: whoever holds it walks straight in, nobody
+  else can, and no address has to be known in advance.
+- Redemption adds to the allowlist *before* spending the use. Added and not
+  counted is a person who got in; counted and not added is a person outside
+  holding a dead link.
+
+---
+
 ## 0.18.2 — 21 August 2026
 
 ### For the owner

@@ -10,10 +10,12 @@ export const metadata = { title: "biblio — welcome" };
 export default async function WelcomePage({
   searchParams,
 }: {
-  searchParams: Promise<{ next?: string }>;
+  searchParams: Promise<{ next?: string; i?: string }>;
 }) {
   // Only same-site paths, so this can never become an open redirect.
-  const raw = (await searchParams)?.next;
+  const params = await searchParams;
+  const raw = params?.next;
+  const invite = typeof params?.i === "string" ? params.i : undefined;
   const next = raw && raw.startsWith("/") && !raw.startsWith("//") ? raw : "/";
 
   return (
@@ -29,7 +31,7 @@ export default async function WelcomePage({
       </p>
 
       <div className="mt-8">
-        <GoogleDoor next={next} />
+        <GoogleDoor next={next} invite={invite} />
       </div>
 
       <p className="mt-6 text-xs leading-relaxed text-muted/80">

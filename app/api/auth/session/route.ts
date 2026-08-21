@@ -3,6 +3,7 @@ import { cookies } from "next/headers";
 import { SESSION_COOKIE, SESSION_DAYS, sessionsConfigured, signSession } from "@/lib/users/session";
 import { toSessionUser, verifyGoogleToken } from "@/lib/users/identity";
 import { allowlistConfigured, isAllowed } from "@/lib/users/allowlist";
+import { redeemInvite } from "@/lib/users/invites";
 import { seenDevice } from "@/lib/users/devices";
 
 export const runtime = "nodejs";
@@ -30,9 +31,9 @@ export async function POST(request: Request) {
     );
   }
 
-  let body: { token?: unknown; device?: unknown };
+  let body: { token?: unknown; device?: unknown; invite?: unknown };
   try {
-    body = (await request.json()) as { token?: unknown; device?: unknown };
+    body = (await request.json()) as { token?: unknown; device?: unknown; invite?: unknown };
   } catch {
     return NextResponse.json({ error: "Invalid request." }, { status: 400 });
   }
@@ -48,11 +49,20 @@ export async function POST(request: Request) {
     );
   }
   if (!(await isAllowed(profile.email))) {
-    // A warm dead end, not a stack trace.
-    return NextResponse.json(
-      { error: "biblio isn't open to this account yet — ask Shiva.", code: "not_allowed" },
-      { status: 403 },
-    );
+    // Someone holding a link walks in without waiting for anyone. It is the
+    // link that was shared, so no address had to be known in advance.
+    const invite = typeof body.invite === "string" ? body.invite.slice(0, 64) : "";
+    const welcomed = invite ? await redeemInvite(invite, profile.email ?? "") : false;
+    if (!welcomed) {
+      // A warm dead end, not a stack trace.
+      return NextResponse.json(
+        {
+          error: "biblio isn't open to this account yet — you'll need an invitation link.",
+          code: "not_allowed",
+        },
+        { status: 403 },
+      );
+    }
   }
 
   const d = body.device as { id?: unknown; label?: unknown; platform?: unknown } | undefined;
