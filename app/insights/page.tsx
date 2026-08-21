@@ -2,6 +2,7 @@ import { notFound, redirect } from "next/navigation";
 import { blobToken, listPrefix, readSyncJson } from "@/lib/blobStore";
 import { agoLabel } from "@/lib/format";
 import HealthCard from "@/components/HealthCard";
+import OnboardingPreview from "@/components/OnboardingPreview";
 import { currentUser } from "@/lib/users/limits";
 import { ownerEmail } from "@/lib/users/allowlist";
 
@@ -118,8 +119,9 @@ export default async function InsightsPage() {
         </>
       )}
 
-      <div className="mt-10">
+      <div className="mt-10 space-y-4">
         <HealthCard />
+        <OnboardingPreview />
       </div>
 
       <h2 className="mt-12 font-serif text-2xl text-ink">What people said</h2>

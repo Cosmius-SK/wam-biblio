@@ -25,6 +25,20 @@ Newest first. Dates are the day the work landed.
 
 ---
 
+## 0.18.2 — 21 August 2026
+
+### For the owner
+
+- **"See it as someone new"** on the owner page. The parts that happen only
+  once — the walkthrough, Maya's first question, the what's-new card — can be
+  put back as often as you like, so they can actually be checked.
+- It says plainly what it cannot show: the door, the passcode and an empty
+  journal, because signing in as yourself brings your journal with you and
+  biblio is right to conclude you are not new. That needs a second Google
+  account.
+
+---
+
 ## 0.18.1 — 21 August 2026
 
 ### What's new
