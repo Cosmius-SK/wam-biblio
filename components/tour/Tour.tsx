@@ -8,6 +8,7 @@ import { STEPS } from "./steps";
 import { finishTour, saveTourProgress, shouldRunTour, tourProgress } from "@/lib/tour";
 import { getSetting } from "@/lib/db";
 import { maya } from "@/lib/maya";
+import MayaOrb from "@/components/MayaOrb";
 
 /**
  * The walkthrough.
@@ -183,10 +184,7 @@ export default function Tour({
             className="rounded-2xl border border-hairline/70 bg-surface p-6 shadow-soft"
           >
             <div className="flex items-center gap-3">
-              <span
-                aria-hidden
-                className="h-6 w-6 shrink-0 animate-breathe rounded-full bg-gradient-to-br from-terracotta/70 via-lavender/70 to-sage/70"
-              />
+              <MayaOrb size={30} />
               <h2 className="font-serif text-xl leading-tight text-ink">{title}</h2>
             </div>
 

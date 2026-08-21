@@ -25,6 +25,31 @@ Newest first. Dates are the day the work landed.
 
 ---
 
+## 0.18.0 — 21 August 2026
+
+### What's new
+
+- **Maya moves when she speaks.** Not a loop running while she happens to be
+  talking — the light shifts **with each word**, so it reads as someone
+  speaking rather than as a notification blinking.
+- **She is mostly still.** A slow breath when she has nothing to say, and a
+  clear change when she does. That contrast is what makes you look up.
+- **Shaping an entry now shows her thinking** rather than a loading circle.
+
+### Under the hood
+
+- `MayaOrb` — a membrane whose outline flows, a light that drifts off-centre so
+  the flow reads as depth, and a glow that exists only while she talks. Four
+  states: resting, speaking, thinking, bloom.
+- Speech synthesis exposes no audio levels, but it does announce word
+  boundaries; `maya.onPulse` turns those into beats. Platforms that never
+  report boundaries — iOS among them — get a heartbeat at her speaking rate
+  instead, so she never falls still mid-sentence.
+- Only transform, opacity and border-radius animate, so it stays on one
+  composited layer. Reduced-motion still stills it.
+
+---
+
 ## 0.17.2 — 21 August 2026
 
 ### Fixed

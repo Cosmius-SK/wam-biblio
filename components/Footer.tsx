@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { maya, type MayaLine } from "@/lib/maya";
 import FooterQuote from "./FooterQuote";
+import MayaOrb from "./MayaOrb";
 
 /**
  * The foot of every page, and Maya's home.
@@ -15,14 +16,11 @@ import FooterQuote from "./FooterQuote";
  */
 export default function Footer() {
   const [line, setLine] = useState<MayaLine | null>(null);
-  const [speaking, setSpeaking] = useState(false);
 
   useEffect(() => {
     const unLine = maya.subscribe(setLine);
-    const unSpeaking = maya.onSpeaking(setSpeaking);
     return () => {
       unLine();
-      unSpeaking();
     };
   }, []);
 
@@ -64,12 +62,7 @@ export default function Footer() {
                 aria-label={line.answers ? "Still here" : "Dismiss"}
                 className="flex min-w-0 items-center gap-3"
               >
-                <span
-                  aria-hidden
-                  className={`h-6 w-6 shrink-0 rounded-full bg-gradient-to-br from-terracotta/70 via-lavender/70 to-sage/70 ${
-                    speaking ? "animate-pulse-soft" : "animate-breathe"
-                  }`}
-                />
+                <MayaOrb size={26} />
                 <span className="font-serif text-base italic leading-snug text-ink/90">
                   {line.text}
                 </span>

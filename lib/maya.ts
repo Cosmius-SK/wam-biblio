@@ -36,6 +36,8 @@ export type MayaFrequency = "quiet" | "often" | "silent";
 
 type Listener = (line: MayaLine | null) => void;
 type SpeakingListener = (speaking: boolean) => void;
+/** One beat, fired per spoken word — what makes the orb move in time. */
+type PulseListener = () => void;
 
 const VOICE_KEY = "biblio_maya_voice"; // "" = off, "auto" = best guess, else voiceURI
 const FREQ_KEY = "biblio_maya_freq";
@@ -109,6 +111,8 @@ function preferredVoice(voices: SpeechSynthesisVoice[]): SpeechSynthesisVoice | 
 class Maya {
   private listeners = new Set<Listener>();
   private speakingListeners = new Set<SpeakingListener>();
+  private pulseListeners = new Set<PulseListener>();
+  private pulseTimer: number | null = null;
   private current: MayaLine | null = null;
   private nextId = 1;
   private hideTimer: number | null = null;
@@ -130,6 +134,45 @@ class Maya {
     return () => {
       this.speakingListeners.delete(fn);
     };
+  }
+
+  /**
+   * A beat per spoken word.
+   *
+   * Speech synthesis exposes no audio levels, but it does announce word
+   * boundaries — which is enough for the orb to move *with* her rather than to
+   * a loop that merely happens while she talks. The difference is what makes
+   * someone look at it instead of past it.
+   */
+  onPulse(fn: PulseListener): () => void {
+    this.pulseListeners.add(fn);
+    return () => {
+      this.pulseListeners.delete(fn);
+    };
+  }
+
+  private emitPulse() {
+    this.pulseListeners.forEach((l) => l());
+  }
+
+  /** Some platforms never fire word boundaries; keep a heartbeat for those. */
+  private startFallbackPulse(text: string) {
+    this.stopFallbackPulse();
+    // Roughly a word every 380ms at her speaking rate.
+    const words = Math.max(1, text.split(/\s+/).length);
+    let left = words;
+    this.pulseTimer = window.setInterval(() => {
+      if (left-- <= 0) {
+        this.stopFallbackPulse();
+        return;
+      }
+      this.emitPulse();
+    }, 380);
+  }
+
+  private stopFallbackPulse() {
+    if (this.pulseTimer !== null) window.clearInterval(this.pulseTimer);
+    this.pulseTimer = null;
   }
 
   private emit() {
@@ -334,12 +377,26 @@ class Maya {
       if (chosen) utterance.voice = chosen;
       utterance.rate = 0.94; // unhurried
       utterance.pitch = 1.02;
+      let sawBoundary = false;
+      utterance.onboundary = (e) => {
+        if (e.name && e.name !== "word") return;
+        sawBoundary = true;
+        this.stopFallbackPulse();
+        this.emitPulse();
+      };
       utterance.onstart = () => {
         ambient.duck();
         this.emitSpeaking(true);
+        this.emitPulse();
+        // iOS and several remote voices never report boundaries. Give them a
+        // moment to prove otherwise, then keep time ourselves.
+        window.setTimeout(() => {
+          if (!sawBoundary) this.startFallbackPulse(text);
+        }, 500);
       };
       const done = () => {
         ambient.unduck();
+        this.stopFallbackPulse();
         this.emitSpeaking(false);
       };
       utterance.onend = done;
@@ -351,6 +408,7 @@ class Maya {
   }
 
   stopSpeaking(): void {
+    this.stopFallbackPulse();
     if (!this.canSpeak()) return;
     try {
       window.speechSynthesis.cancel();

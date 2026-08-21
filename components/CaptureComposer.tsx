@@ -31,6 +31,7 @@ import {
 import { noteEntryWritten } from "@/lib/session";
 import { logAi } from "@/lib/usage";
 import { maya } from "@/lib/maya";
+import MayaOrb from "./MayaOrb";
 import { savedLine } from "@/lib/mayaLines";
 import { milestoneFor } from "@/lib/mayaObserve";
 import { generateIllustration } from "@/lib/illustrate";
@@ -441,7 +442,7 @@ export default function CaptureComposer() {
           exit={{ opacity: 0 }}
           className="flex min-h-[50vh] flex-col items-center justify-center text-center"
         >
-          <div className="h-16 w-16 animate-breathe rounded-full bg-gradient-to-br from-terracotta/50 via-lavender/50 to-sage/50" />
+          <MayaOrb size={64} state="thinking" />
           <p className="mt-6 font-serif text-xl text-ink">
             {aiMode === "rephrase" ? "Polishing your words…" : "Listening to what you meant…"}
           </p>
