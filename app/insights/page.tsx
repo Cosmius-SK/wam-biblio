@@ -4,6 +4,7 @@ import { agoLabel } from "@/lib/format";
 import HealthCard from "@/components/HealthCard";
 import OnboardingPreview from "@/components/OnboardingPreview";
 import InvitesCard from "@/components/InvitesCard";
+import OwnerTabs from "@/components/OwnerTabs";
 import { currentUser } from "@/lib/users/limits";
 import { ownerEmail } from "@/lib/users/allowlist";
 
@@ -95,70 +96,97 @@ export default async function InsightsPage() {
         <code className="mx-1 text-xs">lib/insights/schema.ts</code>.
       </p>
 
-      {rows.length === 0 ? (
-        <p className="mt-8 text-sm text-muted">Nothing recorded in the last two weeks.</p>
-      ) : (
-        <>
-          <p className="mt-6 text-sm text-muted">
-            {people.length} {people.length === 1 ? "person" : "people"} · last 14 days
-          </p>
-          <ul className="mt-4 divide-y divide-hairline/50 overflow-hidden rounded-2xl border border-hairline/60">
-            {rows.map((r) => (
-              <li
-                key={`${r.sub}|${r.date}`}
-                className="flex items-center justify-between gap-3 bg-surface/60 px-5 py-3"
-              >
-                <span className="font-mono text-xs text-muted">
-                  {r.date} · {r.sub.slice(-6)}
-                </span>
-                <span className="text-sm text-ink/80">
-                  {r.entries} {r.entries === 1 ? "entry" : "entries"} · {r.activeMinutes} min
-                </span>
-              </li>
-            ))}
-          </ul>
-        </>
-      )}
-
-      <div className="mt-10 space-y-4">
-        <InvitesCard />
-        <HealthCard />
-        <OnboardingPreview />
-      </div>
-
-      <h2 className="mt-12 font-serif text-2xl text-ink">What people said</h2>
-      <p className="mt-1 text-sm text-muted">
-        Written to you deliberately. This is the only place anyone&rsquo;s words appear.
-      </p>
-
-      {notes.length === 0 ? (
-        <p className="mt-4 text-sm text-muted">Nothing yet.</p>
-      ) : (
-        <ul className="mt-4 space-y-3">
-          {notes.map((m) => (
-            <li
-              key={m.at}
-              className="rounded-2xl border-2 border-terracotta/25 bg-surface/60 p-5"
-            >
-              <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1 text-xs text-muted">
-                <span className="text-ink/80">{m.from?.name || m.from?.email || "someone"}</span>
-                <span>{agoLabel(m.at)}</span>
-                {m.context?.version && <span>v{m.context.version}</span>}
-                {m.context?.device && <span>{m.context.device}</span>}
+      <OwnerTabs
+        sections={[
+          {
+            id: "activity",
+            label: "Activity",
+            content: (
+              <>
+                {rows.length === 0 ? (
+                  <p className="text-sm text-muted">Nothing recorded in the last two weeks.</p>
+                ) : (
+                  <>
+                    <p className="text-sm text-muted">
+                      {people.length} {people.length === 1 ? "person" : "people"} · last 14 days
+                    </p>
+                    <ul className="mt-4 divide-y divide-hairline/50 overflow-hidden rounded-2xl border border-hairline/60">
+                      {rows.map((r) => (
+                        <li
+                          key={`${r.sub}|${r.date}`}
+                          className="flex items-center justify-between gap-3 bg-surface/60 px-5 py-3"
+                        >
+                          <span className="font-mono text-xs text-muted">
+                            {r.date} · {r.sub.slice(-6)}
+                          </span>
+                          <span className="text-sm text-ink/80">
+                            {r.entries} {r.entries === 1 ? "entry" : "entries"} ·{" "}
+                            {r.activeMinutes} min
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                    <p className="mt-4 text-xs leading-relaxed text-muted/70">
+                      People are shown by the last characters of their Google id, not their
+                      name or address.
+                    </p>
+                  </>
+                )}
+              </>
+            ),
+          },
+          { id: "people", label: "People", content: <InvitesCard /> },
+          {
+            id: "messages",
+            label: "Messages",
+            content: (
+              <>
+                <p className="text-sm text-muted">
+                  Written to you deliberately. This is the only place anyone&rsquo;s words
+                  appear.
+                </p>
+                {notes.length === 0 ? (
+                  <p className="mt-4 text-sm text-muted">Nothing yet.</p>
+                ) : (
+                  <ul className="mt-4 space-y-3">
+                    {notes.map((m) => (
+                      <li
+                        key={m.at}
+                        className="rounded-2xl border-2 border-terracotta/25 bg-surface/60 p-5"
+                      >
+                        <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1 text-xs text-muted">
+                          <span className="text-ink/80">
+                            {m.from?.name || m.from?.email || "someone"}
+                          </span>
+                          <span>{agoLabel(m.at)}</span>
+                          {m.context?.version && <span>v{m.context.version}</span>}
+                          {m.context?.device && <span>{m.context.device}</span>}
+                        </div>
+                        {m.prompt && (
+                          <p className="mt-2 text-xs italic text-muted/80">{m.prompt}</p>
+                        )}
+                        <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-ink/90">
+                          {m.message}
+                        </p>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </>
+            ),
+          },
+          {
+            id: "checks",
+            label: "Checks",
+            content: (
+              <div className="space-y-4">
+                <HealthCard />
+                <OnboardingPreview />
               </div>
-              {m.prompt && <p className="mt-2 text-xs italic text-muted/80">{m.prompt}</p>}
-              <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-ink/90">
-                {m.message}
-              </p>
-            </li>
-          ))}
-        </ul>
-      )}
-
-      <p className="mt-10 text-xs leading-relaxed text-muted/70">
-        People are shown by the last characters of their Google id in the numbers above, not
-        their name or address. Names appear only on messages they chose to send you.
-      </p>
+            ),
+          },
+        ]}
+      />
     </main>
   );
 }

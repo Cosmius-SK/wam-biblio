@@ -189,9 +189,15 @@ being local and deterministic.
   in prompts first; test passing the avatar itself as a reference image
   separately.
 
-## Open decisions
+## Decisions taken
 
-1. **Which avatar style.** It has to sit inside biblio's palette — hand-drawn
-   and soft rather than corporate flat. This constrains which library.
-2. **Does your world sync?** It is journal data, so the answer is probably yes,
-   encrypted like entries — your world following you to the laptop as drafts do.
+**A framed portrait.** Each person is a portrait in biblio's palette, shown in
+the app inside a frame — a photograph on a shelf rather than a contact avatar.
+Tapping it turns it over to the description underneath. It suits an app that
+already thinks of itself as a book on a shelf, and it sets the right
+expectation: a portrait is understood to be an interpretation, where a profile
+picture is understood to be a likeness.
+
+**It syncs.** biblio is mobile-first but never device-bound, so a cast that
+lived on one phone would be a cast you rebuilt on the laptop. Encrypted like
+entries and drafts, as a new synced record type.

@@ -27,6 +27,23 @@ Newest first. Dates are the day the work landed.
 
 ---
 
+## 0.20.1 — 25 August 2026
+
+### For the owner
+
+- **The owner page is four rooms instead of one long scroll.** Activity, People,
+  Messages and Checks. It had grown a section at a time — each addition
+  reasonable, the whole becoming something you scroll past looking for the bit
+  you wanted. The connection check, the Drive check, the test image and the
+  first-run preview all live under Checks now.
+
+### Under the hood
+
+- Everything is still rendered server-side in one pass; the tabs only decide
+  what is on screen, so switching costs nothing and nothing is fetched twice.
+
+---
+
 ## 0.20.0 — 21 August 2026
 
 ### For the owner
