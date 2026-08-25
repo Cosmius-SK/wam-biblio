@@ -1,6 +1,6 @@
 # Your world — people, places and things
 
-**Status: designed, not built.** The outcome of a long conversation about why
+**Status: prompt richness built (0.21.0); the cast is designed, not built.** The outcome of a long conversation about why
 generated illustrations feel generic, and what would actually fix it.
 
 ## The problem, stated exactly

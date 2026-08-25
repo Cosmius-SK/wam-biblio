@@ -27,6 +27,41 @@ Newest first. Dates are the day the work landed.
 
 ---
 
+## 0.21.0 — 25 August 2026
+
+### What's new
+
+- **Illustrations are about your day now, not about days in general.** biblio
+  was asking for "mood and atmosphere" and getting exactly that — a warm scene
+  that could have been anyone's. It now asks for one real moment: what people
+  are doing, what they're holding, what's behind them. The stack of chairs by
+  the door rather than "a happy afternoon".
+- **"Not quite right?"** under any illustration. Say what should change — *no
+  glasses*, *evening light*, *seen from behind* — and it's drawn again with
+  that in mind. Drawing it again without saying anything just rolls the dice;
+  a line of yours actually steers it.
+
+### Under the hood
+
+- The prompt now spells out that specific and identifying are different things:
+  "three on a scooter, the smallest standing in front" identifies nobody, a name
+  does. People are described by rough age and role only, which is also the shape
+  a cast can slot into later.
+- It's told to reject anything that could describe a thousand other days, and to
+  say nothing about style or colour, which the app supplies and which the model
+  was previously arguing with.
+- The steering note is capped and appended last, so it overrides the scene
+  rather than competing with it.
+
+### Notes
+
+- Only new entries get the richer prompt; existing ones keep the description
+  they were shaped with. The steering box works on any of them.
+- That note is the one thing that reaches the image service in your own words,
+  and the box says so where you type it.
+
+---
+
 ## 0.20.1 — 25 August 2026
 
 ### For the owner

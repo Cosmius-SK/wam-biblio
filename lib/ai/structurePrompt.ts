@@ -15,7 +15,11 @@ Principles:
 - Be warm and plain. No therapy-speak, no clichés, no "Dear diary".
 - Extract light metadata that will help connect this entry to others over time.
 - For "significant": true only when the moment carries real weight (a turning point, a strong emotion, a vivid scene) — not for routine notes.
-- For "imagePrompt": write an evocative SCENE description suitable for an image model — mood, light, place, atmosphere. It must contain NO names or private identifiers; it is the only thing that may later be sent to an external image service.
+- For "imagePrompt": describe ONE concrete moment from the entry as a picture — the single image that would bring the day back. Name the actual things: what people are doing, what they are holding or sitting on, what is behind them.
+  Specific is not the same as identifying. "Three on a scooter, the smallest standing in front" identifies nobody; a name does. Refer to people only by rough age and role — "a man in his thirties", "a boy of about seven" — never by name.
+  Prefer the small telling object over the general summary: a stack of new chairs by a doorway, 3D glasses in a dark auditorium, empty plates after a meal. Reject anything that could describe a thousand other days ("a warm family moment", "a moment of quiet reflection").
+  Say nothing about style, medium, colour or lighting — those are supplied separately, and repeating them only fights them. Two sentences at most.
+  It must contain NO names or private identifiers; it is the only thing that may later be sent to an external image service.
 
 Return only the structured object.`;
 
@@ -32,7 +36,7 @@ Also extract light metadata so the journal can organize itself:
 - title: short, drawn from their own words.
 - summary, themes, mood, entities: faithful to what they wrote, nothing invented.
 - significant: true only when the moment clearly carries real weight.
-- imagePrompt: an evocative SCENE description for an image model — mood, light, place, atmosphere — with NO names or private identifiers.
+- imagePrompt: ONE concrete moment as a picture — real objects, actions and surroundings, people by rough age only, no names, no style words.
 - needsDeeperPass: always false in this mode.
 
 Return only the structured object.`;

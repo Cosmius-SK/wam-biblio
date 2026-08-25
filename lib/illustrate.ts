@@ -28,7 +28,13 @@ export class IllustrateError extends Error {
   }
 }
 
-export async function generateIllustration(prompt: string): Promise<string> {
+/**
+ * @param note An optional change asked for in the writer's own words — "no
+ * glasses", "evening light". Deliberately theirs to type and theirs to send:
+ * everything else that reaches the image service is scrubbed, and this is the
+ * one line that isn't, so the interface says so where it is typed.
+ */
+export async function generateIllustration(prompt: string, note?: string): Promise<string> {
   const [pref, style] = await Promise.all([getPreferredModel(), getPreferredStyle()]);
   const model = pref || undefined; // empty ⇒ let the server auto-pick
   let res: Response;
@@ -36,7 +42,7 @@ export async function generateIllustration(prompt: string): Promise<string> {
     res = await fetch("/api/image", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ prompt, model, style }),
+      body: JSON.stringify({ prompt, model, style, note }),
     });
   } catch {
     throw new IllustrateError("Couldn't reach the illustration service.", "Check your connection and try again.");

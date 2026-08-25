@@ -255,9 +255,14 @@ export async function POST(request: Request) {
     );
   }
 
-  let reqBody: { prompt?: unknown; model?: unknown; style?: unknown };
+  let reqBody: { prompt?: unknown; model?: unknown; style?: unknown; note?: unknown };
   try {
-    reqBody = (await request.json()) as { prompt?: unknown; model?: unknown; style?: unknown };
+    reqBody = (await request.json()) as {
+      prompt?: unknown;
+      model?: unknown;
+      style?: unknown;
+      note?: unknown;
+    };
   } catch {
     return NextResponse.json({ error: "Invalid request.", code: "bad_request", hint: "" }, { status: 400 });
   }
@@ -268,7 +273,10 @@ export async function POST(request: Request) {
   const chosen = typeof reqBody.model === "string" && reqBody.model.trim() ? reqBody.model.trim() : null;
   // One of the 3 curated styles (server-owned so the look can't wander off-brand).
   const styleKey = typeof reqBody.style === "string" ? reqBody.style : DEFAULT_STYLE;
-  const text = (STYLES[styleKey] ?? STYLES[DEFAULT_STYLE]) + prompt;
+  // A change asked for in the writer's own words, last so it overrides rather
+  // than competes with the scene it is adjusting.
+  const note = typeof reqBody.note === "string" ? reqBody.note.trim().slice(0, 200) : "";
+  const text = (STYLES[styleKey] ?? STYLES[DEFAULT_STYLE]) + prompt + (note ? ` ${note}.` : "");
 
   // Images are 4-10x the cost of everything else, so this is the cap that
   // actually matters.

@@ -23,15 +23,26 @@ export default function EntryCard({
   const [editing, setEditing] = useState(false);
   const [illustrating, setIllustrating] = useState(false);
   const [illustrateError, setIllustrateError] = useState<{ msg: string; hint?: string } | null>(null);
+  /** An open box for asking the picture to change — see `illustrate`. */
+  const [nudging, setNudging] = useState(false);
+  const [nudge, setNudge] = useState("");
 
-  /** Generate (or replace) the card's illustration on demand. */
-  async function illustrate() {
+  /**
+   * Generate (or replace) the card's illustration on demand.
+   *
+   * `note` is a change asked for in the writer's own words. Redrawing is a dice
+   * roll — the same prompt returns a different picture, not a corrected one —
+   * so a line of steering is worth far more than another attempt at the same
+   * thing.
+   */
+  async function illustrate(note?: string) {
     setIllustrateError(null);
+    setNudging(false);
     setIllustrating(true);
     try {
       // Only the sanitized scene prompt leaves the device — never the title/body.
       const scenePrompt = entry.imagePrompt?.trim() || `a calm, simple scene evoking a ${entry.mood} mood`;
-      const image = await generateIllustration(scenePrompt);
+      const image = await generateIllustration(scenePrompt, note);
       await saveEntry({ ...entry, image });
     } catch (err) {
       const hint = err instanceof IllustrateError ? err.hint : undefined;
@@ -85,6 +96,53 @@ export default function EntryCard({
         />
       )}
 
+      {entry.image && !illustrating && !nudging && (
+        <button
+          type="button"
+          onClick={() => setNudging(true)}
+          className="mb-3 text-xs text-muted underline-offset-2 transition-colors hover:text-ink hover:underline"
+        >
+          Not quite right?
+        </button>
+      )}
+
+      {nudging && !illustrating && (
+        <div className="mb-3 rounded-xl border border-hairline/70 bg-paper/50 p-3">
+          <label className="text-xs text-muted" htmlFor={`nudge-${entry.id}`}>
+            What should change? Your words go with the picture.
+          </label>
+          <input
+            id={`nudge-${entry.id}`}
+            value={nudge}
+            onChange={(e) => setNudge(e.target.value)}
+            maxLength={200}
+            autoFocus
+            placeholder="no glasses · evening light · seen from behind"
+            className="mt-1.5 w-full rounded-lg border border-hairline bg-surface/70 px-3 py-2 text-sm text-ink placeholder:text-muted/60 focus:border-lavender/60 focus:outline-none"
+          />
+          <div className="mt-2 flex gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                setNudging(false);
+                setNudge("");
+              }}
+              className="rounded-full border border-hairline bg-surface/60 px-3 py-1.5 text-xs text-muted"
+            >
+              Leave it
+            </button>
+            <button
+              type="button"
+              disabled={!nudge.trim()}
+              onClick={() => void illustrate(nudge.trim())}
+              className="rounded-full bg-ink/90 px-3 py-1.5 text-xs font-medium text-paper disabled:opacity-40"
+            >
+              Draw it again
+            </button>
+          </div>
+        </div>
+      )}
+
       {illustrating && (
         <div className="mb-3 flex items-center gap-2 rounded-xl bg-lavender/10 px-3 py-2 text-xs text-lavender">
           <span className="h-3.5 w-3.5 animate-breathe rounded-full bg-gradient-to-br from-terracotta/60 via-lavender/60 to-sage/60" />
@@ -99,7 +157,7 @@ export default function EntryCard({
             onClose={() => setIllustrateError(null)}
             onRetry={() => {
               setIllustrateError(null);
-              void illustrate();
+              void illustrate(nudge.trim() || undefined);
             }}
           />
         )}
