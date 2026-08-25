@@ -47,9 +47,14 @@ Newest first. Dates are the day the work landed.
 - **The voice picker hid voices you had downloaded yourself.** It only listed
   names biblio recognised as women, so a voice chosen on purpose could be
   missing from the one list you'd go looking for it in. Every voice the device
-  will share is offered now — hers first, the rest under them — with the one
-  your phone speaks in marked. A note under the list explains the voices
-  iPhone keeps for itself and won't lend to a browser.
+  will share is offered now — hers first, the rest under them, the one your
+  phone speaks in marked, and Premium and Enhanced said out loud where a
+  phone lists the same name three times over.
+- **"What this device shares"**, under the picker: every voice the browser is
+  actually handed, and a *Check again* for the phones that only publish the
+  list once they've spoken. If a voice you downloaded isn't in there, iPhone
+  is keeping it for its own reading features — no website can reach it, and
+  now you can see that rather than wonder.
 - **Maya now says which voice "Auto" landed on**, so a wrong guess is
   something you can see rather than something you have to describe.
 
@@ -60,6 +65,11 @@ Newest first. Dates are the day the work landed.
   names, then anyone. `voiceQuality()` counts the device's own default voice
   for something. `voiceChoices()` replaces `femaleVoices()` and returns the
   whole list, grouped and de-duplicated.
+- Quality and tier are read from the voice's identifier as well as its name.
+  Apple ships `com.apple.voice.premium.en-US.Ava` beside
+  `com.apple.voice.compact.en-US.Ava` and calls both of them "Ava", so on the
+  name alone the good one and the tinny one ranked identically and the picker
+  showed two rows with nothing to tell them apart.
 - `utterance.lang` is set alongside `utterance.voice`: WebKit resolves a voice
   by language as well as by object, and reaches for the system default when
   the two disagree.

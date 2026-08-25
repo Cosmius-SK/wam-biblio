@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   maya,
   isNaturalVoice,
   voiceGender,
   voiceKey,
+  voiceTier,
   type MayaFrequency,
   type VoiceChoices,
 } from "@/lib/maya";
@@ -33,13 +34,20 @@ const FREQUENCIES: { key: MayaFrequency; label: string; hint: string }[] = [
  * recognises from their phone's own settings, so they are what we show.
  */
 function voiceOption(v: SpeechSynthesisVoice) {
-  const gender = voiceGender(v);
+  const tier = voiceTier(v);
+  // Apple lists "Ava" three times over. Say which one this is, unless the
+  // name already does.
+  const quality =
+    (tier === "premium" || tier === "enhanced") && !v.name.toLowerCase().includes(tier)
+      ? ` \u2014 ${tier === "premium" ? "Premium" : "Enhanced"}`
+      : "";
   return (
     <option key={voiceKey(v)} value={v.voiceURI}>
       {isNaturalVoice(v) ? "★ " : ""}
-      {v.name} ({v.lang})
+      {v.name}
+      {quality} ({v.lang})
       {v.default ? " · your device default" : ""}
-      {gender === "him" ? " · a man\u2019s voice" : ""}
+      {voiceGender(v) === "him" ? " · a man\u2019s voice" : ""}
     </option>
   );
 }
@@ -58,26 +66,40 @@ export default function MayaCard() {
   const [rate, setRate] = useState(0.92);
   const canSpeak = maya.canSpeak();
 
+  // Hers first, then everything else the device has. Filtering the list down
+  // to the names we recognise as women hid voices people had downloaded on
+  // purpose — a guess belongs in the default, not in the gate.
+  const refresh = useCallback(() => {
+    setVoices(maya.voiceList());
+    setAuto(maya.autoVoice());
+  }, []);
+
   useEffect(() => {
     setVoice(maya.voiceSetting());
     setFreq(maya.frequency());
     setIdle(idleMinutes());
     setRate(maya.rate());
     if (!maya.canSpeak()) return;
-    // Hers first, then everything else the device has. Filtering the list down
-    // to the names we recognise as women hid voices people had downloaded on
-    // purpose — a guess belongs in the default, not in the gate.
-    const load = () => {
-      setVoices(maya.voiceList());
-      setAuto(maya.autoVoice());
-    };
-    load();
+    refresh();
     // Voices arrive asynchronously in most browsers.
-    window.speechSynthesis.addEventListener("voiceschanged", load);
-    return () => window.speechSynthesis.removeEventListener("voiceschanged", load);
-  }, []);
+    window.speechSynthesis.addEventListener("voiceschanged", refresh);
+    return () => window.speechSynthesis.removeEventListener("voiceschanged", refresh);
+  }, [refresh]);
 
-  const total = voices.hers.length + voices.others.length;
+  const all = [...voices.hers, ...voices.others];
+  const total = all.length;
+
+  /**
+   * Some platforms only publish their full list once speech has been used, so
+   * knock first and look again a moment later. This is also the honest answer
+   * to "my downloaded voice isn't here": the list below is the whole of what
+   * the browser is given, and if a voice is missing from it, it was never
+   * offered to us.
+   */
+  function recheckVoices() {
+    maya.nudgeVoices();
+    window.setTimeout(refresh, 700);
+  }
 
   function chooseVoice(v: string) {
     setVoice(v);
@@ -213,11 +235,39 @@ export default function MayaCard() {
             Settings › Accessibility › Spoken Content › Voices.
           </p>
           <p className="mt-1.5 text-xs text-muted/70">
-            A downloaded voice may still be missing from this list: iPhone keeps some of
-            its better voices for its own reading features and doesn&rsquo;t hand them to
-            the browser. What&rsquo;s in the list above is everything biblio is allowed to
-            use on this device — {total} {total === 1 ? "voice" : "voices"} in all.
+            A voice you downloaded yourself can still be missing here. iPhone keeps its
+            Premium and Enhanced voices for its own reading features and hands the browser
+            only the small &ldquo;compact&rdquo; ones — no website can reach the rest. The
+            list below is the whole of what this device offers biblio.
           </p>
+
+          <details className="mt-2 rounded-xl border border-hairline/70 bg-paper/30 px-3 py-2">
+            <summary className="cursor-pointer list-none text-xs text-muted hover:text-ink">
+              What this device shares — {total} {total === 1 ? "voice" : "voices"}
+            </summary>
+            <button
+              type="button"
+              onClick={recheckVoices}
+              className="mt-2 rounded-full border border-hairline bg-paper/50 px-3 py-1.5 text-xs text-ink transition-colors hover:border-lavender/40"
+            >
+              Check again
+            </button>
+            <ul className="mt-2 space-y-1.5">
+              {all.map((v) => (
+                <li key={voiceKey(v)} className="border-t border-hairline/40 pt-1.5">
+                  <span className="text-xs text-ink/80">
+                    {v.name} · {v.lang}
+                    {v.default ? " · device default" : ""}
+                  </span>
+                  {/* The identifier is where Apple says which quality this is,
+                      so it is the one thing worth showing verbatim. */}
+                  <span className="block break-all font-mono text-2xs leading-4 text-muted/60">
+                    {v.voiceURI}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </details>
           <p className="mt-1.5 text-xs text-muted/70">
             On iPhone the silent switch mutes her too — if she looks like she&rsquo;s speaking
             but you hear nothing, that&rsquo;s usually why.

@@ -143,13 +143,36 @@ function isEnglish(v: SpeechSynthesisVoice): boolean {
  * The voice the phone itself speaks in counts for something too — somebody who
  * has chosen a voice in Settings has told us which one they like.
  */
+/**
+ * Apple ships one voice at up to three qualities and says which only in the
+ * identifier: `com.apple.voice.premium.en-US.Ava` sits beside
+ * `com.apple.voice.compact.en-US.Ava`, and both are called "Ava". Reading the
+ * name alone ranks the good one and the tinny one identically, and puts two
+ * rows in the picker with nothing to tell them apart. So everything below
+ * reads the name *and* the identifier.
+ */
+export type VoiceTier = "premium" | "enhanced" | "compact" | "";
+
+/** Both halves of what a platform tells us about a voice, lowercased. */
+function voiceText(v: SpeechSynthesisVoice): string {
+  return `${v.name} ${v.voiceURI}`.toLowerCase();
+}
+
+export function voiceTier(v: SpeechSynthesisVoice): VoiceTier {
+  const s = voiceText(v);
+  if (s.includes("premium")) return "premium";
+  if (s.includes("enhanced")) return "enhanced";
+  if (s.includes("compact")) return "compact";
+  return "";
+}
+
 /** The newer, neural generation — what earns a voice a star in the picker. */
 export function isNaturalVoice(v: SpeechSynthesisVoice): boolean {
-  return /(natural|neural|wavenet|journey|studio|premium|enhanced|siri)/.test(v.name.toLowerCase());
+  return /(natural|neural|wavenet|journey|studio|premium|enhanced|siri)/.test(voiceText(v));
 }
 
 export function voiceQuality(v: SpeechSynthesisVoice): number {
-  const n = v.name.toLowerCase();
+  const n = voiceText(v);
   let score = 0;
   if (/(natural|neural|wavenet|journey|studio|premium|enhanced)/.test(n)) score += 100;
   if (/online/.test(n)) score += 40;
@@ -450,6 +473,27 @@ class Maya {
   /** Every voice on this device, hers first — see `voiceChoices`. */
   voiceList(): VoiceChoices {
     return voiceChoices(this.voices());
+  }
+
+  /**
+   * Ask the platform to publish its voice list.
+   *
+   * Some browsers — iOS above all — hand back a short list or none at all
+   * until synthesis has actually been used once. A silent utterance is the
+   * conventional knock on that door, and like all speech there it has to come
+   * out of a tap.
+   */
+  nudgeVoices(): void {
+    if (!this.canSpeak()) return;
+    const synth = window.speechSynthesis;
+    if (synth.speaking || synth.pending) return; // never across something she's saying
+    try {
+      const u = new SpeechSynthesisUtterance(" ");
+      u.volume = 0;
+      synth.speak(u);
+    } catch {
+      /* nothing to lose */
+    }
   }
 
   /** The voice she would use right now, for showing next to "Auto". */
