@@ -30,6 +30,7 @@ works). The horizons say what we are aiming at; the systems are what gets built.
 | [**drafts.md**](../drafts.md) | The single draft: persisted, synced, and a prerequisite for the idle lock |
 | [**releases.md**](../releases.md) | Versioning, offline, and how updates reach people |
 | [**maya/character.md**](../maya/character.md) | Who Maya is — portable across projects, not biblio-specific |
+| [**your-world.md**](../your-world.md) | People, places and things — the cast that makes illustrations yours |
 | [**auth-and-sync-lifecycle.md**](../auth-and-sync-lifecycle.md) | The two independent auth cycles as built today |
 
 ## Where things stand today
