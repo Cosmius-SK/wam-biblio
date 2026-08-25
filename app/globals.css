@@ -500,3 +500,19 @@ body::after {
     transform: scale(1);
   }
 }
+
+/*
+ * Decorator's tape, across the top of the what-changed card.
+ *
+ * The card used to open with its own heading, which is a fine heading and no
+ * kind of announcement. The stripes say "something was done here" before a
+ * word of it is read — and they hold still, because the work is finished.
+ */
+.renovation-tape {
+  background-color: rgb(var(--paper) / 0.55);
+  background-image: repeating-linear-gradient(
+    -45deg,
+    rgb(var(--terracotta) / 0.13) 0 9px,
+    rgb(var(--lavender) / 0.13) 9px 18px
+  );
+}

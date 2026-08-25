@@ -1,7 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { maya, voiceQuality, type MayaFrequency } from "@/lib/maya";
+import {
+  maya,
+  isNaturalVoice,
+  voiceGender,
+  voiceKey,
+  type MayaFrequency,
+  type VoiceChoices,
+} from "@/lib/maya";
 import { idleMinutes, setIdleMinutes } from "@/lib/session";
 import { restartTour } from "@/lib/tour";
 import Tour from "./tour/Tour";
@@ -22,11 +29,28 @@ const FREQUENCIES: { key: MayaFrequency; label: string; hint: string }[] = [
 ];
 
 /**
+ * One line in the voice picker. The name and language are what someone
+ * recognises from their phone's own settings, so they are what we show.
+ */
+function voiceOption(v: SpeechSynthesisVoice) {
+  const gender = voiceGender(v);
+  return (
+    <option key={voiceKey(v)} value={v.voiceURI}>
+      {isNaturalVoice(v) ? "★ " : ""}
+      {v.name} ({v.lang})
+      {v.default ? " · your device default" : ""}
+      {gender === "him" ? " · a man\u2019s voice" : ""}
+    </option>
+  );
+}
+
+/**
  * Settings › Maya: whether she speaks aloud, in whose voice, and how often
  * she says anything at all.
  */
 export default function MayaCard() {
-  const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
+  const [voices, setVoices] = useState<VoiceChoices>({ hers: [], others: [] });
+  const [auto, setAuto] = useState<SpeechSynthesisVoice | undefined>();
   const [voice, setVoice] = useState("auto");
   const [freq, setFreq] = useState<MayaFrequency>("quiet");
   const [idle, setIdle] = useState(10);
@@ -40,15 +64,20 @@ export default function MayaCard() {
     setIdle(idleMinutes());
     setRate(maya.rate());
     if (!maya.canSpeak()) return;
-    // Best first: every platform ships old formant voices alongside neural
-    // ones, and the list order is no guide to which is which.
-    const load = () =>
-      setVoices([...maya.femaleVoices()].sort((a, b) => voiceQuality(b) - voiceQuality(a)));
+    // Hers first, then everything else the device has. Filtering the list down
+    // to the names we recognise as women hid voices people had downloaded on
+    // purpose — a guess belongs in the default, not in the gate.
+    const load = () => {
+      setVoices(maya.voiceList());
+      setAuto(maya.autoVoice());
+    };
     load();
     // Voices arrive asynchronously in most browsers.
     window.speechSynthesis.addEventListener("voiceschanged", load);
     return () => window.speechSynthesis.removeEventListener("voiceschanged", load);
   }, []);
+
+  const total = voices.hers.length + voices.others.length;
 
   function chooseVoice(v: string) {
     setVoice(v);
@@ -124,14 +153,22 @@ export default function MayaCard() {
             aria-label="Maya's voice"
             className="mt-2 w-full cursor-pointer rounded-xl border border-hairline bg-paper/50 px-3 py-2.5 text-sm text-ink focus:border-lavender/60 focus:outline-none"
           >
-            <option value="auto">Auto — the most human woman&rsquo;s voice on this device</option>
+            <option value="auto">
+              {auto
+                ? `Auto — she\u2019ll use ${auto.name} (${auto.lang})`
+                : "Auto — the most human woman\u2019s voice on this device"}
+            </option>
             <option value="">Off — her words appear as text only</option>
-            {voices.map((v) => (
-              <option key={v.voiceURI} value={v.voiceURI}>
-                {voiceQuality(v) >= 100 ? "★ " : ""}
-                {v.name} ({v.lang})
-              </option>
-            ))}
+            {voices.hers.length > 0 && (
+              <optgroup label={"Women\u2019s voices"}>
+                {voices.hers.map(voiceOption)}
+              </optgroup>
+            )}
+            {voices.others.length > 0 && (
+              <optgroup label="Everything else on this device">
+                {voices.others.map(voiceOption)}
+              </optgroup>
+            )}
           </select>
 
           {voice !== "" && (
@@ -174,6 +211,12 @@ export default function MayaCard() {
             ★ marks the newer, more human-sounding voices. If none are starred here, your
             device only has the older robotic ones — iPhone can download better ones under
             Settings › Accessibility › Spoken Content › Voices.
+          </p>
+          <p className="mt-1.5 text-xs text-muted/70">
+            A downloaded voice may still be missing from this list: iPhone keeps some of
+            its better voices for its own reading features and doesn&rsquo;t hand them to
+            the browser. What&rsquo;s in the list above is everything biblio is allowed to
+            use on this device — {total} {total === 1 ? "voice" : "voices"} in all.
           </p>
           <p className="mt-1.5 text-xs text-muted/70">
             On iPhone the silent switch mutes her too — if she looks like she&rsquo;s speaking

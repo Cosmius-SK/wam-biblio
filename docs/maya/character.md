@@ -74,10 +74,17 @@ Rules across all of them:
 ## Voice
 
 - Speech synthesis where available; text always, so nothing is lost when muted.
-- A woman's voice, filtered from the platform's list rather than assumed.
+- A woman's voice, chosen from the platform's list rather than assumed — and
+  a name the list doesn't recognise is *unknown*, never "close enough". Guess
+  in the default; never in the picker, which offers every voice the device has.
 - Ambient sound ducks while she speaks and returns after.
 - Platform realities are hers to absorb quietly: iOS needs a gesture before
-  speech and may report an empty voice list until it does not.
+  speech and may report an empty voice list until it does not; it also keeps
+  some of its better voices for its own reading features and never lends them
+  to a browser, which is worth saying out loud rather than looking broken.
+- Anything long enough to be stopped part-way through is read line by line, so
+  it can be picked up where it stopped. A browser only reliably lets you back
+  in at the start of an utterance.
 
 ## What each project supplies
 

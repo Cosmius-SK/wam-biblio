@@ -27,6 +27,54 @@ Newest first. Dates are the day the work landed.
 
 ---
 
+## 0.22.0 — 25 August 2026
+
+### What's new
+
+- **Maya can read the what-changed card out loud.** Tap the speaker in its
+  corner and she reads it through, the line she's on lit as she goes. Tap her
+  orb to stop her; tap the speaker again and she picks up where she stopped.
+- **The card wears a strip of decorator's tape**, so it's clear at a glance
+  what it is before you read a word of it.
+
+### Fixed
+
+- **Maya answered in a man's voice on iPhone.** Two men were on her list of
+  women's names, and when she recognised nobody at all she fell back to *any*
+  voice on the device rather than to none. Now an unfamiliar name counts as
+  unknown, and a man's voice is the last thing she'll reach for rather than
+  the first.
+- **The voice picker hid voices you had downloaded yourself.** It only listed
+  names biblio recognised as women, so a voice chosen on purpose could be
+  missing from the one list you'd go looking for it in. Every voice the device
+  will share is offered now — hers first, the rest under them — with the one
+  your phone speaks in marked. A note under the list explains the voices
+  iPhone keeps for itself and won't lend to a browser.
+- **Maya now says which voice "Auto" landed on**, so a wrong guess is
+  something you can see rather than something you have to describe.
+
+### Under the hood
+
+- `lib/maya.ts`: `voiceGender()` returns `her | him | unknown` in place of a
+  boolean, and the auto-pick walks three pools in order — women, unclaimed
+  names, then anyone. `voiceQuality()` counts the device's own default voice
+  for something. `voiceChoices()` replaces `femaleVoices()` and returns the
+  whole list, grouped and de-duplicated.
+- `utterance.lang` is set alongside `utterance.voice`: WebKit resolves a voice
+  by language as well as by object, and reaches for the system default when
+  the two disagree.
+- Passage reading — `readAloud` / `pauseReading` / `stopReading` / `onReading`
+  — speaks one line per utterance, because the start of an utterance is the
+  only place a browser reliably lets you back in. `pause()`/`resume()` are
+  honoured almost nowhere on a phone.
+- The changelog parser in `next.config.mjs` was folding the word "Fixed" onto
+  the last **What's new** bullet and then stopping, so an entry with both
+  halves shipped only the first one. Bullet state is per-section now, and the
+  section heading is dropped before the lines are read. This is the first
+  release with both halves, which is why it had not shown up before.
+
+---
+
 ## 0.21.0 — 25 August 2026
 
 ### What's new

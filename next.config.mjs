@@ -21,14 +21,22 @@ function releaseInfo() {
     const bullets = [];
     for (const section of entry.split(/^### /m)) {
       if (!READER_SECTIONS.some((h) => section.startsWith(h))) continue;
-      for (const raw of section.split("\n")) {
+      // Everything past the "Fixed" line itself. A heading is not a note, and
+      // the folding below would otherwise glue it onto the last bullet of the
+      // section before — and then stop, taking the whole of Fixed with it.
+      const body = section.slice(section.indexOf("\n") + 1);
+      let started = false; // a list has begun *in this section*
+      for (const raw of body.split("\n")) {
         const line = raw.trim();
-        if (line.startsWith("- ")) bullets.push(line.slice(2));
+        if (line.startsWith("- ")) {
+          bullets.push(line.slice(2));
+          started = true;
+        }
         // Bullets wrap across lines in the file; fold the continuations back
         // in so a note never arrives cut off mid-sentence.
-        else if (line && bullets.length > 0 && !line.startsWith("#")) {
+        else if (line && started && !line.startsWith("#")) {
           bullets[bullets.length - 1] += ` ${line}`;
-        } else if (!line && bullets.length > 0) {
+        } else if (!line && started) {
           break; // a blank line ends the list; what follows is prose
         }
       }
