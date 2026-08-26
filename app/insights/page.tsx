@@ -3,6 +3,7 @@ import { blobToken, listPrefix, readSyncJson } from "@/lib/blobStore";
 import { agoLabel } from "@/lib/format";
 import HealthCard from "@/components/HealthCard";
 import OnboardingPreview from "@/components/OnboardingPreview";
+import PortraitTester from "@/components/world/PortraitTester";
 import InvitesCard from "@/components/InvitesCard";
 import OwnerTabs from "@/components/OwnerTabs";
 import { currentUser } from "@/lib/users/limits";
@@ -181,6 +182,7 @@ export default async function InsightsPage() {
             content: (
               <div className="space-y-4">
                 <HealthCard />
+                <PortraitTester />
                 <OnboardingPreview />
               </div>
             ),

@@ -55,11 +55,29 @@ Newest first. Dates are the day the work landed.
   and *not now* means not now: a name you decline isn't offered again this
   way.
 
+### For the owner
+
+- **A bench for the cast, under Checks.** Shuffle eight faces to see the whole
+  range at once, turn any of them over to read what a picture would be told,
+  build a test cast of up to three, then draw the same scene **both ways** —
+  once as it is today, once with the descriptions appended — side by side with
+  the exact prompt under each. Two illustrations, about 8¢. Nothing on this
+  bench is saved to your world.
+- It is the only way to answer the two questions this feature rests on: does
+  the range of faces cover a real family, and does describing them actually
+  change what comes back. The default scene is the scooter one, so the
+  children question — image models sometimes get cautious about specific young
+  children — can be tested on the first run.
+
 ### Under the hood
 
 - `lib/world/` — `face.ts` is the vocabulary (every option carries a label for
   a person and a phrase for a picture), `types.ts` the record, `store.ts` the
   table and the matching, `cast.ts` the bridge from an entry to a prompt.
+- A beard is the jaw outline closed off by a curve that sits high at the
+  sideburns and dips toward the middle of the cheek. A straight line across
+  there draws a mask, which is precisely how the first version read on a bald
+  head — found by shuffling, not by reading the code.
 - Portraits are pure functions of the choices: no seeds, no randomness, no
   network. The same description draws the same person on any device, offline,
   for ever. Proportion carries the age — a child is a rounder skull with eyes

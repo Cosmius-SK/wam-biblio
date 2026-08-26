@@ -60,10 +60,15 @@ export default function FacePortrait({
     return `M${50 - w} ${sides} A${rx} ${ry} 0 0 1 ${50 + w} ${sides} C ${50 + w - 2} ${top + 5}, ${50 + 11} ${top}, 50 ${top} C ${50 - 11} ${top}, ${50 - w + 2} ${top + 5}, ${50 - w} ${sides} Z`;
   };
 
-  /** Everything below a line on the face: the shape a beard grows in. */
-  const jaw = (from: number) => {
+  /**
+   * The shape a beard grows in: the jaw outline, closed off at the top by a
+   * curve that sits high at the sideburns and dips toward the middle of the
+   * cheek. A straight line across there is what a mask looks like, which is
+   * exactly how the first version of this read on a bald head.
+   */
+  const jaw = (from: number, dip: number) => {
     const w = halfAt(from);
-    return `M${50 - w} ${from} A${rx} ${ry} 0 0 0 ${50 + w} ${from} Z`;
+    return `M${50 - w} ${from} Q 50 ${from + dip} ${50 + w} ${from} A${rx} ${ry} 0 0 1 ${50 - w} ${from} Z`;
   };
 
   /** Hair falling either side of the face, `depth` below the widest point. */
@@ -72,7 +77,7 @@ export default function FacePortrait({
 
   const beard = face.facialHair;
   const bearded = !young && (beard === "stubble" || beard === "short" || beard === "full");
-  const beardFrom = beard === "full" ? eyeY + 5 : beard === "short" ? eyeY + 7 : eyeY + 6;
+  const beardFrom = beard === "full" ? eyeY + 2 : beard === "short" ? eyeY + 6 : eyeY + 5;
   const moustache = !young && ["moustache", "short", "full"].includes(beard);
 
   return (
@@ -164,9 +169,9 @@ export default function FacePortrait({
       {bearded && (
         <>
           <path
-            d={jaw(beardFrom)}
-            fill={hair.shade}
-            opacity={beard === "stubble" ? 0.26 : 0.95}
+            d={jaw(beardFrom, beard === "full" ? 6 : 5)}
+            fill={hair.hex}
+            opacity={beard === "stubble" ? 0.26 : 0.96}
           />
           {beard !== "stubble" && (
             <ellipse cx="50" cy={mouthY - 0.3} rx="6.2" ry="3.7" fill={skin.hex} opacity="0.9" />
@@ -183,7 +188,7 @@ export default function FacePortrait({
       />
 
       {moustache && (
-        <path d={`M42 ${mouthY - 3.6} q8 -3 16 0 q-8 3.4 -16 0 Z`} fill={hair.shade} />
+        <path d={`M42 ${mouthY - 3.6} q8 -3 16 0 q-8 3.4 -16 0 Z`} fill={hair.hex} />
       )}
 
       {face.glasses !== "none" && (
