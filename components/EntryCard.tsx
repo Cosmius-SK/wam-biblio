@@ -8,6 +8,7 @@ import { formatDate, formatTime, modelLabel, shortZone, zoneDiffers } from "@/li
 import { placeLabel } from "@/lib/geo";
 import { generateIllustration, IllustrateError } from "@/lib/illustrate";
 import { promptWithCast } from "@/lib/world/cast";
+import RememberOffer from "./world/RememberOffer";
 import { resolveHeader } from "@/lib/entryHeader";
 import SceneImage from "./SceneImage";
 import EntryHeader from "./EntryHeader";
@@ -26,6 +27,16 @@ export default function EntryCard({
   const [illustrateError, setIllustrateError] = useState<{ msg: string; hint?: string } | null>(null);
   /** An open box for asking the picture to change — see `illustrate`. */
   const [nudging, setNudging] = useState(false);
+  // The offer to remember someone belongs beside a picture that has just been
+  // drawn, and is noise on an old card being scrolled past. Two ways to get
+  // there: a redraw from this card, or the newest entry — which is what you
+  // are looking at when the illustration you asked for on the way in lands.
+  const [justDrew, setJustDrew] = useState(false);
+  const [kept, setKept] = useState(false);
+  const [dismissed, setDismissed] = useState(false);
+  // Derived, not stored: the illustration asked for on the way in lands after
+  // this card is already on screen, and a flag set at mount would miss it.
+  const offerCast = !dismissed && !!entry.image && (justDrew || index === 0);
   const [nudge, setNudge] = useState("");
 
   /**
@@ -47,6 +58,8 @@ export default function EntryCard({
       // the same family is the same family from one picture to the next.
       const image = await generateIllustration(await promptWithCast(scenePrompt, entry), note);
       await saveEntry({ ...entry, image });
+      setJustDrew(true);
+      setKept(false);
     } catch (err) {
       const hint = err instanceof IllustrateError ? err.hint : undefined;
       setIllustrateError({
@@ -97,6 +110,35 @@ export default function EntryCard({
           hasImage={!!entry.image}
           busy={illustrating}
         />
+      )}
+
+      {offerCast && !illustrating && !nudging && !kept && (
+        <RememberOffer entities={entry.entities} onKept={() => setKept(true)} />
+      )}
+
+      {kept && !illustrating && (
+        <div className="mb-3 flex flex-wrap items-center gap-2 rounded-xl border border-hairline/70 bg-paper/50 p-3">
+          <span className="text-xs text-muted">
+            biblio knows them now. Every picture from here on will use the same face.
+          </span>
+          <button
+            type="button"
+            onClick={() => void illustrate()}
+            className="rounded-full bg-ink/90 px-3 py-1.5 text-xs font-medium text-paper"
+          >
+            Draw this one again
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setKept(false);
+              setDismissed(true);
+            }}
+            className="text-xs text-muted/80 transition-colors hover:text-ink"
+          >
+            Leave it
+          </button>
+        </div>
       )}
 
       {entry.image && !illustrating && !nudging && (

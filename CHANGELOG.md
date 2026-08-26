@@ -48,6 +48,12 @@ Newest first. Dates are the day the work landed.
   profile picture: tap one and it turns to show the description underneath.
 - **Your world syncs**, encrypted like everything else, so a cast built on a
   phone is there on the laptop.
+- **biblio asks at the moment it makes sense.** When a picture has just been
+  drawn of people it doesn't know, it says so — *Theva and Yazh don't have a
+  face yet* — and offers to remember them, one at a time. Then it can draw
+  that same picture again with them in it. Nothing ever blocks the picture,
+  and *not now* means not now: a name you decline isn't offered again this
+  way.
 
 ### Under the hood
 
@@ -61,6 +67,9 @@ Newest first. Dates are the day the work landed.
 - Matching is exact, never fuzzy, over the shaping pass's `entities` and a
   word-boundary scan of the writing. A wrong match puts someone else's face in
   your picture, which is a far worse failure than no match at all.
+- The offer appears beside a picture drawn just now, or on the newest entry —
+  the illustration asked for on the way in lands after the card is already on
+  screen, so it is derived on render rather than latched at mount.
 - Dexie v8 adds `world`; sync gains record type `w` (newest edit wins, the
   drafts rule) via `REC_TYPES` in `lib/syncKeys.ts`. Injection happens
   client-side, so `/api/image` still receives exactly what it always did: one

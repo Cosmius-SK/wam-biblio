@@ -2,8 +2,9 @@
 
 **Status: prompt richness (0.21.0) and the cast itself (0.23.0) are built** —
 the store, the sync, the avatar builder, Settings › Your world, and the
-injection into every illustration. What remains is where it is *offered*: the
-three touchpoints under "Where it appears" below. The outcome of a long
+injection into every illustration, and the offer after an illustration. What
+remains are the other two touchpoints under "Where it appears" below — faces
+on the review screen, and Maya's earned offer. The outcome of a long
 conversation about why generated illustrations feel generic, and what would
 actually fix it.
 
@@ -137,8 +138,8 @@ named.
 **It accumulates from writing; it is never configured up front.** A journal that
 opens with a character-creation screen is a game.
 
-- **After an illustration** — the picture is drawn first, exactly as asked, and
-  then: *"Theva and Yazh don't have faces yet. Shall I remember them, so they
+- **After an illustration — built (0.23.0).** The picture is drawn first,
+  exactly as asked, and then: *"Theva and Yazh don't have faces yet. Shall I remember them, so they
   look the same in every entry?"* — per person, with *not now* meaning not now.
   Nothing blocks the image. And having just seen the generic result, the offer
   explains itself.
