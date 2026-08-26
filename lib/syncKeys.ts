@@ -7,9 +7,9 @@
  * something a person wrote never arrives on their other device.
  *
  *   e — entry      p — portrait     r — reflection
- *   k — media key  d — the draft
+ *   k — media key  d — the draft    w — someone (or somewhere) in your world
  */
-export const REC_TYPES = "eprkd";
+export const REC_TYPES = "eprkdw";
 
 const KEY = new RegExp(`^[${REC_TYPES}]/[A-Za-z0-9._-]{1,200}$`);
 

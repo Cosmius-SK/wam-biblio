@@ -7,6 +7,7 @@ import { deleteEntry, saveEntry } from "@/lib/db";
 import { formatDate, formatTime, modelLabel, shortZone, zoneDiffers } from "@/lib/format";
 import { placeLabel } from "@/lib/geo";
 import { generateIllustration, IllustrateError } from "@/lib/illustrate";
+import { promptWithCast } from "@/lib/world/cast";
 import { resolveHeader } from "@/lib/entryHeader";
 import SceneImage from "./SceneImage";
 import EntryHeader from "./EntryHeader";
@@ -42,7 +43,9 @@ export default function EntryCard({
     try {
       // Only the sanitized scene prompt leaves the device — never the title/body.
       const scenePrompt = entry.imagePrompt?.trim() || `a calm, simple scene evoking a ${entry.mood} mood`;
-      const image = await generateIllustration(scenePrompt, note);
+      // Anyone in this entry biblio already knows goes in as a description, so
+      // the same family is the same family from one picture to the next.
+      const image = await generateIllustration(await promptWithCast(scenePrompt, entry), note);
       await saveEntry({ ...entry, image });
     } catch (err) {
       const hint = err instanceof IllustrateError ? err.hint : undefined;

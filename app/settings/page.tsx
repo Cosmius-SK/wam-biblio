@@ -13,6 +13,11 @@ const SECTIONS: { href: string; title: string; desc: string }[] = [
   { href: "/settings/maya", title: "Maya", desc: "Her voice, and how often she speaks up." },
   { href: "/settings/account", title: "Account & sync", desc: "Google sign-in, automatic sync." },
   { href: "/settings/ai", title: "AI", desc: "Live mode, illustration model & style, usage." },
+  {
+    href: "/settings/world",
+    title: "Your world",
+    desc: "People, places and things, so pictures know who's in them.",
+  },
   { href: "/settings/security", title: "Security", desc: "App lock with Face ID / fingerprint." },
   { href: "/settings/devices", title: "Devices", desc: "What holds a copy of your journal." },
   { href: "/settings/privacy", title: "Privacy", desc: "What is known about you, and what never is." },

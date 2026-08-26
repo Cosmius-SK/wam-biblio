@@ -1,7 +1,11 @@
 # Your world — people, places and things
 
-**Status: prompt richness built (0.21.0); the cast is designed, not built.** The outcome of a long conversation about why
-generated illustrations feel generic, and what would actually fix it.
+**Status: prompt richness (0.21.0) and the cast itself (0.23.0) are built** —
+the store, the sync, the avatar builder, Settings › Your world, and the
+injection into every illustration. What remains is where it is *offered*: the
+three touchpoints under "Where it appears" below. The outcome of a long
+conversation about why generated illustrations feel generic, and what would
+actually fix it.
 
 ## The problem, stated exactly
 

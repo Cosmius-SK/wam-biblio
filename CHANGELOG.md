@@ -27,6 +27,47 @@ Newest first. Dates are the day the work landed.
 
 ---
 
+## 0.23.0 — 26 August 2026
+
+### What's new
+
+- **The people in your journal can keep their faces.** Settings › Your world.
+  Choose someone's face once — age, hair, glasses, a beard, the way you'd
+  choose it rather than describe it — and every picture biblio draws of them
+  uses the same description. A family stops being a different family in every
+  illustration.
+- **Their name never leaves this device.** biblio matches "Theva" here, and
+  what goes with the picture is "a man in his thirties with olive skin and a
+  full beard". The builder shows you that sentence as you make it, so you can
+  see exactly what is sent.
+- **Places and things too, in a few words.** *A multiplex lobby, neon strips,
+  dark patterned carpet* is genuinely enough — nobody minds that the cinema
+  isn't precisely their cinema, and everybody notices that the father isn't
+  them.
+- **Portraits are framed, and turn over.** A portrait on a shelf rather than a
+  profile picture: tap one and it turns to show the description underneath.
+- **Your world syncs**, encrypted like everything else, so a cast built on a
+  phone is there on the laptop.
+
+### Under the hood
+
+- `lib/world/` — `face.ts` is the vocabulary (every option carries a label for
+  a person and a phrase for a picture), `types.ts` the record, `store.ts` the
+  table and the matching, `cast.ts` the bridge from an entry to a prompt.
+- Portraits are pure functions of the choices: no seeds, no randomness, no
+  network. The same description draws the same person on any device, offline,
+  for ever. Proportion carries the age — a child is a rounder skull with eyes
+  set lower, not a smaller adult.
+- Matching is exact, never fuzzy, over the shaping pass's `entities` and a
+  word-boundary scan of the writing. A wrong match puts someone else's face in
+  your picture, which is a far worse failure than no match at all.
+- Dexie v8 adds `world`; sync gains record type `w` (newest edit wins, the
+  drafts rule) via `REC_TYPES` in `lib/syncKeys.ts`. Injection happens
+  client-side, so `/api/image` still receives exactly what it always did: one
+  sanitized scene description with no names in it.
+
+---
+
 ## 0.22.0 — 25 August 2026
 
 ### What's new

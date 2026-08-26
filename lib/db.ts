@@ -2,6 +2,7 @@
 
 import Dexie, { type Table } from "dexie";
 import type { Draft, JournalEntry, EntryContext, Portrait, Reflection } from "./types";
+import type { WorldMember } from "./world/types";
 
 /**
  * Local-first store. Entries live in the browser (IndexedDB) and are the
@@ -19,7 +20,7 @@ interface Setting {
  * uploadedAt (ms) we last pulled, so unchanged records aren't re-fetched. */
 export interface SyncLedgerRow {
   key: string; // record id
-  type: "e" | "p" | "r" | "k" | "d";
+  type: "e" | "p" | "r" | "k" | "d" | "w";
   hash: string;
   pulledUp: number;
 }
@@ -58,6 +59,7 @@ class JournalDB extends Dexie {
   ailog!: Table<AiLogRow, string>;
   drafts!: Table<Draft, string>;
   sessions!: Table<SessionRow, string>;
+  world!: Table<WorldMember, string>;
 
   constructor() {
     super("wam-biblio");
@@ -90,6 +92,11 @@ class JournalDB extends Dexie {
     this.version(7).stores({
       drafts: "id",
       sessions: "id, startedAt",
+    });
+    // v8 adds the cast: the people, places and things entries keep returning
+    // to (synced). Additive — an older build simply doesn't see them.
+    this.version(8).stores({
+      world: "id, kind, name",
     });
   }
 }

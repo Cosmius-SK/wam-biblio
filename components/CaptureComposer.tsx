@@ -36,6 +36,7 @@ import MayaOrb from "./MayaOrb";
 import { savedLine } from "@/lib/mayaLines";
 import { milestoneFor } from "@/lib/mayaObserve";
 import { generateIllustration } from "@/lib/illustrate";
+import { promptWithCast } from "@/lib/world/cast";
 import { AI_MODE_COOKIE } from "@/lib/ai/constants";
 
 type Phase = "compose" | "shaping" | "review";
@@ -249,7 +250,7 @@ export default function CaptureComposer() {
     try {
       const prompt =
         entry.imagePrompt?.trim() || `a calm, simple scene evoking a ${entry.mood} mood`;
-      const image = await generateIllustration(prompt);
+      const image = await generateIllustration(await promptWithCast(prompt, entry));
       await saveEntry({ ...entry, image });
     } catch {
       // Quiet by design — the card's ⋯ menu offers Illustrate with the full

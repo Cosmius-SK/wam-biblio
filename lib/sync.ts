@@ -2,6 +2,7 @@
 
 import { db, getSetting, setSetting, suppressSync } from "./db";
 import type { Draft, JournalEntry, Portrait, Reflection } from "./types";
+import type { WorldMember } from "./world/types";
 import { decryptJSON, encryptJSON, isEncryptedBlob, syncId } from "./crypto";
 import { parseRecordPath } from "./syncKeys";
 
@@ -35,7 +36,7 @@ export type OnSyncProgress = (p: SyncProgress) => void;
 const ZERO: SyncCounts = { entries: 0, reflections: 0, portraits: 0, photos: 0 };
 const TOMBSTONE = "__deleted__";
 
-type RecType = "e" | "p" | "r" | "k" | "d";
+type RecType = "e" | "p" | "r" | "k" | "d" | "w";
 interface Rec {
   type: RecType;
   id: string;
@@ -82,6 +83,10 @@ async function localRecords(): Promise<Rec[]> {
   // one device can be finished on another.
   const draft = await db.drafts.get("draft");
   if (draft) recs.push({ type: "d", id: draft.id, data: draft });
+  // The cast travels too. biblio is mobile-first but never device-bound, and a
+  // world that lived on one phone would be a world you rebuilt on the laptop.
+  const world = await db.world.toArray();
+  recs.push(...world.map((w) => ({ type: "w" as const, id: w.id, data: w })));
   return recs;
 }
 
@@ -220,6 +225,21 @@ async function mergeDraft(incoming: Draft, id: string): Promise<void> {
   }
 }
 
+/**
+ * Merge an incoming cast member: newest edit wins, the same rule as drafts.
+ *
+ * Two devices adjusting the same face is not a conflict worth agonising over —
+ * one of them is later, and later is what a person means by "the one I just
+ * changed". Anything cleverer here churns, which is exactly how the drafts
+ * merge went wrong.
+ */
+async function mergeMember(incoming: WorldMember, id: string): Promise<void> {
+  const local = await db.world.get(id);
+  if (!local || (incoming.updatedAt ?? 0) >= (local.updatedAt ?? 0)) {
+    await db.world.put(incoming);
+  }
+}
+
 /** Apply one pulled record (or tombstone) locally and update the ledger. */
 async function applyRecord(type: RecType, id: string, data: unknown, uploadedAt: number) {
   const deleted = (data as { __deleted?: boolean })?.__deleted === true;
@@ -229,11 +249,13 @@ async function applyRecord(type: RecType, id: string, data: unknown, uploadedAt:
       else if (type === "p") await db.portraits.delete(id);
       else if (type === "r") await db.reflections.delete(id);
       else if (type === "d") await db.drafts.delete(id);
+      else if (type === "w") await db.world.delete(id);
     } else if (type === "e") await db.entries.put(data as JournalEntry);
     else if (type === "p") await db.portraits.put(data as Portrait);
     else if (type === "r") await db.reflections.put(data as Reflection);
     else if (type === "k") await adoptMediaKey((data as { mediaKey?: string }).mediaKey);
     else if (type === "d") await mergeDraft(data as Draft, id);
+    else if (type === "w") await mergeMember(data as WorldMember, id);
   });
   // The ledger must describe what is ON DISK, not what arrived. A merged
   // draft differs from the record that triggered the merge, and recording the
@@ -241,6 +263,11 @@ async function applyRecord(type: RecType, id: string, data: unknown, uploadedAt:
   // re-pushed every cycle, the other side saw divergence again, and the text
   // grew on each pass instead of settling.
   const stored = !deleted && type === "d" ? await db.drafts.get(id) : null;
+  if (!deleted && type === "w") {
+    const kept = await db.world.get(id);
+    await db.syncled.put({ key: id, type, hash: await hashOf(kept ?? data), pulledUp: uploadedAt });
+    return;
+  }
   const hash = deleted ? TOMBSTONE : await hashOf(stored ?? data);
   await db.syncled.put({ key: id, type, hash, pulledUp: uploadedAt });
 }
