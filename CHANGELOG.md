@@ -58,6 +58,31 @@ Newest first. Dates are the day the work landed.
 - **Maya now says which voice "Auto" landed on**, so a wrong guess is
   something you can see rather than something you have to describe.
 
+### For the owner
+
+- **Insights were missing almost everyone.** Two testers signed in, one of them
+  wrote an entry, and the Activity list showed only the owner's own two
+  accounts — which reads as "nobody came" when in fact nothing was ever sent.
+  Three causes, all of them the same shape: numbers were only ever computed
+  from *finished* sessions, and a session finishes as the page is being closed.
+  - The session in progress is now counted, so a visit that never comes back
+    still reports.
+  - A visit is now worth a row even when both numbers round down to zero. A
+    three-minute look around used to report "0 and 0" and be dropped here as
+    nothing at all.
+  - Totals are sent again the moment an entry is kept, every four minutes
+    while the app is open, and by `sendBeacon` on the way out — an ordinary
+    request does not survive a phone switching apps, which is why the numbers
+    going missing were the ones from phones.
+- **Entries are counted per device, not per journal.** They were read from the
+  journal, which includes entries that arrived by sync — so somebody with a
+  phone and a laptop reported the same entry twice and the owner's page added
+  them together. They now come from the session that wrote them.
+- **A new check, under Checks: "Insights (who is turning up)"** — how many of
+  the allowed people have ever recorded a day, how many days are held, and how
+  many devices reported today. This pipeline is silent by design on the way in;
+  this is the one place it can be seen failing.
+
 ### Under the hood
 
 - `lib/maya.ts`: `voiceGender()` returns `her | him | unknown` in place of a
@@ -77,6 +102,12 @@ Newest first. Dates are the day the work landed.
   — speaks one line per utterance, because the start of an utterance is the
   only place a browser reliably lets you back in. `pause()`/`resume()` are
   honoured almost nowhere on a phone.
+- `lib/insights/collect.ts` keeps a snapshot of the last totals so the exit
+  path is fully synchronous — computing them needs a database read, and an
+  `await` at that moment is a bet that the page will still be running when it
+  resolves. Only the clock, which is in memory, is read fresh.
+- Sessions shorter than the ten-second floor are now kept if they produced an
+  entry, since the entry count is read back from those rows.
 - The changelog parser in `next.config.mjs` was folding the word "Fixed" onto
   the last **What's new** bullet and then stopping, so an entry with both
   halves shipped only the first one. Bullet state is per-section now, and the

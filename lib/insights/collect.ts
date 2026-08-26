@@ -2,6 +2,7 @@
 
 import { db } from "../db";
 import { deviceId } from "../deviceId";
+import { liveSession } from "../session";
 import { COLLECT_ANSWERS, OPT_OUT_KEY, type DailyInsight } from "./schema";
 
 /**
@@ -10,7 +11,18 @@ import { COLLECT_ANSWERS, OPT_OUT_KEY, type DailyInsight } from "./schema";
  * response can never inflate anything, and each device writes its own slot.
  *
  * The raw session timeline never leaves. Only the sum does.
+ *
+ * Two things about *when* this is computed, both learned the hard way. The
+ * session in progress is not in `db.sessions` — a row lands there when the
+ * session ends, which is as the page is being taken away — so it has to be
+ * added in by hand, or somebody who opens biblio once, writes, and closes it
+ * records nothing at all. And the send has to survive that same moment, which
+ * is what `beaconToday` is for.
  */
+
+/** Below this, it was a navigation rather than a visit. Mirrors lib/session. */
+const MIN_MS = 10_000;
+
 function today(): string {
   return new Date().toISOString().slice(0, 10);
 }
@@ -37,23 +49,33 @@ export function setInsightsOff(off: boolean): void {
   }
 }
 
-/** Exactly what would be sent for a given day — the privacy page shows this. */
-export async function dailyTotals(date = today()): Promise<DailyInsight> {
+/**
+ * The day's numbers, and the milliseconds behind the minutes.
+ *
+ * Entries are counted from the *sessions*, not from the journal. Counting the
+ * journal counts entries that arrived by sync as well as ones written here, so
+ * a person with a phone and a laptop reported the same entry twice and the
+ * owner's page added them up. "Entries written on this device" is what the
+ * schema promises, and a session is the only record of where writing happened.
+ */
+async function dayDetail(date: string): Promise<DailyInsight & { activeMs: number }> {
   const [from, to] = dayBounds(date);
   const sessions = await db.sessions.where("startedAt").between(from, to, true, false).toArray();
-  const activeMs = sessions.reduce((sum, s) => sum + (s.activeMs || 0), 0);
-  // recordedAt is when it was actually kept; createdAt can be backdated by the
-  // writer, and "wrote something today" should mean today.
-  const entries = (await db.entries.toArray()).filter((e) => {
-    const at = e.recordedAt ?? e.createdAt;
-    return !e.id.startsWith("demo-") && at >= from && at < to;
-  }).length;
-  return {
-    date,
-    device: deviceId(),
-    entries,
-    activeMinutes: Math.round(activeMs / 60_000),
-  };
+  let activeMs = sessions.reduce((sum, s) => sum + (s.activeMs || 0), 0);
+  let entries = sessions.reduce((sum, s) => sum + (s.entriesWritten || 0), 0);
+
+  const open = liveSession();
+  if (open && open.startedAt >= from && open.startedAt < to) {
+    activeMs += open.activeMs;
+    entries += open.entriesWritten;
+  }
+  return { date, device: deviceId(), entries, activeMs, activeMinutes: Math.round(activeMs / 60_000) };
+}
+
+/** Exactly what would be sent for a given day — the privacy page shows this. */
+export async function dailyTotals(date = today()): Promise<DailyInsight> {
+  const { activeMs: _ms, ...totals } = await dayDetail(date);
+  return totals;
 }
 
 /** The last `days` days of what this device holds, newest first. */
@@ -79,12 +101,36 @@ export function noteAnswer(_surface: string, _answer: string): void {
   // this on needs its own disclosure, and it starts from that day.
 }
 
+/**
+ * The last totals computed, kept so the page can be left in a hurry.
+ *
+ * `entries` needs a database read and the page being closed does not wait for
+ * one, so the count is taken from here and only the clock — which is in
+ * memory — is read fresh at the last moment.
+ */
+let snapshot: { date: string; device: string; entries: number; storedMs: number } | null = null;
+
+/** Worth a row? A visit is, even when both numbers round down to nothing. */
+function worthSending(entries: number, activeMs: number): boolean {
+  return entries > 0 || activeMs >= MIN_MS;
+}
+
 /** Send today's totals. Silent, best effort, and skipped entirely when off. */
 export async function sendToday(): Promise<void> {
   if (insightsOff()) return;
   try {
-    const body = await dailyTotals();
-    if (body.entries === 0 && body.activeMinutes === 0) return;
+    const { activeMs, ...body } = await dayDetail(today());
+    const open = liveSession();
+    snapshot = {
+      date: body.date,
+      device: body.device,
+      entries: body.entries,
+      storedMs: activeMs - (open?.activeMs ?? 0),
+    };
+    // Minutes are rounded, so a three-minute look around used to report
+    // "0 and 0" and be dropped here as nothing — which is how a tester who
+    // did turn up read, on the owner's page, as a tester who never came.
+    if (!worthSending(body.entries, activeMs)) return;
     await fetch("/api/insights", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -92,5 +138,34 @@ export async function sendToday(): Promise<void> {
     });
   } catch {
     /* nothing here is worth a retry, let alone an error message */
+  }
+}
+
+/**
+ * Today's totals, sent in the one way that survives the page going away.
+ *
+ * A phone switching apps freezes the document and an in-flight `fetch` dies
+ * with it — which is why the numbers from a phone were the ones going missing.
+ * `sendBeacon` hands the body to the browser to deliver afterwards. Everything
+ * here is synchronous on purpose: an `await` at this moment is a bet that the
+ * page will still be running when it resolves.
+ */
+export function beaconToday(): void {
+  if (insightsOff() || !snapshot || snapshot.date !== today()) return;
+  const open = liveSession();
+  const activeMs = snapshot.storedMs + (open?.activeMs ?? 0);
+  const entries = snapshot.entries;
+  if (!worthSending(entries, activeMs)) return;
+  const body: DailyInsight = {
+    date: snapshot.date,
+    device: snapshot.device,
+    entries,
+    activeMinutes: Math.round(activeMs / 60_000),
+  };
+  try {
+    const payload = new Blob([JSON.stringify(body)], { type: "application/json" });
+    navigator.sendBeacon?.("/api/insights", payload);
+  } catch {
+    /* nothing to fall back to at this point in a page's life */
   }
 }

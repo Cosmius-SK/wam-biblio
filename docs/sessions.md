@@ -121,6 +121,21 @@ Clamping is correct regardless.
 behavioural record — *opened at 2am, seven times* is exactly what the privacy
 model says we do not want. Store the timeline locally; send only totals.
 
+**A row is written when a session *ends*, and a session ends as the page is
+being taken away.** Anything reading these rows to answer "what happened
+today" must add the session in progress on top of them, or a person who opens
+biblio once and closes it leaves no trace at all — and an empty Activity list
+is indistinguishable from nobody having come. Two rules follow:
+
+- Count the live session (`liveSession()`), not only the stored rows.
+- Report *during* the visit — on arrival, on a few-minute heartbeat, the moment
+  an entry is kept — and use `sendBeacon` on the way out. A phone switching
+  apps freezes the document and kills an in-flight request with it.
+
+**`entriesWritten` is the entry count**, not the journal. Counting the journal
+counts entries that arrived by sync, so two devices report the same entry and
+the owner's page adds them up.
+
 ## A caveat for later
 
 Time spent is partly a function of who answers prompts — someone who habitually

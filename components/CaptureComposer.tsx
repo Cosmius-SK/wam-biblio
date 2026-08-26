@@ -29,6 +29,7 @@ import {
   queueDraftSave,
 } from "@/lib/drafts";
 import { noteEntryWritten } from "@/lib/session";
+import { sendToday } from "@/lib/insights/collect";
 import { logAi } from "@/lib/usage";
 import { maya } from "@/lib/maya";
 import MayaOrb from "./MayaOrb";
@@ -226,6 +227,10 @@ export default function CaptureComposer() {
     };
     await saveEntry(entry);
     noteEntryWritten();
+    // Report now rather than at the end of the visit. Writing is often the
+    // last thing someone does before closing the app, and a count that only
+    // leaves on the way out is a count that often doesn't.
+    void sendToday();
     // The draft became this entry; its photos belong to the entry now, so only
     // the draft row goes.
     await clearDraft();

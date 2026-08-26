@@ -123,7 +123,9 @@ async function end(now = Date.now()): Promise<void> {
     entriesWritten: live.entriesWritten,
   };
   live = null;
-  if (row.activeMs >= MIN_MS) {
+  // Short, but it produced an entry — and the entry count is read back from
+  // these rows, so dropping the row loses the one thing worth keeping.
+  if (row.activeMs >= MIN_MS || row.entriesWritten > 0) {
     try {
       await db.sessions.put(row);
     } catch {
@@ -253,4 +255,16 @@ export function activeMs(): number {
 
 export function sessionStartedAt(): number | null {
   return live?.startedAt ?? null;
+}
+
+/**
+ * The session in progress, which is *not* in `db.sessions` — a row is written
+ * when a session ends, and a session ends as the page is being taken away.
+ * Anything that counts today's use has to add this in, or a visit that never
+ * comes back records nothing at all.
+ */
+export function liveSession(): { startedAt: number; activeMs: number; entriesWritten: number } | null {
+  if (!live) return null;
+  accrue();
+  return { startedAt: live.startedAt, activeMs: live.activeMs, entriesWritten: live.entriesWritten };
 }

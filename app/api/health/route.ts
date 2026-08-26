@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
-import { blobToken, readSyncJson, writeSyncJson } from "@/lib/blobStore";
+import { blobToken, listPrefix, readSyncJson, writeSyncJson } from "@/lib/blobStore";
 import { currentUser } from "@/lib/users/limits";
 import { allowedEmails, ownerEmail } from "@/lib/users/allowlist";
 import { FLOOR_MODEL, CEILING_MODEL } from "@/lib/ai/router";
@@ -203,6 +203,53 @@ function checkCaps(): Check {
   };
 }
 
+/**
+ * Is anything actually landing?
+ *
+ * The insight pipeline fails silently on purpose — nobody's numbers are worth
+ * an error message on their screen — so a report that never arrives looks
+ * exactly like a person who never came. This is the only place the difference
+ * can be seen, which is why it is worth a check of its own.
+ */
+async function checkInsights(): Promise<Check> {
+  const label = "Insights (who is turning up)";
+  const token = blobToken();
+  if (!token) {
+    return { id: "insights", label, ok: false, detail: "No Blob store, so nothing can be recorded." };
+  }
+  try {
+    const today = new Date().toISOString().slice(0, 10);
+    const files = await listPrefix("insights/", token);
+    const people = new Set<string>();
+    const days = new Set<string>();
+    let reportingToday = 0;
+    for (const f of files) {
+      const [, sub, date] = f.pathname.split("/");
+      if (!sub || !date) continue;
+      people.add(sub);
+      days.add(date);
+      if (date === today) reportingToday++;
+    }
+    const allowed = (await allowedEmails()).length;
+    return {
+      id: "insights",
+      label,
+      ok: people.size > 0,
+      detail:
+        `${people.size} of ${allowed} allowed ${allowed === 1 ? "person has" : "people have"} ` +
+        `ever recorded a day · ${days.size} ${days.size === 1 ? "day" : "days"} held · ` +
+        `${reportingToday} ${reportingToday === 1 ? "device" : "devices"} reported today.`,
+    };
+  } catch (e) {
+    return {
+      id: "insights",
+      label,
+      ok: false,
+      detail: e instanceof Error ? e.message : "Could not read the insights store.",
+    };
+  }
+}
+
 export async function GET() {
   const user = await currentUser();
   const owner = ownerEmail();
@@ -210,14 +257,15 @@ export async function GET() {
     return NextResponse.json({ error: "Not found." }, { status: 404 });
   }
 
-  const [anthropic, gemini, blob, door] = await Promise.all([
+  const [anthropic, gemini, blob, door, insights] = await Promise.all([
     checkAnthropic(),
     checkGemini(),
     checkBlob(),
     checkDoor(),
+    checkInsights(),
   ]);
 
-  const checks: Check[] = [anthropic, gemini, blob, ...door, checkCaps()];
+  const checks: Check[] = [anthropic, gemini, blob, ...door, insights, checkCaps()];
   return NextResponse.json({
     checkedAt: Date.now(),
     version: process.env.NEXT_PUBLIC_APP_VERSION ?? "",
