@@ -82,6 +82,18 @@ Newest first. Dates are the day the work landed.
   network. The same description draws the same person on any device, offline,
   for ever. Proportion carries the age — a child is a rounder skull with eyes
   set lower, not a smaller adult.
+- Wording, found by running a description through an image model rather than
+  by reading it: length goes before colour ("long blond hair", not "blond long
+  hair"); a teenager is a teenage boy or girl, never "a man in his teens"; and
+  choosing no hair emitted nothing at all, so the picture invented some — it
+  says *bald* now.
+- The appended line no longer always ends "do not add other people". That is
+  right when the cast covers the whole entry and quietly destructive when it
+  does not: an entry about three on a scooter where only the father has a face
+  would have been told to draw the father and nobody else, and the children
+  would have vanished from their own memory. The clause is added only when
+  every name in the entry is known, and the bench has a switch for testing
+  both.
 - Matching is exact, never fuzzy, over the shaping pass's `entities` and a
   word-boundary scan of the writing. A wrong match puts someone else's face in
   your picture, which is a far worse failure than no match at all.

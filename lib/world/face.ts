@@ -59,6 +59,13 @@ export const AGES: Choice[] = [
 
 /** Which ages take a child's noun rather than an adult's. */
 const CHILD_AGES = new Set(["small", "child", "older"]);
+/** Nor an adult's — a teenager is neither, and "a man in his teens" is a
+ * sentence nobody would write about a fifteen-year-old. */
+const TEEN_NOUNS: Record<string, string> = {
+  woman: "teenage girl",
+  man: "teenage boy",
+  person: "teenager",
+};
 
 export const SKINS: Choice[] = [
   { key: "porcelain", label: "Porcelain", phrase: "very fair skin", hex: "#F4DCCB", shade: "#E4C3AC" },
@@ -69,14 +76,21 @@ export const SKINS: Choice[] = [
   { key: "deep", label: "Deep", phrase: "deep brown skin", hex: "#6B4226", shade: "#55321B" },
 ];
 
+/**
+ * Adjectives, not phrases — they are composed as "<length> <colour> hair".
+ *
+ * These used to read "long hair", which composed to "blond long hair". English
+ * puts length before colour, and a prompt written in the wrong order is a
+ * prompt the model has to work to understand.
+ */
 export const HAIR: Choice[] = [
-  { key: "bald", label: "None", phrase: "" },
-  { key: "shaved", label: "Shaved", phrase: "closely shaved hair" },
-  { key: "short", label: "Short", phrase: "short hair" },
-  { key: "curls", label: "Curls", phrase: "short curly hair" },
-  { key: "wavy", label: "Wavy", phrase: "wavy hair to the shoulders" },
-  { key: "long", label: "Long", phrase: "long hair" },
-  { key: "tied", label: "Tied back", phrase: "hair tied back" },
+  { key: "bald", label: "None", phrase: "" }, // handled on its own: "bald"
+  { key: "shaved", label: "Shaved", phrase: "closely shaved" },
+  { key: "short", label: "Short", phrase: "short" },
+  { key: "curls", label: "Curls", phrase: "short curly" },
+  { key: "wavy", label: "Wavy", phrase: "wavy shoulder-length" },
+  { key: "long", label: "Long", phrase: "long" },
+  { key: "tied", label: "Tied back", phrase: "tied-back" },
 ];
 
 export const HAIR_COLOURS: Choice[] = [
@@ -131,6 +145,7 @@ export function isChild(face: Face): boolean {
 
 /** The word for them at this age — "a boy of about seven", not "a man". */
 export function noun(face: Face): string {
+  if (face.age === "teen") return TEEN_NOUNS[face.presents] ?? "teenager";
   if (!isChild(face)) return face.presents;
   if (face.presents === "woman") return "girl";
   if (face.presents === "man") return "boy";
@@ -146,26 +161,31 @@ export function noun(face: Face): string {
  */
 export function describeFace(face: Face): string {
   const who = noun(face);
-  const age = pick(AGES, face.age).phrase ?? "";
-  // "in their thirties" reads badly attached to one person we have a word for.
+  // "a teenage boy in his teens" says it twice; the noun has already said it.
+  const age = face.age === "teen" ? "" : pick(AGES, face.age).phrase ?? "";
+  // "in their thirties" reads badly attached to someone we have a word for.
   const possessive = face.presents === "woman" ? "her" : face.presents === "man" ? "his" : "their";
   const ageClause = age.replace("their", possessive);
 
   const details: string[] = [];
   const build = pick(BUILDS, face.build).phrase;
   const skin = pick(SKINS, face.skin).phrase;
-  const hair = pick(HAIR, face.hair).phrase;
+  const length = pick(HAIR, face.hair).phrase;
   const colour = pick(HAIR_COLOURS, face.hairColour).phrase;
   const beard = isChild(face) ? "" : pick(FACIAL_HAIR, face.facialHair).phrase;
   const glasses = pick(GLASSES, face.glasses).phrase;
 
   if (build) details.push(build);
   if (skin) details.push(skin);
-  if (hair) details.push(hair === "closely shaved hair" ? hair : `${colour} ${hair}`);
+  // Bald says itself. Everything else is length before colour, as English has
+  // it: "long blond hair", never "blond long hair".
+  details.push(face.hair === "bald" ? "bald" : `${length} ${colour} hair`);
   if (beard) details.push(beard);
   if (glasses) details.push(glasses);
 
-  return `a ${who} ${ageClause}, ${details.join(", ")}`.replace(/\s+/g, " ").trim();
+  return `a ${who}${ageClause ? ` ${ageClause}` : ""}, ${details.join(", ")}`
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 /**

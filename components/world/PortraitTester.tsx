@@ -33,6 +33,10 @@ export default function PortraitTester() {
   const [cast, setCast] = useState<WorldMember[]>(() => [scratch("Test person")]);
   const [editing, setEditing] = useState(0);
   const [scene, setScene] = useState(SCENE);
+  // Whether the entry's whole cast is known. It decides one clause — "No other
+  // people" — which is right for a family biblio knows and wrong for a scene
+  // where only one person has a face yet.
+  const [everyone, setEveryone] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [plain, setPlain] = useState<Drawn | null>(null);
@@ -47,7 +51,7 @@ export default function PortraitTester() {
     setError(null);
     setPlain(null);
     setWithCast(null);
-    const line = castLine(cast);
+    const line = castLine(cast, everyone);
     try {
       const a = await draw(scene);
       setPlain({ src: a, prompt: scene });
@@ -153,8 +157,18 @@ export default function PortraitTester() {
         <p className="mt-2 rounded-xl bg-paper/40 p-3 text-2xs leading-4 text-muted">
           <span className="uppercase tracking-wide text-muted/70">Appended</span>
           <br />
-          {castLine(cast) || "— nothing, no cast"}
+          {castLine(cast, everyone) || "— nothing, no cast"}
         </p>
+
+        <label className="mt-3 flex items-center gap-2 text-xs text-muted">
+          <input
+            type="checkbox"
+            checked={everyone}
+            onChange={(e) => setEveryone(e.target.checked)}
+            className="accent-lavender"
+          />
+          Everyone in the entry has a face (adds &ldquo;No other people&rdquo;)
+        </label>
 
         <div className="mt-3 flex flex-wrap items-center gap-3">
           <button

@@ -1,6 +1,6 @@
 "use client";
 
-import { listWorld } from "./store";
+import { listWorld, unknownNames } from "./store";
 import { describeMember, namesOf, type WorldMember } from "./types";
 
 /**
@@ -56,8 +56,16 @@ export function matchEntry(
   return out;
 }
 
-/** The sentence appended to a scene prompt. Empty when nobody is known yet. */
-export function castLine(members: WorldMember[]): string {
+/**
+ * The sentence appended to a scene prompt. Empty when nobody is known yet.
+ *
+ * `everyone` is load-bearing. The first version always ended "do not add other
+ * people", which is right when the cast covers the whole entry and actively
+ * harmful when it doesn't: an entry about three on a scooter where only the
+ * father has a face would be told to draw the father and nobody else, and the
+ * children would quietly vanish from their own memory.
+ */
+export function castLine(members: WorldMember[], everyone = false): string {
   const people = members
     .filter((m) => m.kind === "person")
     .slice(0, MAX_PEOPLE)
@@ -71,9 +79,8 @@ export function castLine(members: WorldMember[]): string {
 
   const parts: string[] = [];
   if (people.length > 0) {
-    parts.push(
-      `The people in this scene look like this — ${people.join("; ")}. Keep them consistent and do not add other people.`,
-    );
+    parts.push(`People in this scene: ${people.join("; ")}. Draw them as described.`);
+    if (everyone) parts.push("No other people.");
   }
   if (others.length > 0) parts.push(`Also in it: ${others.join("; ")}.`);
   return parts.join(" ").slice(0, CAP);
@@ -91,8 +98,11 @@ export async function promptWithCast(
   entry: { entities?: string[]; title?: string; body?: string; raw?: string },
 ): Promise<string> {
   try {
-    const known = matchEntry(await listWorld(), entry);
-    const line = castLine(known);
+    const all = await listWorld();
+    const known = matchEntry(all, entry);
+    // Everyone the entry names has a face, so the scene may be closed off.
+    const everyone = unknownNames(all, entry.entities ?? []).length === 0;
+    const line = castLine(known, everyone);
     return line ? `${prompt} ${line}` : prompt;
   } catch {
     return prompt; // a picture without the cast beats no picture
