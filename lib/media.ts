@@ -36,8 +36,16 @@ const FULL_QUALITY = 0.85;
 const THUMB_DIM = 900;
 const THUMB_QUALITY = 0.82;
 
-const FRIENDLY_RECONNECT =
-  "Google Drive needs (re)connecting — open Backup & restore and tap Connect.";
+/**
+ * Not a settings instruction any more.
+ *
+ * Sending someone to another screen to repair something that broke on this one
+ * is a poor answer, and it was the wrong diagnosis besides: nothing had come
+ * disconnected. The hour-long token had simply run out. The picker offers the
+ * fix in place; this is only what to say if it ever gets past that.
+ */
+export const PHOTO_RECONNECT = "Google needs to let biblio back in — tap Connect above.";
+const FRIENDLY_RECONNECT = PHOTO_RECONNECT;
 
 function loadImage(file: File): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {

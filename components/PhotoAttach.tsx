@@ -5,12 +5,13 @@ import Link from "next/link";
 import {
   DRIVE_BLOCKED,
   DRIVE_FORBIDDEN,
+  cachedAccessToken,
   clearCachedToken,
   driveConfigured,
   getAccessToken,
   isDriveConnected,
 } from "@/lib/drive";
-import { deletePhotos, prepareImage, uploadPhotos } from "@/lib/media";
+import { PHOTO_RECONNECT, deletePhotos, prepareImage, uploadPhotos } from "@/lib/media";
 import type { EntryPhoto } from "@/lib/types";
 import { isOwner } from "@/lib/owner";
 
@@ -26,7 +27,17 @@ const MAX_PHOTOS = 8;
  * laptop that never saw the photo. It also moves the wait to while they're
  * still writing instead of at the moment they press keep. Requires Drive to be
  * connected (see the vault).
+ *
+ * The token is checked *before* the picker opens, not after a photo has been
+ * chosen. Google's token lasts about an hour and can only be renewed from a
+ * tap, and by the time a file has been picked, decoded and re-compressed the
+ * browser no longer counts that tap as one — so the popup was blocked and the
+ * failure surfaced as "reconnect Drive", every hour, always at the worst
+ * moment. Ask first, while the tap still counts.
  */
+/** A cheap localStorage read; often enough to catch an expiry mid-compose. */
+const TOKEN_POLL_MS = 30_000;
+
 export default function PhotoAttach({
   photos,
   onChange,
@@ -42,10 +53,24 @@ export default function PhotoAttach({
   /** Google's own words, shown only to whoever can act on them. */
   const [detail, setDetail] = useState<string | null>(null);
   const [owner, setOwner] = useState(false);
+  /** Whether a usable Drive token is already in hand — decides which tap this is. */
+  const [hasToken, setHasToken] = useState(true);
+  const [connecting, setConnecting] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     void isOwner().then(setOwner);
+  }, []);
+
+  useEffect(() => {
+    const look = () => setHasToken(!!cachedAccessToken());
+    look();
+    const timer = window.setInterval(look, TOKEN_POLL_MS);
+    document.addEventListener("visibilitychange", look);
+    return () => {
+      window.clearInterval(timer);
+      document.removeEventListener("visibilitychange", look);
+    };
   }, []);
 
   useEffect(() => {
@@ -67,6 +92,31 @@ export default function PhotoAttach({
       cancelled = true;
     };
   }, []);
+
+  /**
+   * The tap. With a token in hand it opens the picker; without one it spends
+   * the tap on Google instead, because that is the only thing a tap can buy
+   * and the picker will need it a second later.
+   */
+  async function pick() {
+    if (cachedAccessToken()) {
+      inputRef.current?.click();
+      return;
+    }
+    setConnecting(true);
+    setError(null);
+    try {
+      await getAccessToken(true);
+      setHasToken(true);
+      // Deliberately not opening the picker here: a file dialog opened after
+      // an await is blocked in the same browsers, for the same reason. One
+      // more tap, and it works.
+    } catch {
+      setError("Google didn't finish — tap again.");
+    } finally {
+      setConnecting(false);
+    }
+  }
 
   async function addFiles(files: FileList | null) {
     if (!files || files.length === 0) return;
@@ -99,6 +149,9 @@ export default function PhotoAttach({
           setDetail(raw ? `${status ?? ""} ${raw}`.trim() : null);
           break;
         }
+        // The token died between opening the picker and finishing the upload.
+        // Offer the fix here rather than sending anyone to a settings page.
+        if (msg === PHOTO_RECONNECT) setHasToken(false);
         setError(msg || "That photo couldn't be kept — try again.");
       }
     }
@@ -183,8 +236,8 @@ export default function PhotoAttach({
       <div className="flex flex-wrap items-center gap-3">
         <button
           type="button"
-          onClick={() => inputRef.current?.click()}
-          disabled={busy}
+          onClick={() => void pick()}
+          disabled={busy || connecting}
           className="flex items-center gap-2 rounded-full border border-hairline bg-surface/60 px-4 py-2 text-sm font-medium text-muted transition-colors hover:text-ink disabled:opacity-50"
         >
           <svg
@@ -201,9 +254,13 @@ export default function PhotoAttach({
             <rect x="3" y="5" width="18" height="14" rx="3" />
             <circle cx="12" cy="12" r="3.5" />
           </svg>
-          {busy ? "Keeping…" : "Add photos"}
+          {busy ? "Keeping…" : connecting ? "Connecting…" : hasToken ? "Add photos" : "Connect to add photos"}
         </button>
-        <span className="text-xs text-muted/80">Encrypted into your own Drive as you add them.</span>
+        <span className="text-xs text-muted/80">
+          {hasToken
+            ? "Encrypted into your own Drive as you add them."
+            : "Google's hour is up — one tap lets biblio back in."}
+        </span>
       </div>
 
       {photos.length > 0 && (

@@ -188,6 +188,51 @@ export async function getAccessToken(interactive: boolean, force = false): Promi
   });
 }
 
+/** When the token in hand expires, or null when there isn't one. */
+export function tokenExpiry(): number | null {
+  try {
+    const raw = localStorage.getItem(TOKEN_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as { exp?: number };
+    return typeof parsed.exp === "number" ? parsed.exp : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Close enough to the end that it is worth replacing now, quietly. */
+const REFRESH_WINDOW_MS = 12 * 60_000;
+
+/**
+ * Keep a Drive token in hand without ever interrupting anyone.
+ *
+ * Google's browser token flow hands out an access token good for about an
+ * hour and no refresh token, so a journal left open for an afternoon is a
+ * journal whose Drive quietly stopped working. The only repair on offer is a
+ * popup, a popup needs a tap, and the tap it landed on was whichever one
+ * happened next — which is why "Drive needs reconnecting" kept appearing at
+ * the exact moment someone was trying to attach a photo, over and over.
+ *
+ * So ask for the replacement *before* the old one dies, at a quiet moment,
+ * silently. Where the browser still has a Google session — an ordinary tab,
+ * most laptops — nobody ever learns this was a problem. Where it doesn't, this
+ * fails silently and the picker can say so in advance of the tap instead of
+ * after it.
+ */
+export async function refreshTokenIfStale(): Promise<boolean> {
+  if (!driveConfigured()) return false;
+  const exp = tokenExpiry();
+  if (exp && exp - Date.now() > REFRESH_WINDOW_MS) return true; // plenty left
+  try {
+    // force: skip the cache, which would hand back the very token that is
+    // about to expire. Non-interactive: this must never open anything.
+    await getAccessToken(false, true);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 /** Interactive connect from the vault: consent + create the folder up front. */
 export async function connectDrive(): Promise<void> {
   const token = await getAccessToken(true);

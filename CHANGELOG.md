@@ -44,16 +44,28 @@ Newest first. Dates are the day the work landed.
   dark patterned carpet* is genuinely enough — nobody minds that the cinema
   isn't precisely their cinema, and everybody notices that the father isn't
   them.
-- **Portraits are framed, and turn over.** A portrait on a shelf rather than a
-  profile picture: tap one and it turns to show the description underneath.
-- **Your world syncs**, encrypted like everything else, so a cast built on a
-  phone is there on the laptop.
+- **Portraits are framed, and turn over** — a portrait on a shelf rather than
+  a profile picture; tap one for the description underneath. Your world syncs
+  encrypted like everything else, so a cast built on a phone is on the laptop
+  too.
 - **biblio asks at the moment it makes sense.** When a picture has just been
   drawn of people it doesn't know, it says so — *Theva and Yazh don't have a
   face yet* — and offers to remember them, one at a time. Then it can draw
   that same picture again with them in it. Nothing ever blocks the picture,
   and *not now* means not now: a name you decline isn't offered again this
   way.
+
+### Fixed
+
+- **Google Drive stopped asking to be reconnected every hour.** Nothing was
+  ever disconnected. Google's permission lasts about an hour and can only be
+  renewed from a tap — and biblio was renewing it on whichever tap came next,
+  which was reliably the one where you were trying to attach a photo, at the
+  point where the browser no longer counted it as a tap. It now renews itself
+  quietly a few minutes before it runs out. If that can't happen silently, the
+  photo button says so *before* the picker opens — "Google's hour is up — one
+  tap lets biblio back in" — rather than failing after you have chosen a
+  picture.
 
 ### For the owner
 
@@ -82,6 +94,13 @@ Newest first. Dates are the day the work landed.
   network. The same description draws the same person on any device, offline,
   for ever. Proportion carries the age — a child is a rounder skull with eyes
   set lower, not a smaller adult.
+- `refreshTokenIfStale()` in `lib/drive.ts`, driven by `AutoSync` on arrival,
+  on return from the background, and every four minutes while visible. It
+  self-gates twice: nothing without Drive connected, nothing while the token
+  has more than twelve minutes left. `PhotoAttach` now spends the tap on the
+  token when there isn't one, instead of on a picker whose upload is going to
+  fail — a file dialog opened after an `await` is blocked for the same reason
+  the popup was.
 - Wording, found by running a description through an image model rather than
   by reading it: length goes before colour ("long blond hair", not "blond long
   hair"); a teenager is a teenage boy or girl, never "a man in his teens"; and
