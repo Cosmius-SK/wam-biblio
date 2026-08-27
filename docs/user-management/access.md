@@ -136,6 +136,36 @@ Cryptography is not the lever here; the onboarding moment is.
   and photos only), so `bioEnabled` / `bioCredId` are already correctly
   device-local. Keep it that way on purpose.
 
+### The unlock tap also renews Google
+
+Google's browser token flow issues an access token good for about an hour and
+**no refresh token**. There is no client-side way around that; the permission
+dies on a timer whether or not anyone is using the app. Renewing it silently
+(`prompt: ""`) works only where the browser still has a Google session, which
+an installed PWA on iOS usually does not. Otherwise it needs a popup, and a
+popup needs a gesture.
+
+Two facts decide the design, and both are easy to get wrong:
+
+- **Returning to the foreground grants nothing.** `visibilitychange` is not
+  user activation and never will be. An auto-refresh on foreground can only
+  ever be the *silent* one.
+- **A fingerprint grants nothing either.** WebAuthn *consumes* user activation;
+  it does not issue any, and by the time `navigator.credentials.get()` resolves
+  the original tap is long gone.
+
+What *is* a gesture is the tap someone makes to unlock. So: try silently while
+the lock screen is up, and if that failed, spend the unlock tap on Google
+**before** the biometric — the last moment the browser still counts it. With
+consent already granted and the account hinted (`rememberAccountHint`, read
+synchronously from localStorage because an IndexedDB round trip inside a tap
+costs the gesture), Google's window opens and closes itself. From the writer's
+side it is an app unlock; from the browser's side it is a represented tap.
+
+Renewal is never allowed to break an unlock: `topUpFromGesture` cannot throw,
+and a token that could not be renewed becomes a photo button that says so
+before opening the picker.
+
 **Later, optional:** WebAuthn's `prf` extension can make the platform
 authenticator a third envelope, so Face ID unwraps `K` directly and `K` never
 rests in plaintext on the device. A clean reward for enrolling. Not phase 0 —

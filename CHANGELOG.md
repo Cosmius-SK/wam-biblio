@@ -65,7 +65,8 @@ Newest first. Dates are the day the work landed.
   quietly a few minutes before it runs out. If that can't happen silently, the
   photo button says so *before* the picker opens — "Google's hour is up — one
   tap lets biblio back in" — rather than failing after you have chosen a
-  picture.
+  picture. And where the app is locked, the tap you already make to unlock
+  renews it on the way past, so there is nothing extra to do at all.
 
 ### For the owner
 
@@ -94,6 +95,14 @@ Newest first. Dates are the day the work landed.
   network. The same description draws the same person on any device, offline,
   for ever. Proportion carries the age — a child is a rounder skull with eyes
   set lower, not a smaller adult.
+- The unlock screen renews it too, and the ordering is not incidental:
+  returning to the foreground is not user activation, and neither is a
+  fingerprint — WebAuthn consumes activation rather than issuing it. So the
+  silent attempt runs while the lock is up, and if it failed the unlock tap
+  goes to Google *before* the biometric. `rememberAccountHint` makes that
+  window open and close itself, and is kept in localStorage because reading
+  IndexedDB inside a tap costs the gesture. See
+  [docs/user-management/access.md](docs/user-management/access.md).
 - `refreshTokenIfStale()` in `lib/drive.ts`, driven by `AutoSync` on arrival,
   on return from the background, and every four minutes while visible. It
   self-gates twice: nothing without Drive connected, nothing while the token

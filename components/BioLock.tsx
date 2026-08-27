@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
+import { isDriveConnected, refreshTokenIfStale, topUpFromGesture } from "@/lib/drive";
 import {
   RELOCK_EVENT,
   isBiometricEnabled,
@@ -20,6 +21,17 @@ const RELOCK_AFTER_MS = 5 * 60 * 1000;
  * the background) until Face ID / fingerprint — or the app passcode — says
  * it's the owner. Solid backdrop on purpose: nothing behind it should be
  * readable while locked.
+ *
+ * It also quietly renews Google's hour-long Drive permission, because this is
+ * the one place in biblio where a tap is guaranteed and expected.
+ *
+ * The tap is the point, and it has to be *this* tap. Returning to the
+ * foreground grants a page nothing a browser will accept as permission to open
+ * a window, and neither does a fingerprint — WebAuthn spends user activation,
+ * it does not create any. So the order is: try silently while the lock is up,
+ * and if that failed, spend the unlock tap on Google *before* the biometric,
+ * which takes seconds and would leave nothing behind it. With consent already
+ * given and the account hinted, that window opens and closes itself.
  */
 export default function BioLock() {
   const [locked, setLocked] = useState(false);
@@ -28,10 +40,32 @@ export default function BioLock() {
   const [pass, setPass] = useState("");
   const [error, setError] = useState<string | null>(null);
   const hiddenAt = useRef<number | null>(null);
+  /** Silent renewal was tried and couldn't; the unlock tap is the fallback. */
+  const needsTap = useRef(false);
+
+  /**
+   * Try to renew Google's permission without anyone noticing, while the lock
+   * screen is up. Where the browser still has a Google session this succeeds
+   * and the unlock tap stays purely an unlock.
+   */
+  async function prepareDrive() {
+    try {
+      if (!(await isDriveConnected())) return;
+      needsTap.current = !(await refreshTokenIfStale());
+    } catch {
+      needsTap.current = false;
+    }
+  }
 
   async function attempt() {
     setError(null);
     setBusy(true);
+    // Before the fingerprint, never after: this is the last moment the browser
+    // still counts the tap.
+    if (needsTap.current) {
+      needsTap.current = false;
+      await topUpFromGesture();
+    }
     const ok = await verifyBiometric();
     setBusy(false);
     if (ok) {
@@ -50,6 +84,7 @@ export default function BioLock() {
     // owner taps "Unlock" — that avoids a spurious error on load.
     if (lockHintOn() && !sessionUnlocked()) {
       setLocked(true);
+      void prepareDrive();
       void isBiometricEnabled().then((en) => {
         if (!en) setLocked(false);
       });
@@ -72,6 +107,7 @@ export default function BioLock() {
       ) {
         relock();
         setLocked(true);
+        void prepareDrive();
       }
       hiddenAt.current = null;
     };
@@ -87,6 +123,11 @@ export default function BioLock() {
     e.preventDefault();
     setError(null);
     setBusy(true);
+    // The passcode is a tap too, and buys the same thing.
+    if (needsTap.current) {
+      needsTap.current = false;
+      await topUpFromGesture();
+    }
     try {
       const res = await fetch("/api/unlock", {
         method: "POST",

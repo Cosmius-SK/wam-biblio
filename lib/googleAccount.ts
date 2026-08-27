@@ -10,7 +10,13 @@ import {
   unlockWithSecret,
   type KeyState,
 } from "./keyvault";
-import { clearCachedToken, driveConfigured, getAccessToken, getIdentity } from "./drive";
+import {
+  clearCachedToken,
+  driveConfigured,
+  getAccessToken,
+  getIdentity,
+  rememberAccountHint,
+} from "./drive";
 import { pullSync, pushSync, type OnSyncProgress } from "./sync";
 import { describeDevice } from "./deviceId";
 
@@ -155,6 +161,8 @@ export async function completeSignIn(
   const id = await getIdentity(token);
   const profile: Profile = { sub: id.sub, email: id.email, name: id.name, picture: id.picture };
   await setSetting("googleProfile", JSON.stringify(profile));
+  // Synchronously readable, because the code that needs it runs inside a tap.
+  rememberAccountHint(id.email);
   await setSetting("googleConnected", "1");
   await setSetting("driveConnected", "1"); // photos work under the same grant
   if (id.name && !(await getSetting("displayName"))) await setSetting("displayName", id.name);

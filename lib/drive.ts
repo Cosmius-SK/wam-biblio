@@ -49,10 +49,45 @@ interface GoogleOAuth2 {
     scope: string;
     callback: (r: TokenResponse) => void;
     error_callback?: (e: TokenError) => void;
+    /** Which account this is for — see `rememberAccountHint`. */
+    hint?: string;
   }) => TokenClient;
 }
 
 let tokenClient: TokenClient | null = null;
+/** The hint the current client was built with, so a change rebuilds it. */
+let tokenClientHint = "";
+
+const HINT_KEY = "biblio_google_hint";
+
+/**
+ * Remember which Google account this is, for the token client's `hint`.
+ *
+ * It does two things worth having. A silent refresh has a much better chance
+ * of succeeding when Google is told which of several signed-in accounts to
+ * resolve, and an interactive one skips the account chooser entirely — so the
+ * popup opens and closes itself without anybody being asked anything, which is
+ * the difference between "a flash" and "a dialog".
+ *
+ * localStorage rather than the database because it has to be readable
+ * synchronously: the code that needs it is running inside a tap, and an
+ * IndexedDB round trip there costs the very gesture it is trying to spend.
+ */
+export function rememberAccountHint(email?: string): void {
+  try {
+    if (email) localStorage.setItem(HINT_KEY, email);
+  } catch {
+    /* private mode — Google will simply ask */
+  }
+}
+
+function accountHint(): string {
+  try {
+    return localStorage.getItem(HINT_KEY) || "";
+  } catch {
+    return "";
+  }
+}
 let gisLoading: Promise<void> | null = null;
 
 export function driveClientId(): string {
@@ -160,12 +195,15 @@ export async function getAccessToken(interactive: boolean, force = false): Promi
       resolve(r.access_token);
     };
 
-    if (!tokenClient) {
+    const hint = accountHint();
+    if (!tokenClient || tokenClientHint !== hint) {
+      tokenClientHint = hint;
       tokenClient = o.initTokenClient({
         client_id: driveClientId(),
         scope: SCOPE,
         callback,
         error_callback: onError,
+        ...(hint ? { hint } : {}),
       });
     } else {
       tokenClient.callback = callback;
@@ -227,6 +265,30 @@ export async function refreshTokenIfStale(): Promise<boolean> {
     // force: skip the cache, which would hand back the very token that is
     // about to expire. Non-interactive: this must never open anything.
     await getAccessToken(false, true);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Spend a tap the user is already making on the Drive token.
+ *
+ * A browser will not open a popup unless a real gesture is in flight, and no
+ * amount of arranging changes that: coming back to the foreground grants
+ * nothing, and a fingerprint grants nothing either — WebAuthn consumes user
+ * activation, it does not issue it. What *is* a gesture is the tap somebody
+ * makes to unlock, so that is the one to use, before it is spent on anything
+ * else. With consent already given and the account hinted, Google's window
+ * opens and closes itself; nobody is asked anything.
+ *
+ * Never throws: a token that could not be renewed is a photo button that says
+ * so later, not an unlock that failed.
+ */
+export async function topUpFromGesture(): Promise<boolean> {
+  if (!driveConfigured()) return false;
+  try {
+    await getAccessToken(true);
     return true;
   } catch {
     return false;
