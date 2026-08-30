@@ -57,6 +57,15 @@ Newest first. Dates are the day the work landed.
 
 ### Fixed
 
+- **Voice notes come out as you said them.** A dictated thought was coming back
+  as the same sentence over and over, each copy a word longer, with words run
+  together at the joins — *"…I have toI need to learn…"*. biblio was adding up
+  what it heard, and a phone hands the same phrase back several times as it
+  firms up, so every repeat got added again; it rebuilds the transcript now
+  instead, which cannot double anything. Two more from the same report:
+  speaking is no longer cut off at your first pause, and biblio listens for the
+  English your phone is set to — Indian, British, Australian — rather than
+  always assuming American, which makes a real difference to what comes back.
 - **Google Drive stopped asking to be reconnected every hour.** Nothing was
   ever disconnected. Google's permission lasts about an hour and can only be
   renewed from a tap — and biblio was renewing it on whichever tap came next,
@@ -103,6 +112,16 @@ Newest first. Dates are the day the work landed.
   window open and close itself, and is kept in localStorage because reading
   IndexedDB inside a tap costs the gesture. See
   [docs/user-management/access.md](docs/user-management/access.md).
+- `lib/transcribe.ts` no longer accumulates. Walking from `event.resultIndex`
+  and appending anything final to a running string is what every Web Speech
+  example shows, and it is wrong on Android: the same result is delivered final
+  more than once and `resultIndex` does not reliably advance, so each
+  redelivery appended the whole sentence again, one word longer each time.
+  Rebuilding from `event.results` on every event is idempotent. Sessions are
+  also restarted until the speaker stops (Android ends one at every pause),
+  with a stillborn-session guard so a failing engine cannot loop, and
+  non-fatal errors — `no-speech`, `network`, `aborted` — no longer tear the
+  dictation down.
 - `refreshTokenIfStale()` in `lib/drive.ts`, driven by `AutoSync` on arrival,
   on return from the background, and every four minutes while visible. It
   self-gates twice: nothing without Drive connected, nothing while the token

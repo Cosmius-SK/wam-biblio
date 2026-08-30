@@ -51,7 +51,9 @@ function releaseInfo() {
           .trim(),
       )
       .filter(Boolean)
-      .slice(0, 6);
+      // Eight, not six. A release with both halves full was silently losing
+      // the last notes off the end, and the card scrolls.
+      .slice(0, 8);
   } catch {
     /* no changelog yet — the card simply won't appear */
   }
