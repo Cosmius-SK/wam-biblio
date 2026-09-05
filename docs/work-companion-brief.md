@@ -29,24 +29,26 @@ judgement.
 
 ---
 
-## 2. The honest market read
+## 2. Why a general AI assistant is not enough
 
-"AI that helps with work documents" is the most crowded space in software.
-Microsoft Copilot, Notion AI, Gemini for Workspace, Glean, and thirty startups
-are already there, most of them sitting on the customer's data. **Competing on
-"it writes your documents" loses.**
+Virtus is **built in-house, for the people who work here.** It is not going to
+market, so it does not have to beat Copilot or Notion AI — which removes a
+great deal of noise from the plan. But the reason it needs to exist at all is
+the same reason those tools disappoint:
 
-The wedge is not the writing. It is that **the output is already yours**.
+**A generic model writes generic documents.** It does not know this firm's deck
+master, the words we use and the ones we avoid, that a steerco pack opens with
+a RAG status, that a client's name is spelled a particular way, or that a
+particular director wants the risk before the ask. So everything it produces
+has to be rewritten, and rewriting is most of the work.
 
-A generic model writes generic documents. What none of these tools does well is
-produce something you can send without rewriting it: your company's template,
-your team's vocabulary, your client's name spelled the way your firm spells it,
-the tone your director reads without wincing.
+The value of Virtus is not that it generates. Anything can generate. It is that
+**what comes out is already ours**.
 
-That is not a prompt. It is a **model of the organisation**, held by the
-product and consulted on every generation.
-
----
+That also settles the "what if Claude does this natively" question, which for
+an internal tool is not a threat but a windfall: the generation getting better
+for free is good news, and the part that is ours — what the organisation knows
+about itself — keeps its value whoever does the writing.
 
 ## 3. The spine: an organisation model
 
@@ -92,39 +94,79 @@ rather than a rewrite of the storage layer. Letting them blur together now and
 separating them later is the expensive version — and blurring is what happens
 if nobody decides.
 
-**One payer now, an organisation later.** The demo is bought by the person
-running it. Day one needs no admin console, no SSO, no seat management, no
-billing.
+**In-house, not for sale.** Virtus is for colleagues, so there is no pricing,
+no seats, no billing, no marketplace listing and no sales motion. What replaces
+all of that is **being allowed** — see §5.
 
-The insurance that costs nothing: **put an owner id on every record from the
-first migration**, even while there is only ever one, and read the user from a
-session rather than assuming there is one. A column nobody reads is free;
-adding an identity column to a table full of real data is a migration, a
-backfill and a bug.
+Day one still needs no login. But colleagues arrive sooner than customers
+would, so take the insurance that costs nothing now: **put an owner id on every
+record from the first migration**, even while there is only ever one, and read
+the user from a session rather than assuming there is one. A column nobody
+reads is free; adding an identity column to a table full of real data is a
+migration, a backfill and a bug.
 
-Deferred until somebody is actually buying: SSO (Google Workspace, Entra),
-roles and permissions, audit trail, admin console, SOC 2 and the compliance
-paperwork. All real work, none of it makes the demo better.
+Deferred until more than one person uses it: company sign-in (Google Workspace
+or Entra — whichever this firm runs), roles and permissions, an audit trail,
+and shared libraries.
 
-**It is called Virtus.** Worth checking for a trademark clash before anything
-is printed — the name is in use elsewhere, notably by a US asset manager — but
-nothing about the build depends on the answer.
+**It is called Virtus.** The name is in use by other companies, notably a US
+asset manager — worth knowing, but it matters little for something used inside
+one firm.
 
-**Two form factors, in this order.** The demo is **a place you go**: an
-ordinary web app, because that is the fastest thing to make good and the
-easiest thing to put in front of one person. What is sold to an organisation is
-**a plugin that reaches into the tools people already work in** — Slack, the
-desktop, wherever Claude already sits.
+**Two form factors, in this order.** First **a place you go**: an ordinary web
+app, because it is the fastest thing to make good, the easiest thing to put in
+front of one person, and the only one where you can watch somebody use it.
+Then **a plugin that reaches into the tools colleagues already work in** —
+Slack, the desktop, wherever Claude already sits — which is how it spreads
+beyond the people who will humour you by opening a new tab.
 
 That second sentence is not a roadmap note; it decides how day one is built.
-See §6.
+See §7.
 
 **The first artefact is a PowerPoint deck.** Chosen because it is where the
-most time is wasted. Section 5 is how to do it so that it works.
+most time is wasted. Section 6 is how to do it so that it works.
 
 ---
 
-## 5. The first artefact: a deck
+## 5. Getting it allowed
+
+For an internal tool this replaces the entire commercial section of a normal
+plan, and it is the thing most likely to stop the project — not the code.
+
+**The question that decides everything: where does the text go?** Virtus sends
+what people write to a model. Inside a company, what people write includes
+client names, unannounced plans, salary discussions and things under NDA.
+Somebody will ask, correctly, whether that leaves the building and where it
+lands.
+
+Find out on day one, before writing the first API call:
+
+- **Does this firm already have an enterprise agreement with an AI provider?**
+  Anthropic direct, AWS Bedrock, Azure — most large firms now have one, with
+  the data terms already negotiated and legal already satisfied. If so,
+  **build against it from the start.** Swapping the endpoint later is easy;
+  getting approval retroactively for a tool that has been quietly sending
+  internal documents to a personal API key is not.
+- **What is the classification line?** Almost every firm has one — some
+  material may go to an approved external service and some may not. Virtus
+  should know that line and say so plainly rather than discovering it during a
+  security review.
+- **Who signs it off?** Usually security architecture plus whoever owns the
+  data. Ask early; their first question is always the one above.
+
+The corresponding design choice, which costs nothing today: **keep the model
+call behind one small module.** One place that decides which provider, which
+endpoint, which key. When the answer to the question above turns out to be "not
+that one", it is a config change rather than a search-and-replace.
+
+The good news: an internal tool needs no SOC 2, no DPA, no subprocessor list
+and no marketplace review. And the plugin (§7) is far simpler than a commercial
+one — it is deployed inside your own organisation, not distributed to
+strangers.
+
+---
+
+## 6. The first artefact: a deck
 
 Be clear-eyed: **a deck is the hardest artefact, not the easiest.** It is three
 things that can each be wrong — an argument, a layout, and a brand — and a
@@ -183,7 +225,7 @@ is almost always in the outline step, not in prettier slides.
 
 ---
 
-## 6. Where NOT to copy biblio: keep the engine behind an API
+## 7. Where NOT to copy biblio: keep the engine behind an API
 
 biblio is local-first in the strongest sense — the logic lives in the browser,
 the database is in the browser, and the server is a thin relay that cannot read
@@ -220,7 +262,7 @@ to take on day one and a great deal to take in month three.
 
 ---
 
-## 7. What it inherits from biblio — principles
+## 8. What it inherits from biblio — principles
 
 Expensive to arrive at, and not style preferences.
 
@@ -246,7 +288,7 @@ Expensive to arrive at, and not style preferences.
 
 ---
 
-## 8. What it inherits from biblio — code
+## 9. What it inherits from biblio — code
 
 | Piece | What it does | Why take it |
 |---|---|---|
@@ -267,7 +309,7 @@ significance fields (meaningless at work, and forcing them adds noise).
 
 ---
 
-## 9. What must be different
+## 10. What must be different
 
 **Output leaves the building.** biblio has deliberately never had sharing. This
 product is defined by what it hands over: `.pptx`, `.docx`, `.pdf`, a link, a
@@ -277,16 +319,18 @@ Slack message. Export fidelity is not a feature here, it is the point.
 allowlist, not identity infrastructure. When the organisation buys, move to an
 IdP (WorkOS, Auth0, Clerk) rather than growing the allowlist.
 
-**Compliance becomes a product requirement.** SOC 2, GDPR, data residency,
-retention, DPA, subprocessor list, and a straight answer to "does our data
-train your models". Enterprise buyers ask on the first call.
+**Approval replaces compliance.** No SOC 2 or DPA for an internal tool, but
+your own security architecture review is real and arrives sooner — see §5.
 
 **Cost model.** biblio's caps exist to protect one wallet. Here they protect a
-margin, per seat.
+departmental budget, which means someone will ask what it costs per person per
+month. Keep the per-user meter biblio already has; the answer is likely to be
+"less than the coffee", and being able to say so with a number is worth more
+than saying it is cheap.
 
 ---
 
-## 10. The line to hold
+## 11. The line to hold
 
 The product **notices commitments; it does not manage them.** The moment it
 holds deadlines and done-states it becomes a task manager and inherits
@@ -296,7 +340,7 @@ is a different company.
 
 ---
 
-## 11. Platform lessons — read before writing a line
+## 12. Platform lessons — read before writing a line
 
 Every one found the hard way in biblio, in production, usually on a phone.
 
@@ -364,15 +408,17 @@ Every one found the hard way in biblio, in production, usually on a phone.
 
 ---
 
-## 12. Day one
+## 13. Day one
 
 Ordered so each step is usable before the next begins.
 
+0. **Ask where the text is allowed to go** (§5). One conversation, and it
+   decides which API you build against. Everything below assumes the answer.
 1. **Capture.** One screen: a box that saves as you type, and one button.
    Local-first, so it works offline and survives a closed tab. No login, no
    folders, no formatting, no title field.
 
-   Everything from here on is an **endpoint first and a screen second** (§6).
+   Everything from here on is an **endpoint first and a screen second** (§7).
    The web app calls it; the plugin will call the same one.
 2. **One model call, returning structure.** Not a chat — one pass over the
    mess, returning fixed fields rather than prose:
@@ -403,11 +449,11 @@ finished thing is a product; five unfinished ones is a prototype.
 
 ---
 
-## 13. Nothing is open
+## 14. Nothing is open
 
-Every decision this brief needed has been taken: private first, one payer now,
-a deck first, a web app for the demo and a plugin for the enterprise, and the
-name. What is left is building it.
+Every decision this brief needed has been taken: in-house rather than for sale,
+private first, a deck first, a web app to start and a plugin for the tools
+people already work in, and the name. What is left is building it.
 
 The next real decisions belong to the first week of use, not to the plan:
 which slide shapes people actually reach for, what the organisation model needs
