@@ -63,8 +63,11 @@ Newest first. Dates are the day the work landed.
   actually returns, and unreadable. It doesn't say where the sentences are, but
   it does close a phrase whenever you stop talking, and biblio now uses those
   pauses: full stops where you paused, and no stray capital where you didn't.
-  You can also say **"full stop"**, **"comma"**, **"question mark"** or
-  **"new paragraph"** as you speak, and they appear as marks rather than words.
+  A long silence starts a new paragraph, a question that begins "can you…" or
+  "is it…" ends with a question mark, and you can say **"full stop"**,
+  **"comma"**, **"question mark"** or **"new paragraph"** as you speak and have
+  them appear as marks rather than words. All of it happens on the device as
+  you talk — free, instant, and it works with the AI turned off.
   Three older faults went with it: a dictated thought was repeating itself, each
   copy a word longer, with words run together at the joins; speaking was cut off
   at your first pause; and biblio always assumed an American accent instead of
@@ -128,6 +131,13 @@ Newest first. Dates are the day the work landed.
   is the engine chopping mid-flow, not a full stop. It also lowercases the
   capital an engine puts on every result start (keeping "I" and acronyms),
   which was half of why the raw transcript looked broken.
+- Paragraph breaks at 2.2s of silence, and a deliberately conservative question
+  rule: an auxiliary or modal followed by a subject ("can you hear me", "how do
+  you do this"). It misses "how things work", which is a question with no
+  auxiliary to prove it, because the rule that would catch it also turns "what
+  I need is time" into a question. A missing question mark is a small wrong; a
+  confident one in the wrong place reads as a machine that does not understand
+  English.
 - "Period" is deliberately not a spoken mark: it is an ordinary English noun
   and would wreck any sentence about time. "Full stop" carries no such risk.
 - The shaping call now knows an entry was dictated (`source` reaches

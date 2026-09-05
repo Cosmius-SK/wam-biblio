@@ -34,6 +34,30 @@ export interface Utterance {
  * would chop a sentence into pieces.
  */
 const CONTINUATION_MS = 400;
+/** A silence this long is somebody starting a new thought, not a new sentence. */
+const PARAGRAPH_MS = 2200;
+
+/**
+ * A question, conservatively.
+ *
+ * Only an auxiliary or modal followed by a subject — "can you hear me", "is it
+ * working", "how do you do this". Deliberately misses "how things work", which
+ * is a question but has no auxiliary to prove it, because the alternative rule
+ * also turns "what I need is time" into a question. A missing question mark is
+ * a small wrong; a confident one in the wrong place reads as a machine that
+ * does not understand English.
+ */
+const WH = "how|what|when|where|why|who|which|whose";
+const AUX =
+  "can|could|do|does|did|is|are|am|was|were|will|would|shall|should|may|might|have|has|had|isn't|aren't|don't|doesn't|didn't|can't|couldn't|wouldn't|shouldn't|won't|haven't|hasn't";
+const SUBJECT = "i|you|he|she|it|we|they|there|this|that|these|those|anyone|anybody|everyone";
+/** Openers that carry no grammar — strip them before judging. */
+const DISCOURSE = /^(?:so|and|but|well|ok|okay|now|then|right|actually|basically|hey)[,\s]+/i;
+const QUESTION = new RegExp(`^(?:(?:${WH})\\s+)?(?:${AUX})\\s+(?:${SUBJECT})\\b`, "i");
+
+function isQuestion(text: string): boolean {
+  return QUESTION.test(text.replace(DISCOURSE, "").trim());
+}
 
 /**
  * Punctuation people actually say.
@@ -104,6 +128,8 @@ function endsOpen(s: string): boolean {
  */
 export function composeSpeech(utterances: Utterance[], interim = ""): string {
   let out = "";
+  /** How to close whatever is already in `out`. */
+  let terminator = ".";
   for (const u of utterances) {
     const marked = applySpokenMarks(u.text);
     if (!marked) continue;
@@ -113,6 +139,7 @@ export function composeSpeech(utterances: Utterance[], interim = ""): string {
     if (!piece) continue;
     if (asked && out) {
       out = out.replace(/[ \t]+$/, "") + asked + capitalise(piece);
+      terminator = isQuestion(piece) ? "?" : ".";
       continue;
     }
     if (!out) {
@@ -124,9 +151,17 @@ export function composeSpeech(utterances: Utterance[], interim = ""): string {
       out += /[,;:]$/.test(out) ? ` ${continueCase(piece)}` : ` ${capitalise(piece)}`;
     } else if (u.gapMs < CONTINUATION_MS) {
       out += ` ${continueCase(piece)}`;
+      // It ran on, so whatever it turns out to be is judged as one sentence.
+      terminator = isQuestion(out.slice(out.lastIndexOf(". ") + 2)) ? "?" : terminator;
+      continue;
+    } else if (u.gapMs >= PARAGRAPH_MS) {
+      // A long silence is a new thought, and he wrote his own transcript with
+      // exactly these breaks in it.
+      out += `${terminator}\n\n${capitalise(piece)}`;
     } else {
-      out += `. ${capitalise(piece)}`;
+      out += `${terminator} ${capitalise(piece)}`;
     }
+    terminator = isQuestion(piece) ? "?" : ".";
   }
 
   const tail = applySpokenMarks(interim);
@@ -141,5 +176,8 @@ export function composeSpeech(utterances: Utterance[], interim = ""): string {
 /** Close the last sentence, once they have actually stopped talking. */
 export function finishSpeech(text: string): string {
   const t = text.trim();
-  return !t || !endsOpen(t) ? t : `${t}.`;
+  if (!t || !endsOpen(t)) return t;
+  const lastBreak = Math.max(t.lastIndexOf(". "), t.lastIndexOf("? "), t.lastIndexOf("\n"));
+  const lastSentence = lastBreak >= 0 ? t.slice(lastBreak + 1) : t;
+  return `${t}${isQuestion(lastSentence) ? "?" : "."}`;
 }
