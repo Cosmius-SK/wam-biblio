@@ -106,6 +106,17 @@ Newest first. Dates are the day the work landed.
   stay invisible however many times you reloaded — which looks exactly like a
   fix that never shipped. biblio now asks on arrival and whenever you come back
   to the tab, so the "a newer biblio is ready" notice appears when it is true.
+- **biblio knows its own name.** Every recogniser mishears it — Bibio, Bablio,
+  Babylio — and it is the one word certain to appear in every first attempt.
+  It is put right on the device, before anything else looks at the text.
+  Nothing else is on that list: a general dictionary of confusable words,
+  applied without understanding the sentence, corrects confidently in the
+  wrong direction.
+- **A word about your keyboard's mic**, under the button. A browser only gets a
+  small, fast dictation engine that commits words as you say them; your
+  phone&rsquo;s own dictation is the full one, punctuation included, and it
+  types straight into the box. It is free and it is better — biblio would
+  rather say so than pretend otherwise.
 - **The microphone lets go when you stop it.** A recogniser could be left
   holding it while biblio believed it had stopped — the tab showing a live mic,
   nothing being heard, and tapping the button making no difference. Only one

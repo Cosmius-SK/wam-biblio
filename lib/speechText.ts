@@ -115,8 +115,28 @@ const SPOKEN: [RegExp, string][] = [
   [/\bcomma\b/gi, ","],
 ];
 
-export function applySpokenMarks(text: string): string {
+/**
+ * Words we know better than the recogniser does.
+ *
+ * Only the app's own name, and only because it is the one word guaranteed to
+ * be said in every test and got wrong every time — "Bibio", "Bablio",
+ * "Babylio". Nothing else belongs on this list: a general dictionary of
+ * confusable words, applied without understanding the sentence, corrects
+ * confidently in the wrong direction, and a journal that rewrites what
+ * somebody said is worse than one that leaves an odd word in.
+ */
+const KNOWN_NAMES: [RegExp, string][] = [[/\b(?:bib+l?io|bab+y?l?io|bibleo|biblo)\b/gi, "biblio"]];
+
+function fixKnownNames(text: string): string {
   let out = text;
+  for (const [pattern, word] of KNOWN_NAMES) {
+    out = out.replace(pattern, (m) => (/^[A-Z]/.test(m) ? word[0].toUpperCase() + word.slice(1) : word));
+  }
+  return out;
+}
+
+export function applySpokenMarks(text: string): string {
+  let out = fixKnownNames(text);
   for (const [pattern, mark] of SPOKEN) out = out.replace(pattern, mark);
   return (
     out

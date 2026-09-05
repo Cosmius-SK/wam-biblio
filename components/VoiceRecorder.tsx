@@ -27,10 +27,12 @@ export default function VoiceRecorder({
 }) {
   const [supported, setSupported] = useState(true);
   const [listening, setListening] = useState(false);
+  const [touch, setTouch] = useState(false);
   const handleRef = useRef<DictationHandle | null>(null);
 
   useEffect(() => {
     setSupported(isTranscriptionSupported());
+    setTouch(typeof navigator !== "undefined" && navigator.maxTouchPoints > 0);
     return () => {
       handleRef.current?.stop();
       if (controlRef) controlRef.current = null;
@@ -119,7 +121,20 @@ export default function VoiceRecorder({
             </span>
           </>
         ) : (
-          "Tap to speak"
+          <>
+            Tap to speak
+            {/* The best dictation on a phone is not the one a website is given.
+                A browser gets a small, low-latency engine that commits words as
+                they are said; the keyboard's own mic is the platform's full
+                stack, punctuation included, and it costs nothing to point at
+                it. */}
+            {touch && (
+              <span className="mt-0.5 block text-xs text-muted/70">
+                Or tap the mic on your keyboard — your phone&rsquo;s own dictation is more
+                accurate, and punctuates as it goes.
+              </span>
+            )}
+          </>
         )}
       </span>
     </div>
