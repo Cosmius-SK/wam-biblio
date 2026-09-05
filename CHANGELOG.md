@@ -72,6 +72,12 @@ Newest first. Dates are the day the work landed.
   back with the new ones stuck on the end, because dictation kept everything
   said since the mic went on. And the mic now turns itself off after half a
   minute of silence rather than listening until you remember it.
+- **A "Tidy up what I said" button**, next to the mic after you have spoken. It
+  puts right the words the recogniser misheard — *bilio* for *biblio*, *as a
+  speak* for *as I speak* — which no amount of punctuation can reach, because
+  the sound was right and only the sentence around it says otherwise. It runs
+  when you tap it and never on its own, and the same repair happens anyway,
+  free, when you keep the entry.
   Three older faults went with it: a dictated thought was repeating itself, each
   copy a word longer, with words run together at the joins; speaking was cut off
   at your first pause; and biblio always assumed an American accent instead of
@@ -137,6 +143,21 @@ Newest first. Dates are the day the work landed.
   is the engine chopping mid-flow, not a full stop. It also lowercases the
   capital an engine puts on every result start (keeping "I" and acronyms),
   which was half of why the raw transcript looked broken.
+- Sentence boundaries come from the engine's own capital letter, not only from
+  the clock. Timing alone was never going to work and a run of sixty
+  unpunctuated words proved it: a streaming engine sends interim text for the
+  next phrase *before* it marks the last one final, so the silence never
+  appears in the event timing and every gap measures as nothing. Every engine
+  capitalises the first word of each result it closes — that is it saying where
+  one thing ended, and it was being thrown away as a stray capital. Guarded
+  two ways: a result closed on a hanging word ("and", "the", "to") continues
+  the sentence whatever the capital says, and an "I" only opens one when there
+  are three words behind it.
+- `/api/tidy` is text in, text out, on the floor model, with a prompt that
+  forbids rewriting: punctuation, misheard words and filler, nothing else.
+  Never automatic — the same correction is already in the shaping pass at no
+  extra cost, and this exists because a transcript that looks broken is one
+  nobody tries twice, whatever we promise it will become.
 - Paragraph breaks at 2.2s of silence, and a deliberately conservative question
   rule: an auxiliary or modal followed by a subject ("can you hear me", "how do
   you do this"). It misses "how things work", which is a question with no

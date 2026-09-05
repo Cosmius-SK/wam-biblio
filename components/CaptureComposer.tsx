@@ -37,6 +37,7 @@ import { savedLine } from "@/lib/mayaLines";
 import { milestoneFor } from "@/lib/mayaObserve";
 import { generateIllustration } from "@/lib/illustrate";
 import { promptWithCast } from "@/lib/world/cast";
+import { tidyDictation } from "@/lib/tidy";
 import { AI_MODE_COOKIE } from "@/lib/ai/constants";
 
 type Phase = "compose" | "shaping" | "review";
@@ -91,6 +92,7 @@ export default function CaptureComposer() {
   const baseTextRef = useRef("");
   /** Set while the mic is on, so an edit can tell dictation to start over. */
   const voiceRef = useRef<{ reset: () => void } | null>(null);
+  const [tidying, setTidying] = useState(false);
   const usedVoiceRef = useRef(false);
   /** Nothing is written back until the stored draft has had its say. */
   const loadedRef = useRef(false);
@@ -369,6 +371,32 @@ export default function CaptureComposer() {
           />
 
           <div className="mt-4">
+            {/* Offered only after speaking, and only on a tap. The same repair
+                happens for free when the entry is kept; this is for seeing it
+                now, because a transcript that looks broken is one nobody tries
+                twice — whatever we promise it will become. */}
+            {live && usedVoiceRef.current && text.trim().length > 20 && (
+              <button
+                type="button"
+                onClick={() => {
+                  setTidying(true);
+                  setError(null);
+                  void tidyDictation(text)
+                    .then((tidied) => {
+                      setText(tidied);
+                      baseTextRef.current = tidied;
+                      voiceRef.current?.reset();
+                    })
+                    .catch((e) => setError(e instanceof Error ? e.message : "Couldn't tidy that."))
+                    .finally(() => setTidying(false));
+                }}
+                disabled={tidying}
+                className="mb-3 rounded-full border border-hairline bg-surface/60 px-4 py-2 text-sm text-ink transition-colors hover:border-lavender/40 disabled:opacity-50"
+              >
+                {tidying ? "Tidying…" : "Tidy up what I said"}
+              </button>
+            )}
+
             <VoiceRecorder
               onStart={() => {
                 baseTextRef.current = text;

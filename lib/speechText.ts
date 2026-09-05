@@ -32,8 +32,44 @@ export interface Utterance {
  * Below this, the engine closed a result mid-flow rather than at the end of a
  * thought — often several times a second on a desktop — and a full stop there
  * would chop a sentence into pieces.
+ *
+ * Timing alone is not enough, and a run of sixty unpunctuated words proved it:
+ * a streaming engine sends interim text for the next phrase *before* it marks
+ * the last one final, so the silence never appears in the event timing at all
+ * and every gap measures as nothing. The engine's own capital letter is the
+ * more reliable signal — see `opensSentence`.
  */
 const CONTINUATION_MS = 400;
+
+/** "I", and the contractions of it, keep their capital mid-sentence. */
+const I_WORD = /^I(?:'|’)?(?:m|ll|ve|d)?\b/;
+
+/**
+ * Words no sentence ends on. If the engine closed a result after one of these
+ * it was catching its breath, not finishing a thought, and a full stop there
+ * is worse than none.
+ */
+const HANGING =
+  /\b(and|or|but|so|the|a|an|to|of|in|on|at|for|with|that|is|was|are|were|be|been|my|your|his|her|its|our|their|this|these|those|if|as|by|from|into|about)$/i;
+
+/**
+ * Did the engine start a new sentence here?
+ *
+ * Every engine capitalises the first word of each result it closes, which is
+ * it saying "this is where one thing ended and the next began" without saying
+ * so. It is a far better signal than the clock, and it was being thrown away:
+ * the capital was lowercased as a stray and the boundary went with it.
+ */
+function opensSentence(piece: string, wordsSoFar: number): boolean {
+  if (!/^[A-Z]/.test(piece)) return false;
+  const first = piece.split(/\s/, 1)[0];
+  if (first.length > 1 && first === first.toUpperCase()) return false; // an acronym says nothing
+  // "I" is capitalised wherever it stands, so on its own it proves nothing —
+  // but it is also how most sentences in a journal begin. The tie-break is
+  // length: three words in, the previous sentence is a sentence.
+  if (I_WORD.test(piece)) return wordsSoFar >= 3;
+  return true;
+}
 /** A silence this long is somebody starting a new thought, not a new sentence. */
 const PARAGRAPH_MS = 2200;
 
@@ -79,9 +115,6 @@ const SPOKEN: [RegExp, string][] = [
   [/\bcomma\b/gi, ","],
 ];
 
-/** "I", and the contractions of it, keep their capital mid-sentence. */
-const I_WORD = /^I(?:'|’)?(?:m|ll|ve|d)?\b/;
-
 export function applySpokenMarks(text: string): string {
   let out = text;
   for (const [pattern, mark] of SPOKEN) out = out.replace(pattern, mark);
@@ -95,6 +128,10 @@ export function applySpokenMarks(text: string): string {
       // leading newline, and trimming it away threw the break out with it.
       .replace(/^[ \t]+|[ \t]+$/g, "")
   );
+}
+
+function countWords(s: string): number {
+  return s.trim().split(/\s+/).filter(Boolean).length;
 }
 
 function capitalise(s: string): string {
@@ -130,6 +167,8 @@ export function composeSpeech(utterances: Utterance[], interim = ""): string {
   let out = "";
   /** How to close whatever is already in `out`. */
   let terminator = ".";
+  /** Words in the sentence being built — a boundary needs a sentence behind it. */
+  let words = 0;
   for (const u of utterances) {
     const marked = applySpokenMarks(u.text);
     if (!marked) continue;
@@ -149,10 +188,17 @@ export function composeSpeech(utterances: Utterance[], interim = ""): string {
     } else if (!endsOpen(out)) {
       // Already punctuated — by them, or by the engine.
       out += /[,;:]$/.test(out) ? ` ${continueCase(piece)}` : ` ${capitalise(piece)}`;
-    } else if (u.gapMs < CONTINUATION_MS) {
+    } else if (!opensSentence(piece, words) && u.gapMs < CONTINUATION_MS) {
       out += ` ${continueCase(piece)}`;
+      words += countWords(piece);
       // It ran on, so whatever it turns out to be is judged as one sentence.
       terminator = isQuestion(out.slice(out.lastIndexOf(". ") + 2)) ? "?" : terminator;
+      continue;
+    } else if (HANGING.test(out)) {
+      // The engine closed a result on "and" or "the". Whatever it heard next
+      // belongs to the same sentence, whatever the capital says.
+      out += ` ${continueCase(piece)}`;
+      words += countWords(piece);
       continue;
     } else if (u.gapMs >= PARAGRAPH_MS) {
       // A long silence is a new thought, and he wrote his own transcript with
@@ -162,6 +208,7 @@ export function composeSpeech(utterances: Utterance[], interim = ""): string {
       out += `${terminator} ${capitalise(piece)}`;
     }
     terminator = isQuestion(piece) ? "?" : ".";
+    words = countWords(piece);
   }
 
   const tail = applySpokenMarks(interim);

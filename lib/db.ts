@@ -40,7 +40,7 @@ export interface SessionRow {
 export interface AiLogRow {
   id: string;
   at: number;
-  feature: "shape" | "ask" | "reflect" | "illustrate";
+  feature: "shape" | "ask" | "reflect" | "illustrate" | "tidy";
   model: string;
   inputTokens?: number;
   outputTokens?: number;
