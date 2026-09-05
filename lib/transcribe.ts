@@ -1,5 +1,7 @@
 "use client";
 
+import { composeSpeech, finishSpeech, type Utterance } from "./speechText";
+
 /**
  * Voice → text for capture.
  *
@@ -23,7 +25,11 @@
  * **The session ends on its own.** Android stops listening at a pause even
  * with `continuous`, so a long thought was silently cut off at the first
  * breath. We restart until the speaker says stop, keeping what has been said
- * so far in `committed` — a new session hands back a fresh `results` list.
+ * so far — a new session hands back a fresh `results` list.
+ *
+ * What this file hands upward is not a string but a list of *utterances* with
+ * the silence before each one, because that silence is where the punctuation
+ * is hiding. See lib/speechText.ts.
  */
 
 // Minimal typings for the (still non-standard) Web Speech API.
@@ -78,20 +84,6 @@ export interface DictationCallbacks {
   onEnd?: () => void;
 }
 
-/**
- * Join two fragments with exactly one space.
- *
- * The engine hands back chunks with no leading space, so concatenating them
- * produced "I have to" + "I need" = "toI need" — which is half of what made
- * the runaway transcript unreadable even before the repetition.
- */
-function join(a: string, b: string): string {
-  const left = a.trim();
-  const right = b.trim();
-  if (!left) return right;
-  if (!right) return left;
-  return `${left} ${right}`;
-}
 
 /**
  * Start live dictation. Returns a handle to stop it, or null if unsupported.
@@ -125,7 +117,9 @@ export function startDictation(
   const Recognition: SpeechRecognitionCtor = found;
 
   /** Everything said in sessions that have already ended. */
-  let committed = "";
+  let committed: Utterance[] = [];
+  /** When the last thing anyone said was finished — the start of the silence. */
+  let lastEnd = Date.now();
   let stopped = false;
   let stillborn = 0;
   let current: SpeechRecognitionLike | null = null;
@@ -136,21 +130,35 @@ export function startDictation(
     recognition.continuous = true;
     recognition.interimResults = true;
 
-    /** This session's finished text — recomputed, never appended to. */
-    let settled = "";
+    /** This session's finished utterances — recomputed, never appended to. */
+    let settled: Utterance[] = [];
+    /** When each result first appeared, and when it stopped changing. */
+    const appeared = new Map<number, number>();
+    const finalised = new Map<number, number>();
     const startedAt = Date.now();
 
     recognition.onresult = (event) => {
-      let final = "";
+      const now = Date.now();
+      const done: Utterance[] = [];
       let interim = "";
       for (let i = 0; i < event.results.length; i++) {
         const result = event.results[i];
-        const chunk = result?.[0]?.transcript ?? "";
-        if (result.isFinal) final = join(final, chunk);
-        else interim = join(interim, chunk);
+        const chunk = (result?.[0]?.transcript ?? "").trim();
+        if (!appeared.has(i)) appeared.set(i, now);
+        if (result.isFinal) {
+          if (!finalised.has(i)) finalised.set(i, now);
+          if (!chunk) continue;
+          // The pause is the silence between the last thing finishing and this
+          // one starting — not the distance between two finals, which would
+          // include however long this took to say.
+          const previousEnd = finalised.get(i - 1) ?? lastEnd;
+          done.push({ text: chunk, gapMs: Math.max(0, (appeared.get(i) ?? now) - previousEnd) });
+        } else if (chunk) {
+          interim = interim ? `${interim} ${chunk}` : chunk;
+        }
       }
-      settled = final;
-      onUpdate(join(join(committed, final), interim));
+      settled = done;
+      onUpdate(composeSpeech([...committed, ...done], interim));
     };
 
     recognition.onerror = (e) => {
@@ -164,10 +172,15 @@ export function startDictation(
     };
 
     recognition.onend = () => {
-      committed = join(committed, settled);
-      const empty = !settled && Date.now() - startedAt < STILLBORN_MS;
+      committed = [...committed, ...settled];
+      const last = [...finalised.values()].pop();
+      if (last) lastEnd = last;
+      const empty = settled.length === 0 && Date.now() - startedAt < STILLBORN_MS;
       stillborn = empty ? stillborn + 1 : 0;
       if (stopped || stillborn >= MAX_STILLBORN) {
+        // They have finished talking, so the last sentence can be closed.
+        const text = finishSpeech(composeSpeech(committed));
+        if (text) onUpdate(text);
         onEnd?.();
         return;
       }

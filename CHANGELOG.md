@@ -57,15 +57,24 @@ Newest first. Dates are the day the work landed.
 
 ### Fixed
 
-- **Voice notes come out as you said them.** A dictated thought was coming back
-  as the same sentence over and over, each copy a word longer, with words run
-  together at the joins — *"…I have toI need to learn…"*. biblio was adding up
-  what it heard, and a phone hands the same phrase back several times as it
-  firms up, so every repeat got added again; it rebuilds the transcript now
-  instead, which cannot double anything. Two more from the same report:
-  speaking is no longer cut off at your first pause, and biblio listens for the
-  English your phone is set to — Indian, British, Australian — rather than
-  always assuming American, which makes a real difference to what comes back.
+- **Voice notes are punctuated now.** Dictation used to arrive as one
+  unbroken run of words with capitals landing in the middle of sentences —
+  *"can you hear me Okay So how things work"* — which is what a speech engine
+  actually returns, and unreadable. It doesn't say where the sentences are, but
+  it does close a phrase whenever you stop talking, and biblio now uses those
+  pauses: full stops where you paused, and no stray capital where you didn't.
+  You can also say **"full stop"**, **"comma"**, **"question mark"** or
+  **"new paragraph"** as you speak, and they appear as marks rather than words.
+  Three older faults went with it: a dictated thought was repeating itself, each
+  copy a word longer, with words run together at the joins; speaking was cut off
+  at your first pause; and biblio always assumed an American accent instead of
+  listening for the English your phone is set to.
+- **And the words it mishears get put right.** "That is not going to hell" was
+  "help"; "without any contest" was "context". No amount of formatting recovers
+  that, so when an entry was dictated biblio now says so when it shapes it, and
+  a word is corrected only where the intended one is unmistakable from the
+  sentence around it. Anything genuinely ambiguous is left exactly as you said
+  it.
 - **Google Drive stopped asking to be reconnected every hour.** Nothing was
   ever disconnected. Google's permission lasts about an hour and can only be
   renewed from a tap — and biblio was renewing it on whichever tap came next,
@@ -112,6 +121,20 @@ Newest first. Dates are the day the work landed.
   window open and close itself, and is kept in localStorage because reading
   IndexedDB inside a tap costs the gesture. See
   [docs/user-management/access.md](docs/user-management/access.md).
+- `lib/speechText.ts` is new: utterances plus the silence before each one, in
+  and formatted text out. The punctuation was always there, in the timing — an
+  engine closes a result when somebody stops talking, and the length of that
+  silence says how confident to be that it was a sentence ending. Under 400ms
+  is the engine chopping mid-flow, not a full stop. It also lowercases the
+  capital an engine puts on every result start (keeping "I" and acronyms),
+  which was half of why the raw transcript looked broken.
+- "Period" is deliberately not a spoken mark: it is an ordinary English noun
+  and would wreck any sentence about time. "Full stop" carries no such risk.
+- The shaping call now knows an entry was dictated (`source` reaches
+  `buildUserContent`), with a narrow licence: correct a near-homophone only
+  where the intended word is unmistakable, leave anything else alone, add
+  nothing. Explicitly in scope for "just rephrase" too, which is where a
+  misheard word is most visible.
 - `lib/transcribe.ts` no longer accumulates. Walking from `event.resultIndex`
   and appending anything final to a running string is what every Web Speech
   example shows, and it is wrong on Android: the same result is delivered final

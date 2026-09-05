@@ -263,7 +263,20 @@ a phone.
    `continuous`, so restart until the speaker stops; and set the language from
    the device rather than hardcoding `en-US` (accuracy on Indian and British
    English is materially worse when the engine expects American).
-2. **Google's browser OAuth token lasts about an hour and has no refresh
+2. **Raw dictation is unusable, and the fix is in two places.** A speech engine
+   returns words and nothing else: no punctuation, and a capital at the start of
+   every result, which lands mid-sentence. It reads as broken and people give up
+   on the first try. Half the repair is free and local — an engine closes a
+   result when somebody stops talking, so the pause lengths *are* the sentence
+   boundaries; use them, and lowercase the stray capitals. Support spoken marks
+   ("full stop", "comma", "new paragraph") but never "period", which is an
+   ordinary English noun. The other half is the model: tell it the text was
+   dictated and let it fix near-homophones ("going to hell" for "help") only
+   where the sentence makes the intended word unmistakable. For a corporate
+   product, budget for real ASR (Whisper/Deepgram-class) as well — it returns
+   punctuation natively and misses far fewer words, and the first minute of a
+   demo is a dictation.
+3. **Google's browser OAuth token lasts about an hour and has no refresh
    token.** A silent refresh (`prompt: ""`) works only where the browser still
    has a Google session, which an installed PWA on iOS usually does not.
    Otherwise it needs a popup, and a popup needs *transient user activation*.
@@ -272,32 +285,32 @@ a phone.
    you a popup. Renew early and silently; where you cannot, spend a tap the
    person is already making (biblio uses the unlock tap, before the biometric).
    Pass the account `hint` so the window opens and closes itself.
-3. **A phone freezes the page when you switch apps, and an in-flight `fetch`
+4. **A phone freezes the page when you switch apps, and an in-flight `fetch`
    dies with it.** Anything that must survive leaving — a draft, a metric —
    goes via `sendBeacon`, computed *before* the moment, because an `await` on
    the way out is a bet the page will still be running.
-4. **Never report only at the end of a session.** biblio's usage numbers were
+5. **Never report only at the end of a session.** biblio's usage numbers were
    computed from finished sessions, and a session finishes as the page closes.
    Result: testers who visited and wrote looked like testers who never came.
    Report on arrival, on a heartbeat, and at the moment something is created.
-5. **Sync: hash what is on disk, not what arrived.** Recording the incoming
+6. **Sync: hash what is on disk, not what arrived.** Recording the incoming
    record's hash after a merge left the two sides permanently disagreeing, and
    the text grew on every pass. Also: keep the list of record types in **one**
    file — it has been wrong in two separate files here, and sync fails silently,
    so a mismatch does not error anywhere; it just means something a person
    wrote never arrives.
-6. **Newest-wins beats clever merging.** A concatenating merge for conflicting
+7. **Newest-wins beats clever merging.** A concatenating merge for conflicting
    drafts never converged: each side saw the other's join as a new conflict.
    Newest wins is what every notes app does and nobody is surprised by it.
-7. **Corporate proxies return HTML on a 403.** A Zscaler block page is
+8. **Corporate proxies return HTML on a 403.** A Zscaler block page is
    indistinguishable from a permission refusal unless you check the body. Detect
    it and say "your network blocked this" rather than "you denied access" — that
    one cost a day of chasing the wrong bug.
-8. **Fail closed on allowlists, fail open on gates that can lock you out.**
-9. **Provider wallet limits are the real ceiling.** Application-level caps exist
+9. **Fail closed on allowlists, fail open on gates that can lock you out.**
+10. **Provider wallet limits are the real ceiling.** Application-level caps exist
    so nobody ever *reaches* the provider's; the provider's spend limit is what
    makes a runaway cost cents instead of a weekend.
-10. **Cost shape:** text shaping is roughly a tenth the cost of image
+11. **Cost shape:** text shaping is roughly a tenth the cost of image
     generation. A product built on structured text and locally rendered
     diagrams is dramatically cheaper to run than one that generates pictures.
 

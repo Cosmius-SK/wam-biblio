@@ -95,7 +95,19 @@ export default function VoiceRecorder({
         <MicIcon active={listening} />
       </button>
       <span className="text-sm text-muted">
-        {listening ? "Listening… speak freely" : "Tap to speak"}
+        {listening ? (
+          <>
+            Listening… speak freely
+            {/* Worth saying once, where it is useful: nobody guesses that a
+                dictation engine takes punctuation as words. */}
+            <span className="mt-0.5 block text-xs text-muted/70">
+              Say &ldquo;full stop&rdquo;, &ldquo;comma&rdquo; or &ldquo;new paragraph&rdquo; to
+              punctuate as you go.
+            </span>
+          </>
+        ) : (
+          "Tap to speak"
+        )}
       </span>
     </div>
   );

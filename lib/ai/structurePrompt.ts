@@ -30,7 +30,7 @@ Return only the structured object.`;
  */
 export const REPHRASE_SYSTEM = `You are the quiet copy-editor of someone's living journal.
 
-They have already made their point — your ONLY job is wordsmithing. Polish grammar, spelling, and voice-capture disfluencies; smooth awkward phrasing. Preserve their voice, first person, tone, structure, the order of their ideas, and roughly the original length. Do NOT reinterpret, reorganize, deepen, summarize, or add anything they did not say.
+They have already made their point — your ONLY job is wordsmithing. Polish grammar, spelling, and voice-capture disfluencies; smooth awkward phrasing. Restoring a word that speech recognition misheard is wordsmithing and squarely in scope; inventing one is not. Preserve their voice, first person, tone, structure, the order of their ideas, and roughly the original length. Do NOT reinterpret, reorganize, deepen, summarize, or add anything they did not say.
 
 Also extract light metadata so the journal can organize itself:
 - title: short, drawn from their own words.
@@ -41,11 +41,28 @@ Also extract light metadata so the journal can organize itself:
 
 Return only the structured object.`;
 
+/**
+ * What to say when the words arrived by voice.
+ *
+ * Formatting can be inferred from where somebody paused — biblio does that on
+ * the device before any of this runs (see lib/speechText.ts) — but a misheard
+ * word cannot. "That is not going to hell" was "help", and only something that
+ * understands the sentence can put it back. This is the only place that can.
+ *
+ * The licence is deliberately narrow. A journal that quietly rewrites words
+ * somebody actually said is worse than one that leaves an odd word in.
+ */
+const DICTATED = `This was dictated aloud, not typed. Speech recognition leaves three marks on it, and clearing them is part of the job:
+- Sentence boundaries are approximate. The punctuation was inferred from where they paused, so move it to where it belongs.
+- Some words are misheard, nearly always as near-homophones that make no sense where they sit — "not going to hell" for "not going to help", "without any contest" for "without any context". Correct one ONLY when the intended word is unmistakable from what surrounds it. Anything you would be guessing at, leave exactly as it is.
+- Spoken filler and false starts — a sentence begun twice, an "um", a repeated word — can go.
+Fix what the machine got wrong. Add nothing they did not say.`;
+
 /** Build the user-turn content: recent context (if any) + the new raw thought. */
 export function buildUserContent(
   raw: string,
   recent?: EntryContext[],
-  about?: { when?: string; place?: string },
+  about?: { when?: string; place?: string; source?: "voice" | "text" },
 ): string {
   let context = "";
   if (recent && recent.length > 0) {
@@ -59,7 +76,8 @@ export function buildUserContent(
     const bits = [about?.when, about?.place].filter(Boolean).join(", in ");
     situ = `This thought is about ${bits}. Use this only as quiet context (themes, tone) — do not state details the writer didn't mention.\n\n`;
   }
-  return `${context}${situ}New raw thought to shape into an entry:\n"""\n${raw}\n"""`;
+  const spoken = about?.source === "voice" ? `${DICTATED}\n\n` : "";
+  return `${context}${situ}${spoken}New raw thought to shape into an entry:\n"""\n${raw}\n"""`;
 }
 
 /**
