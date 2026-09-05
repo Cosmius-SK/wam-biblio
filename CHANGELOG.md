@@ -106,6 +106,16 @@ Newest first. Dates are the day the work landed.
   stay invisible however many times you reloaded — which looks exactly like a
   fix that never shipped. biblio now asks on arrival and whenever you come back
   to the tab, so the "a newer biblio is ready" notice appears when it is true.
+- **The microphone lets go when you stop it.** A recogniser could be left
+  holding it while biblio believed it had stopped — the tab showing a live mic,
+  nothing being heard, and tapping the button making no difference. Only one
+  may hold it now, starting always releases whatever came before, and stopping
+  has a deadline rather than a hope.
+- **Voice typing says when your network is blocking it.** Chrome's dictation is
+  not on the device: it sends the audio to Google and reads the answer back. A
+  work network can block that while the microphone itself works perfectly, so
+  it looked like biblio was broken. It now stops after the second failure and
+  says what happened, instead of holding the mic open and saying nothing.
 - **"Next line"** counts as a spoken break as well as "new line", and a break
   you ask for closes the sentence it interrupts.
 
@@ -161,6 +171,12 @@ Newest first. Dates are the day the work landed.
   two ways: a result closed on a hanging word ("and", "the", "to") continues
   the sentence whatever the capital says, and an "I" only opens one when there
   are three words behind it.
+- `startDictation` keeps a module-level singleton and aborts any predecessor.
+  `reset()` no longer restarts the session — it moves a read offset instead,
+  because it is called on every keystroke while the mic is on and a restart per
+  keystroke is a queue of half-born recognisers fighting over one microphone.
+  `stop()` calls `stop()` for the last words and `abort()` 1.5s later if the
+  session has not ended.
 - `/api/tidy` is text in, text out, on the floor model, with a prompt that
   forbids rewriting: punctuation, misheard words and filler, nothing else.
   Never automatic — the same correction is already in the shaping pass at no

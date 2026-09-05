@@ -54,6 +54,21 @@ interface SpeechRecognitionLike {
 }
 type SpeechRecognitionCtor = new () => SpeechRecognitionLike;
 
+/**
+ * The one dictation that may be running.
+ *
+ * A browser gives the page a single microphone, and a recogniser that is still
+ * alive holds it whether or not anything is listening to it. Two of them and
+ * the second hears nothing while the tab keeps showing a live mic — which is
+ * exactly what a stuck one looks like from the outside. Starting always
+ * releases whatever came before, even if it should already be gone.
+ */
+interface LiveDictation {
+  handle: DictationHandle;
+  release: () => void;
+}
+let active: LiveDictation | null = null;
+
 /** Errors there is no point restarting after — they will only repeat. */
 const FATAL = new Set(["not-allowed", "service-not-allowed", "audio-capture", "bad-grammar"]);
 /** A session that ends this fast, saying nothing, has failed rather than paused. */
@@ -141,10 +156,20 @@ export function startDictation(
   let lastEnd = Date.now();
   /** Results before this index have been disowned by a reset. */
   let skipBefore = 0;
-  /** A reset is in flight: the session ending now must not commit anything. */
-  let abandoning = false;
+  /** How many results the engine has handed over in this session so far. */
+  let seenCount = 0;
   let stopped = false;
   let stillborn = 0;
+  /**
+   * Chrome's dictation is not on the device: it streams the audio to Google
+   * and reads the answer back. On a corporate network that call can be blocked
+   * while the microphone itself is perfectly available — so the tab shows a
+   * live mic, nothing is ever transcribed, and restarting after each failure
+   * (which is right for an ordinary hiccup) holds the microphone open forever
+   * and says nothing about why. Twice in a row with nothing heard is not a
+   * hiccup.
+   */
+  let networkErrors = 0;
   let current: SpeechRecognitionLike | null = null;
 
   function listen(): SpeechRecognitionLike {
@@ -162,6 +187,7 @@ export function startDictation(
 
     recognition.onresult = (event) => {
       const now = Date.now();
+      seenCount = event.results.length;
       const done: Utterance[] = [];
       let interim = "";
       for (let i = skipBefore; i < event.results.length; i++) {
@@ -181,6 +207,7 @@ export function startDictation(
         }
       }
       settled = done;
+      networkErrors = 0; // something came back, so the service is reachable
       onUpdate(composeSpeech([...committed, ...done], interim));
     };
 
@@ -188,6 +215,15 @@ export function startDictation(
       if (FATAL.has(e.error)) {
         stopped = true;
         onError?.(e.error);
+        return;
+      }
+      if (e.error === "network") {
+        networkErrors++;
+        if (networkErrors >= 2) {
+          stopped = true;
+          onError?.("network");
+        }
+        return;
       }
       // Everything else — "no-speech", "network", "aborted" — is a pause or a
       // hiccup, and `onend` will pick it back up. Reporting those as errors
@@ -195,32 +231,17 @@ export function startDictation(
     };
 
     recognition.onend = () => {
-      if (abandoning) {
-        // Everything this session heard has been disowned; start clean rather
-        // than folding it back in on the way out.
-        abandoning = false;
-        committed = [];
-        skipBefore = 0;
-        lastEnd = Date.now();
-        if (!stopped) {
-          try {
-            current = listen();
-            return;
-          } catch {
-            /* fall through to ending properly */
-          }
-        }
-        onEnd?.();
-        return;
-      }
       committed = [...committed, ...settled];
       skipBefore = 0; // a new session starts its own results at zero
+      seenCount = 0;
       const last = [...finalised.values()].pop();
       if (last) lastEnd = last;
       const empty = settled.length === 0 && Date.now() - startedAt < STILLBORN_MS;
       stillborn = empty ? stillborn + 1 : 0;
       const quietFor = Date.now() - lastEnd;
       if (stopped || stillborn >= MAX_STILLBORN || quietFor > SILENCE_LIMIT_MS) {
+        stopped = true;
+        if (active?.handle === handle) active = null;
         // They have finished talking, so the last sentence can be closed.
         const text = finishSpeech(composeSpeech(committed));
         if (text) onUpdate(text);
@@ -238,37 +259,54 @@ export function startDictation(
     return recognition;
   }
 
+  /** Let go of the microphone now, whatever state the engine thinks it is in. */
+  const release = () => {
+    stopped = true;
+    try {
+      current?.abort();
+    } catch {
+      /* already gone */
+    }
+    current = null;
+  };
+
+  // Whatever was holding the microphone before this, let it go.
+  active?.release();
+
   try {
     current = listen();
   } catch {
     return null;
   }
 
-  return {
+  const handle: DictationHandle = {
     reset: () => {
+      // Disown what has been said WITHOUT restarting the session. Restarting
+      // was tempting — it is what happens at every pause — but this is called
+      // on every keystroke while the mic is on, and a restart per keystroke is
+      // a queue of half-born recognisers fighting over one microphone.
       committed = [];
+      skipBefore = seenCount;
       lastEnd = Date.now();
-      // The engine keeps its own list and will not empty it, so the only way to
-      // disown what is in there is to stop reading from it.
-      skipBefore = Number.MAX_SAFE_INTEGER;
-      abandoning = true;
-      try {
-        // A fresh session is the clean way to get a fresh result list, and the
-        // restart is invisible — it is what happens at every pause anyway.
-        current?.stop();
-      } catch {
-        /* already gone */
-      }
     },
     stop: () => {
       stopped = true;
+      if (active?.handle === handle) active = null;
       // stop(), not abort(): the last words spoken are still in flight and
-      // stopping politely lets them land.
+      // stopping politely lets them land. But a session that does not end
+      // keeps the microphone, and a held microphone that nothing is listening
+      // to is worse than a lost word — so there is a deadline.
       try {
         current?.stop();
       } catch {
-        /* already gone */
+        release();
+        return;
       }
+      window.setTimeout(() => {
+        if (current) release();
+      }, 1500);
     },
   };
+  active = { handle, release };
+  return handle;
 }

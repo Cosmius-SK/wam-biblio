@@ -410,7 +410,11 @@ export default function CaptureComposer() {
                 setError(
                   msg === "not-allowed"
                     ? "Microphone permission was blocked."
-                    : "Voice capture stopped.",
+                    : msg === "network"
+                      ? "Voice typing couldn't reach the speech service. On a work network that is usually a proxy blocking it — try a phone or a home connection."
+                      : msg === "audio-capture"
+                        ? "No microphone was found."
+                        : "Voice capture stopped.",
                 )
               }
             />
