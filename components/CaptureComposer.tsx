@@ -371,11 +371,11 @@ export default function CaptureComposer() {
           />
 
           <div className="mt-4">
-            {/* Offered only after speaking, and only on a tap. The same repair
-                happens for free when the entry is kept; this is for seeing it
-                now, because a transcript that looks broken is one nobody tries
-                twice — whatever we promise it will become. */}
-            {live && usedVoiceRef.current && text.trim().length > 20 && (
+            {/* Only ever on a tap. It was gated on having used the mic, which
+                is held in a ref — not reactive, and reset by any reload — so
+                the button could be missing from a box full of dictation. Text
+                worth tidying is the only condition that can be seen. */}
+            {live && text.trim().length > 20 && (
               <button
                 type="button"
                 onClick={() => {
@@ -393,7 +393,7 @@ export default function CaptureComposer() {
                 disabled={tidying}
                 className="mb-3 rounded-full border border-hairline bg-surface/60 px-4 py-2 text-sm text-ink transition-colors hover:border-lavender/40 disabled:opacity-50"
               >
-                {tidying ? "Tidying…" : "Tidy up what I said"}
+                {tidying ? "Tidying…" : "Tidy up"}
               </button>
             )}
 

@@ -106,7 +106,7 @@ function isQuestion(text: string): boolean {
  */
 const SPOKEN: [RegExp, string][] = [
   [/\bnew paragraph\b/gi, "\n\n"],
-  [/\b(?:new ?line)\b/gi, "\n"],
+  [/\b(?:new ?line|next line)\b/gi, "\n"],
   [/\bfull stop\b/gi, "."],
   [/\bquestion mark\b/gi, "?"],
   [/\bexclamation (?:mark|point)\b/gi, "!"],
@@ -177,8 +177,11 @@ export function composeSpeech(utterances: Utterance[], interim = ""): string {
     const piece = marked.slice(asked.length);
     if (!piece) continue;
     if (asked && out) {
-      out = out.replace(/[ \t]+$/, "") + asked + capitalise(piece);
+      // A break they asked for still ends the sentence it interrupts.
+      const closed = out.replace(/[ \t]+$/, "");
+      out = closed + (endsOpen(closed) ? terminator : "") + asked + capitalise(piece);
       terminator = isQuestion(piece) ? "?" : ".";
+      words = countWords(piece);
       continue;
     }
     if (!out) {

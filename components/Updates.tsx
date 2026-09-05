@@ -119,11 +119,29 @@ export default function Updates() {
     if (typeof navigator === "undefined" || !("serviceWorker" in navigator)) return;
     let cancelled = false;
 
+    /** Ask the browser to look for a new build now, rather than eventually. */
+    const check = (reg: ServiceWorkerRegistration) => {
+      void reg.update().catch(() => {
+        /* offline, or nothing to find */
+      });
+    };
+    let onShow: (() => void) | null = null;
+
     void navigator.serviceWorker
       .register("/sw.js")
       .then((reg) => {
         if (cancelled) return;
         if (reg.waiting) setWaiting(reg.waiting);
+        // A browser checks for a new worker on navigation and then roughly
+        // once a day, so a build shipped ten minutes ago can stay invisible
+        // however many times somebody reloads the page — which is exactly what
+        // it looks like when a fix does not arrive. Ask on arrival, and again
+        // whenever the tab is come back to.
+        check(reg);
+        onShow = () => {
+          if (document.visibilityState === "visible") check(reg);
+        };
+        document.addEventListener("visibilitychange", onShow);
         reg.addEventListener("updatefound", () => {
           const installing = reg.installing;
           if (!installing) return;
@@ -149,6 +167,7 @@ export default function Updates() {
     navigator.serviceWorker.addEventListener("controllerchange", onChange);
     return () => {
       cancelled = true;
+      if (onShow) document.removeEventListener("visibilitychange", onShow);
       navigator.serviceWorker.removeEventListener("controllerchange", onChange);
     };
   }, []);

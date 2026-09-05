@@ -72,7 +72,7 @@ Newest first. Dates are the day the work landed.
   back with the new ones stuck on the end, because dictation kept everything
   said since the mic went on. And the mic now turns itself off after half a
   minute of silence rather than listening until you remember it.
-- **A "Tidy up what I said" button**, next to the mic after you have spoken. It
+- **A "Tidy up" button**, next to the mic whenever there is something to tidy. It
   puts right the words the recogniser misheard — *bilio* for *biblio*, *as a
   speak* for *as I speak* — which no amount of punctuation can reach, because
   the sound was right and only the sentence around it says otherwise. It runs
@@ -100,6 +100,14 @@ Newest first. Dates are the day the work landed.
   renews it on the way past — at most once an hour, so Google is not there
   every time you pick up your phone, and it remembers which account you use so
   the window resolves and closes itself rather than asking you to choose.
+
+- **New versions actually turn up.** A browser looks for a new build on
+  navigation and then about once a day, so a fix shipped ten minutes ago could
+  stay invisible however many times you reloaded — which looks exactly like a
+  fix that never shipped. biblio now asks on arrival and whenever you come back
+  to the tab, so the "a newer biblio is ready" notice appears when it is true.
+- **"Next line"** counts as a spoken break as well as "new line", and a break
+  you ask for closes the sentence it interrupts.
 
 ### For the owner
 
