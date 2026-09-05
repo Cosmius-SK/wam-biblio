@@ -158,6 +158,22 @@ index. **biblio already knows who recurs.**
 
 Entries also carry a real `EntryPlace` with a name and coordinates.
 
+## Work notes are not going here
+
+A tester used biblio to think through a work problem — *"I need to learn
+Lovable, in 2 days I have to come up with…"* — which raised whether biblio
+should carry personas: a diary voice and a professional one, with illustrations
+becoming mind maps and workflows.
+
+Decided against, and the reasoning is worth keeping. The capture reflex is
+identical, but nothing downstream is: work output needs structure rather than
+prose, export rather than keeping, sharing rather than privacy, and a companion
+with a different register. A journal that also does decks is mediocre at both.
+
+It went to a sibling product instead — see
+[docs/work-companion-brief.md](work-companion-brief.md), which is also where
+this file's central idea goes next: an organisation model in place of a cast.
+
 ## Worth more than the pictures
 
 Once a cast exists, other things follow nearly for free:
