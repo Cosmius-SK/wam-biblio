@@ -369,13 +369,28 @@ Ordered so that each step is usable before the next begins, and so that the two
 decisions that are expensive to reverse are taken before anything depends on
 them.
 
-1. **Answer forks 1 and 2 on paper** (§6). Private-by-default or
-   shareable-by-default; individual or organisation. Half an hour, and it saves
-   a rewrite.
-2. **Stand up capture.** A box, local-first storage, and one model call that
-   turns a mess into a structured note. biblio's `lib/ai/structurePrompt.ts`
-   and `lib/ai/client.ts` transfer nearly unchanged; the schema is the only
-   real edit. No auth, no sync, no polish.
+1. **Stand up capture.** One screen: a box that saves as you type, and one
+   button. Local-first, so it works offline and survives a closed tab. No
+   login, no folders, no formatting, no title field. Anything between having a
+   thought and the thought being in the box is the enemy, and everything else
+   on this list can wait.
+2. **One model call, returning structure.** Not a chat — one pass over the
+   mess, returning fixed fields rather than prose:
+
+   | Field | What it holds |
+   |---|---|
+   | `title` | short, from their own words |
+   | `points` | what they actually said, tidied, as separate points |
+   | `questions` | what the note leaves open |
+   | `next` | the single next step, or nothing |
+   | `mentions` | people, clients, projects, systems named |
+   | `kind` | which artefact this wants to become, if any |
+
+   Fields rather than prose because everything downstream — the document, the
+   deck, the diagram — is built from them. Prose is a dead end: you cannot lay
+   out a paragraph. biblio's `lib/ai/structurePrompt.ts` and `lib/ai/client.ts`
+   transfer nearly unchanged and the schema is the only real edit. About a
+   quarter of a cent per note on the cheap model.
 3. **One artefact, end to end.** The narrowest valuable one — a status update
    or a one-pager. Take it all the way to something a person would send without
    editing. If it needs editing, the product does not exist yet, and no amount
@@ -390,19 +405,42 @@ them.
 Resist starting at step 5 because it demos well. A tool that produces one
 finished thing is a product; five unfinished ones is a prototype.
 
-## 13. Decisions for the founder
+## 13. Decisions taken
 
-1. **Private-by-default or shareable-by-default?** The fork 1 question. It
-   determines the storage architecture and the sales motion.
-2. **Who buys it — an individual professional, or an organisation?**
-   Bottom-up self-serve and top-down enterprise are different products with the
-   same demo.
-3. **Which artefact is first?** The narrowest one where the current tools are
+**Private first.** Nothing is shared in the demo. Everything a person writes
+stays theirs, encrypted the way biblio does it.
+
+That is the right call for a demo and it has one consequence worth building in
+on day one, while it is free: **keep private thinking and finished artefacts as
+two separate kinds of record**, even though both are private now. Raw capture
+is one thing; a finished status update is another. When the organisation buys
+it and asks for team libraries, retention and "share this with my director",
+the change is then a switch on one class of record rather than a rewrite of the
+storage layer. Merging them now and separating them later is the expensive
+version of this decision, and it is the version that happens by default.
+
+**One payer now, an organisation later.** The demo is bought by the person
+running it, so day one needs no admin console, no SSO, no seat management, no
+billing.
+
+The insurance that costs nothing: **put an owner id on every record from the
+first migration**, even while there is only ever one. Adding an identity column
+to a table with real data in it is a migration, a backfill and a bug; having a
+column nobody reads yet is free. Same for the API — take the user from a
+session rather than assuming there is one.
+
+What stays deferred until it is actually bought: SSO (Google Workspace, Entra),
+roles and permissions, audit trail, admin console, SOC 2 and the compliance
+paperwork. All of it is real work and none of it makes the demo better.
+
+## 14. Still to decide
+
+1. **Which artefact is first?** The narrowest one where the current tools are
    worst.
-4. **Does it live inside the tools people already use** (a Slack app, a Google
+2. **Does it live inside the tools people already use** (a Slack app, a Google
    Docs add-in, a Teams tab) or is it a place you go? biblio is a place you go,
    because a diary is. Work software usually is not.
-5. **What is the name, and does it share biblio's design language?** The
+3. **What is the name, and does it share biblio's design language?** The
    restraint transfers well. The warmth may not.
 
 ---
