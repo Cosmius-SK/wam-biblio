@@ -263,19 +263,29 @@ a phone.
    `continuous`, so restart until the speaker stops; and set the language from
    the device rather than hardcoding `en-US` (accuracy on Indian and British
    English is materially worse when the engine expects American).
-2. **Raw dictation is unusable, and the fix is in two places.** A speech engine
-   returns words and nothing else: no punctuation, and a capital at the start of
-   every result, which lands mid-sentence. It reads as broken and people give up
-   on the first try. Half the repair is free and local — an engine closes a
-   result when somebody stops talking, so the pause lengths *are* the sentence
-   boundaries; use them, and lowercase the stray capitals. Support spoken marks
-   ("full stop", "comma", "new paragraph") but never "period", which is an
-   ordinary English noun. The other half is the model: tell it the text was
-   dictated and let it fix near-homophones ("going to hell" for "help") only
-   where the sentence makes the intended word unmistakable. For a corporate
-   product, budget for real ASR (Whisper/Deepgram-class) as well — it returns
-   punctuation natively and misses far fewer words, and the first minute of a
-   demo is a dictation.
+2. **Do not build voice capture on the browser's speech API. biblio tried and
+   removed it.** What a browser hands a website is a small, low-latency engine
+   that commits each word as it is spoken with almost no lookahead: no
+   punctuation, names replaced by the nearest word it knows, and "going to
+   help" settled as "going to hell" before the rest of the sentence can argue.
+   A week went into making it behave — result redelivery on Android, sentence
+   boundaries from pause timing and then from the engine's own capital letters,
+   restarts across pauses, a singleton so two recognisers could not fight over
+   one microphone — and none of it closed the gap. Two answers, and a work
+   product needs both:
+   - **Point at the dictation already on the device.** The mic key on a phone
+     keyboard, `Windows + H`, the mic key on a Mac. It hears a whole sentence
+     before deciding any word in it, punctuates natively, and is free. Say
+     which key; do not offer a worse button beside it, because the easier path
+     is the one people take and then judge the product by.
+   - **For anything you control, use real ASR** (Whisper/Deepgram-class, about
+     half a cent a minute). A demo's first minute is somebody talking to it,
+     and this is the cheapest quality you will ever buy.
+   What no engine of any size fixes is a name it has never heard — a colleague,
+   a client, a product. Correct those from a list you already hold (see the
+   organisation model), matching only *capitalised* near-misses, because an
+   engine returns a name capitalised even when it gets it wrong, and that
+   capital is what makes the correction safe to do automatically.
 3. **Google's browser OAuth token lasts about an hour and has no refresh
    token.** A silent refresh (`prompt: ""`) works only where the browser still
    has a Google session, which an installed PWA on iOS usually does not.
@@ -310,7 +320,18 @@ a phone.
 10. **Provider wallet limits are the real ceiling.** Application-level caps exist
    so nobody ever *reaches* the provider's; the provider's spend limit is what
    makes a runaway cost cents instead of a weekend.
-11. **Cost shape:** text shaping is roughly a tenth the cost of image
+11. **A fix nobody can install is not a fix.** A browser looks for a new service
+    worker on navigation and then roughly once a day; refreshing does not force
+    it. A build shipped ten minutes ago can stay invisible however many times
+    somebody reloads — indistinguishable, from the outside, from a fix that was
+    never made. Call `registration.update()` on arrival and on returning to the
+    tab. Two of biblio's bug reports were this.
+12. **Count the marginal cost before removing a model call.** biblio's owner was
+    ready to build a local model to avoid "paying for sentence correction". The
+    correction was 190 tokens on a call that already happened: 0.019¢ per
+    entry, against a 350MB download that would not run on the test phone. Work
+    out the actual arithmetic before architecting around a cost.
+13. **Cost shape:** text shaping is roughly a tenth the cost of image
     generation. A product built on structured text and locally rendered
     diagrams is dramatically cheaper to run than one that generates pictures.
 
@@ -342,7 +363,34 @@ would pay for it alone.
 
 ---
 
-## 12. Decisions for the founder
+## 12. The first day
+
+Ordered so that each step is usable before the next begins, and so that the two
+decisions that are expensive to reverse are taken before anything depends on
+them.
+
+1. **Answer forks 1 and 2 on paper** (§6). Private-by-default or
+   shareable-by-default; individual or organisation. Half an hour, and it saves
+   a rewrite.
+2. **Stand up capture.** A box, local-first storage, and one model call that
+   turns a mess into a structured note. biblio's `lib/ai/structurePrompt.ts`
+   and `lib/ai/client.ts` transfer nearly unchanged; the schema is the only
+   real edit. No auth, no sync, no polish.
+3. **One artefact, end to end.** The narrowest valuable one — a status update
+   or a one-pager. Take it all the way to something a person would send without
+   editing. If it needs editing, the product does not exist yet, and no amount
+   of breadth fixes that.
+4. **The organisation model, seeded by one offer.** Not a wizard: the first
+   time an artefact comes out generic, ask for the one thing that would have
+   fixed it. That is how biblio's cast finally got built after a settings page
+   sat unused.
+5. **Only then**: auth, sharing, templates, export fidelity, the second
+   artefact.
+
+Resist starting at step 5 because it demos well. A tool that produces one
+finished thing is a product; five unfinished ones is a prototype.
+
+## 13. Decisions for the founder
 
 1. **Private-by-default or shareable-by-default?** The fork 1 question. It
    determines the storage architecture and the sales motion.
@@ -358,6 +406,9 @@ would pay for it alone.
    restraint transfers well. The warmth may not.
 
 ---
+
+*Status: biblio is at 0.23.0 with the cast, the dictation decision above, and
+the voice button removed. This brief was revised at that point.*
 
 *Companion reading in the biblio repo, if the new conversation has access to
 it: `docs/your-world.md` (why a world model, and why correcting a generated
