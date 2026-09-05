@@ -1,4 +1,8 @@
-# A work companion, on biblio's foundations — handoff brief
+# Virtus — handoff brief
+
+*A work companion, built on biblio's foundations. Latin: worth, excellence —
+the thing a person is left free to bring once the mundane half of the job is
+taken off them.*
 
 **Written for a fresh conversation that has never seen biblio.** Paste it in
 whole; it is meant to work cold.
@@ -102,6 +106,19 @@ Deferred until somebody is actually buying: SSO (Google Workspace, Entra),
 roles and permissions, audit trail, admin console, SOC 2 and the compliance
 paperwork. All real work, none of it makes the demo better.
 
+**It is called Virtus.** Worth checking for a trademark clash before anything
+is printed — the name is in use elsewhere, notably by a US asset manager — but
+nothing about the build depends on the answer.
+
+**Two form factors, in this order.** The demo is **a place you go**: an
+ordinary web app, because that is the fastest thing to make good and the
+easiest thing to put in front of one person. What is sold to an organisation is
+**a plugin that reaches into the tools people already work in** — Slack, the
+desktop, wherever Claude already sits.
+
+That second sentence is not a roadmap note; it decides how day one is built.
+See §6.
+
 **The first artefact is a PowerPoint deck.** Chosen because it is where the
 most time is wasted. Section 5 is how to do it so that it works.
 
@@ -166,7 +183,44 @@ is almost always in the outline step, not in prettier slides.
 
 ---
 
-## 6. What it inherits from biblio — principles
+## 6. Where NOT to copy biblio: keep the engine behind an API
+
+biblio is local-first in the strongest sense — the logic lives in the browser,
+the database is in the browser, and the server is a thin relay that cannot read
+anything. That is exactly right for a private diary and it is the one thing
+here that must not be copied wholesale.
+
+Because the enterprise form factor is a plugin, and a plugin is a *second front
+end*. If the pipeline that turns a note into an outline into a deck lives
+inside React components, that plugin is a rewrite. If it lives behind a small
+API, the plugin is a thin wrapper over calls that already exist.
+
+So, from day one:
+
+- **Capture stays local-first.** The box, the draft, offline, instant. This is
+  biblio's best idea and it transfers unchanged.
+- **Generation is a service.** Note → structure, structure → outline, outline →
+  `.pptx`. Each an endpoint, each callable without a browser. The web app is
+  the first caller, not the owner.
+- **The organisation model is server-side**, because the plugin needs it too. A
+  cast that lives only in one browser cannot answer "what is our deck template"
+  from inside Slack.
+
+**The concrete shape of "a plugin that works with all enterprise apps".** The
+mechanism that already exists for this is **MCP** — a small server exposing
+tools that any Claude surface can call: *make a deck from this note*, *what is
+our template*, *who is this stakeholder*. Write the endpoints above and the MCP
+server is a few hundred lines on top. Worth confirming the current
+distribution and review path for third-party servers in an enterprise before
+designing the commercial side around it, but the technical shape is not in
+doubt.
+
+This is the single highest-leverage decision in the build, and it costs nothing
+to take on day one and a great deal to take in month three.
+
+---
+
+## 7. What it inherits from biblio — principles
 
 Expensive to arrive at, and not style preferences.
 
@@ -192,7 +246,7 @@ Expensive to arrive at, and not style preferences.
 
 ---
 
-## 7. What it inherits from biblio — code
+## 8. What it inherits from biblio — code
 
 | Piece | What it does | Why take it |
 |---|---|---|
@@ -213,7 +267,7 @@ significance fields (meaningless at work, and forcing them adds noise).
 
 ---
 
-## 8. What must be different
+## 9. What must be different
 
 **Output leaves the building.** biblio has deliberately never had sharing. This
 product is defined by what it hands over: `.pptx`, `.docx`, `.pdf`, a link, a
@@ -232,7 +286,7 @@ margin, per seat.
 
 ---
 
-## 9. The line to hold
+## 10. The line to hold
 
 The product **notices commitments; it does not manage them.** The moment it
 holds deadlines and done-states it becomes a task manager and inherits
@@ -242,7 +296,7 @@ is a different company.
 
 ---
 
-## 10. Platform lessons — read before writing a line
+## 11. Platform lessons — read before writing a line
 
 Every one found the hard way in biblio, in production, usually on a phone.
 
@@ -310,13 +364,16 @@ Every one found the hard way in biblio, in production, usually on a phone.
 
 ---
 
-## 11. Day one
+## 12. Day one
 
 Ordered so each step is usable before the next begins.
 
 1. **Capture.** One screen: a box that saves as you type, and one button.
    Local-first, so it works offline and survives a closed tab. No login, no
    folders, no formatting, no title field.
+
+   Everything from here on is an **endpoint first and a screen second** (§6).
+   The web app calls it; the plugin will call the same one.
 2. **One model call, returning structure.** Not a chat — one pass over the
    mess, returning fixed fields rather than prose:
 
@@ -336,6 +393,7 @@ Ordered so each step is usable before the next begins.
    the step people will judge the product by, and it is cheap — it is text.
 4. **Render one shape well** — `bullets` — into a real `.pptx` they can
    download and open. One shape done properly beats seven done roughly.
+   Rendering runs server-side, so the plugin gets it for free later.
 5. **The remaining six shapes**, then the brand master.
 6. **Only then**: the organisation model, seeded by an offer at the first
    generic result. Then auth, sharing, export breadth.
@@ -345,18 +403,20 @@ finished thing is a product; five unfinished ones is a prototype.
 
 ---
 
-## 12. Still open
+## 13. Nothing is open
 
-1. **Does it live inside the tools people already use** (a Slack app, a Teams
-   tab, a PowerPoint add-in) or is it a place you go? biblio is a place you go,
-   because a diary is. Work software usually is not, and this is the assumption
-   most expensive to get wrong.
-2. **What is it called**, and does it share biblio's design language? The
-   restraint transfers well. The warmth may not.
+Every decision this brief needed has been taken: private first, one payer now,
+a deck first, a web app for the demo and a plugin for the enterprise, and the
+name. What is left is building it.
+
+The next real decisions belong to the first week of use, not to the plan:
+which slide shapes people actually reach for, what the organisation model needs
+to hold that this brief has not guessed, and whether the outline step earns its
+place. All three are answered by watching one person make one deck.
 
 ---
 
-*Status: biblio is at 0.23.0 — the cast, the organisation-model pattern, the
+*Status: Virtus is unbuilt; biblio is at 0.23.0 — the cast, the organisation-model pattern, the
 dictation decision above, and its own microphone removed. This brief was
 revised at that point.*
 
