@@ -5,7 +5,7 @@ import { ambient } from "@/lib/ambient";
 
 /**
  * A small header control for the generated ambient pad. Playing state
- * "breathes"; the pad auto-ducks while the mic is open (see VoiceRecorder)
+ * "breathes"; the pad ducks whenever Maya speaks (see lib/maya.ts)
  * and softens when the tab is hidden.
  */
 export default function MusicToggle() {

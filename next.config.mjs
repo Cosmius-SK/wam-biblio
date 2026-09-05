@@ -26,18 +26,26 @@ function releaseInfo() {
       // section before — and then stop, taking the whole of Fixed with it.
       const body = section.slice(section.indexOf("\n") + 1);
       let started = false; // a list has begun *in this section*
+      let broken = false; // ...and a blank line has interrupted it
       for (const raw of body.split("\n")) {
         const line = raw.trim();
         if (line.startsWith("- ")) {
           bullets.push(line.slice(2));
           started = true;
-        }
-        // Bullets wrap across lines in the file; fold the continuations back
-        // in so a note never arrives cut off mid-sentence.
-        else if (line && started && !line.startsWith("#")) {
+          broken = false;
+        } else if (!line) {
+          // A blank line between bullets is ordinary markdown and used to end
+          // the whole list here, which silently dropped every note after it —
+          // three times, each found by noticing something missing from the
+          // card rather than by anything failing. It only ends the list if
+          // prose follows.
+          broken = true;
+        } else if (started && !broken && !line.startsWith("#")) {
+          // Bullets wrap across lines in the file; fold the continuations back
+          // in so a note never arrives cut off mid-sentence.
           bullets[bullets.length - 1] += ` ${line}`;
-        } else if (!line && started) {
-          break; // a blank line ends the list; what follows is prose
+        } else if (started && broken) {
+          break; // prose after the list
         }
       }
     }

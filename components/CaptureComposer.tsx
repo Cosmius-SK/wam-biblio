@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
-import VoiceRecorder from "./VoiceRecorder";
+import DictationHint from "./DictationHint";
 import WhenWhere, { nowForInput } from "./WhenWhere";
 import PhotoAttach from "./PhotoAttach";
 import { db, recentContext, saveEntry } from "@/lib/db";
@@ -38,7 +38,7 @@ import { milestoneFor } from "@/lib/mayaObserve";
 import { generateIllustration } from "@/lib/illustrate";
 import { promptWithCast } from "@/lib/world/cast";
 import { tidyDictation } from "@/lib/tidy";
-import { fixNames } from "@/lib/speechText";
+import { fixNames } from "@/lib/names";
 import { knownNames } from "@/lib/world/store";
 import { AI_MODE_COOKIE } from "@/lib/ai/constants";
 
@@ -91,13 +91,11 @@ export default function CaptureComposer() {
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
 
-  const baseTextRef = useRef("");
-  /** Set while the mic is on, so an edit can tell dictation to start over. */
-  const voiceRef = useRef<{ reset: () => void } | null>(null);
+  /** Whether this was spoken rather than typed — see the Tidy button. */
+  const dictatedRef = useRef(false);
   const [tidying, setTidying] = useState(false);
   /** The names biblio knows — Your world, plus its own. */
   const namesRef = useRef<string[]>(["biblio"]);
-  const usedVoiceRef = useRef(false);
   /** Nothing is written back until the stored draft has had its say. */
   const loadedRef = useRef(false);
 
@@ -187,7 +185,7 @@ export default function CaptureComposer() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           raw: text.trim(),
-          source: usedVoiceRef.current ? "voice" : "text",
+          source: dictatedRef.current ? "voice" : "text",
           recent,
           markedSignificant: aiMode === "deep",
           shapeMode: aiMode === "none" ? undefined : aiMode,
@@ -234,7 +232,7 @@ export default function CaptureComposer() {
       place: place ?? undefined,
       photos: entryPhotos,
       model,
-      source: usedVoiceRef.current ? "voice" : "text",
+      source: dictatedRef.current ? "voice" : "text",
       significant: structured.significant,
     };
     await saveEntry(entry);
@@ -359,25 +357,13 @@ export default function CaptureComposer() {
 
           <textarea
             value={text}
-            onChange={(e) => {
-              setText(e.target.value);
-              // The box belongs to whoever is holding it. Dictation rewrites
-              // the field from a running transcript, so without this an edit
-              // made mid-flow — clearing it and starting again, most of all —
-              // was undone by the next word spoken, with the deleted text
-              // handed back and the new words stuck on the end.
-              if (voiceRef.current) {
-                baseTextRef.current = e.target.value;
-                voiceRef.current.reset();
-              }
-            }}
+            onChange={(e) => setText(e.target.value)}
             onBlur={(e) => {
-              // On leaving the box, not on every keystroke: a phone's own
-              // dictation types straight in here and never passes through
-              // biblio's transcript code, so this is the only place the names
-              // it has never heard of can be put back — and correcting a word
-              // while somebody is still in the middle of typing it is a fight
-              // nobody wins.
+              // On leaving the box, not on every keystroke. Dictation types
+              // straight in here, and a name it has never heard of comes out
+              // as the nearest word it has — but correcting a word while
+              // somebody is still in the middle of typing it is a fight nobody
+              // wins, so this waits until they are done.
               const fixed = fixNames(e.target.value, namesRef.current);
               if (fixed !== e.target.value) setText(fixed);
             }}
@@ -388,10 +374,12 @@ export default function CaptureComposer() {
           />
 
           <div className="mt-4">
-            {/* Only ever on a tap. It was gated on having used the mic, which
-                is held in a ref — not reactive, and reset by any reload — so
-                the button could be missing from a box full of dictation. Text
-                worth tidying is the only condition that can be seen. */}
+            <DictationHint />
+
+            {/* Only ever on a tap: nothing is spent without being asked for.
+                Offered on any text worth tidying rather than on some flag about
+                how it got there — dictation types straight into the box and
+                leaves no trace we could gate on. */}
             {live && text.trim().length > 20 && (
               <button
                 type="button"
@@ -401,40 +389,20 @@ export default function CaptureComposer() {
                   void tidyDictation(text, namesRef.current)
                     .then((tidied) => {
                       setText(tidied);
-                      baseTextRef.current = tidied;
-                      voiceRef.current?.reset();
+                      // Tidy is only ever asked for on dictated text, so it is
+                      // also the signal the shaping pass needs: it tells the
+                      // model to expect misheard words rather than typing.
+                      dictatedRef.current = true;
                     })
                     .catch((e) => setError(e instanceof Error ? e.message : "Couldn't tidy that."))
                     .finally(() => setTidying(false));
                 }}
                 disabled={tidying}
-                className="mb-3 rounded-full border border-hairline bg-surface/60 px-4 py-2 text-sm text-ink transition-colors hover:border-lavender/40 disabled:opacity-50"
+                className="mt-3 rounded-full border border-hairline bg-surface/60 px-4 py-2 text-sm text-ink transition-colors hover:border-lavender/40 disabled:opacity-50"
               >
                 {tidying ? "Tidying…" : "Tidy up"}
               </button>
             )}
-
-            <VoiceRecorder
-              onStart={() => {
-                baseTextRef.current = text;
-                usedVoiceRef.current = true;
-              }}
-              controlRef={voiceRef}
-              onTranscript={(spoken) =>
-                setText([baseTextRef.current.trim(), spoken.trim()].filter(Boolean).join(" "))
-              }
-              onError={(msg) =>
-                setError(
-                  msg === "not-allowed"
-                    ? "Microphone permission was blocked."
-                    : msg === "network"
-                      ? "Voice typing couldn't reach the speech service. On a work network that is usually a proxy blocking it — try a phone or a home connection."
-                      : msg === "audio-capture"
-                        ? "No microphone was found."
-                        : "Voice capture stopped.",
-                )
-              }
-            />
           </div>
 
           <WhenWhere when={when} onWhenChange={setWhen} place={place} onPlaceChange={setPlace} />

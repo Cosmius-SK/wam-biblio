@@ -35,19 +35,17 @@ Newest first. Dates are the day the work landed.
   Choose someone's face once — age, hair, glasses, a beard, the way you'd
   choose it rather than describe it — and every picture biblio draws of them
   uses the same description. A family stops being a different family in every
-  illustration.
-- **Their name never leaves this device.** biblio matches "Theva" here, and
-  what goes with the picture is "a man in his thirties with olive skin and a
-  full beard". The builder shows you that sentence as you make it, so you can
-  see exactly what is sent.
+  illustration. Their name never leaves this device — biblio matches "Theva"
+  here, and what goes with the picture is "a man in his thirties with olive
+  skin and a full beard", which the builder shows you as you make it. Each face
+  is a framed portrait, a photograph on a shelf rather than a profile picture:
+  tap one and it turns over to the description underneath. Your world syncs
+  encrypted like everything else, so a cast built on a phone is on the laptop
+  too.
 - **Places and things too, in a few words.** *A multiplex lobby, neon strips,
   dark patterned carpet* is genuinely enough — nobody minds that the cinema
   isn't precisely their cinema, and everybody notices that the father isn't
   them.
-- **Portraits are framed, and turn over** — a portrait on a shelf rather than
-  a profile picture; tap one for the description underneath. Your world syncs
-  encrypted like everything else, so a cast built on a phone is on the laptop
-  too.
 - **biblio asks at the moment it makes sense.** When a picture has just been
   drawn of people it doesn't know, it says so — *Theva and Yazh don't have a
   face yet* — and offers to remember them, one at a time. Then it can draw
@@ -57,40 +55,38 @@ Newest first. Dates are the day the work landed.
 
 ### Fixed
 
-- **Voice notes are punctuated now.** Dictation used to arrive as one
-  unbroken run of words with capitals landing in the middle of sentences —
-  *"can you hear me Okay So how things work"* — which is what a speech engine
-  actually returns, and unreadable. It doesn't say where the sentences are, but
-  it does close a phrase whenever you stop talking, and biblio now uses those
-  pauses: full stops where you paused, and no stray capital where you didn't.
-  A long silence starts a new paragraph, a question that begins "can you…" or
-  "is it…" ends with a question mark, and you can say **"full stop"**,
-  **"comma"**, **"question mark"** or **"new paragraph"** as you speak and have
-  them appear as marks rather than words. All of it happens on the device as
-  you talk — free, instant, and it works with the AI turned off. Clearing the
-  box and speaking again works too: it used to hand the deleted words straight
-  back with the new ones stuck on the end, because dictation kept everything
-  said since the mic went on. And the mic now turns itself off after half a
-  minute of silence rather than listening until you remember it.
-- **A "Tidy up" button**, next to the mic whenever there is something to tidy. It
-  puts right the words the recogniser misheard — *bilio* for *biblio*, *as a
-  speak* for *as I speak* — which no amount of punctuation can reach, because
-  the sound was right and only the sentence around it says otherwise. It runs
-  when you tap it and never on its own, and the same repair happens anyway,
-  free, when you keep the entry.
-  Three older faults went with it: a dictated thought was repeating itself, each
-  copy a word longer, with words run together at the joins; speaking was cut off
-  at your first pause; and biblio always assumed an American accent instead of
-  listening for the English your phone is set to.
-- **And the words it mishears get put right.** "That is not going to hell" was
-  "help"; "without any contest" was "context". No amount of formatting recovers
-  that, so when an entry was dictated biblio now says so when it shapes it, and
-  a word is corrected only where the intended one is unmistakable from the
-  sentence around it. Anything genuinely ambiguous is left exactly as you said
-  it.
+- **biblio's own microphone is gone — use your keyboard's.** It was built on
+  what a browser gives a website, which is a small engine that commits each
+  word as you say it: no punctuation, names turned into whatever word it did
+  know, and "going to help" settled as "going to hell" before the rest of the
+  sentence could argue. Every phone and laptop already has a far better one,
+  one key away, that hears a whole sentence before deciding any word in it.
+  biblio now says which key — the mic on your keyboard, or **Windows + H**, or
+  the mic key on a Mac — and gets out of the way. Keeping both would have been
+  the polite thing and the wrong one: the easier path is the one people take,
+  and then judge the app by.
+- **A "Tidy up" button**, whenever there is something worth tidying. It puts
+  right what dictation got wrong — *"that is not going to hell"* was *help*,
+  *"without any contest"* was *context* — and closes up spoken filler and false
+  starts. It corrects a word only where the intended one is unmistakable from
+  the sentence around it; anything genuinely ambiguous is left exactly as you
+  said it. It runs when you tap it and never on its own, and the same repair
+  happens anyway, free, when you keep the entry.
+- **The names you write about get spelled right.** A dictation engine has never
+  heard of biblio, or of your son, so it returns the nearest word it does know
+  — *Bibio*, *Yashini*, *Velachery* — and it returns it capitalised, because it
+  can tell a name was meant even when it cannot tell which. biblio puts them
+  back from the list you already have: the people, places and things in Your
+  world, plus its own name. It happens when you leave the box, so it never
+  fights you mid-word. That capital is what keeps it safe — an ordinary
+  lowercase word is never touched, so *the bibliography was long* survives. A
+  match has to be close and it has to be the only one: two names equally near
+  means biblio doesn't know which you meant, and a confident wrong name is far
+  worse than a misspelt one.
+
 - **Google Drive stopped interrupting.** It used to ask to be reconnected every
-  hour — nothing was ever disconnected. Google's permission lasts about an hour and can only be
-  renewed from a tap — and biblio was renewing it on whichever tap came next,
+  hour, and nothing was ever disconnected: Google's permission lasts about an
+  hour and can only be renewed from a tap — and biblio was renewing it on whichever tap came next,
   which was reliably the one where you were trying to attach a photo, at the
   point where the browser no longer counted it as a tap. It now renews itself
   quietly a few minutes before it runs out. If that can't happen silently, the
@@ -106,37 +102,6 @@ Newest first. Dates are the day the work landed.
   stay invisible however many times you reloaded — which looks exactly like a
   fix that never shipped. biblio now asks on arrival and whenever you come back
   to the tab, so the "a newer biblio is ready" notice appears when it is true.
-- **The names you write about get spelled right.** A recogniser has never heard
-  of biblio, or of your son, so it returns the nearest word it does know —
-  *Bibio*, *Deva*, *Velachery* — and it returns it capitalised, because it can
-  tell a name was meant even when it cannot tell which. biblio now puts them
-  back from the list you already have: the people, places and things in Your
-  world, plus its own name. It happens when you leave the box, so it never
-  fights you mid-word, and it works with your phone's own dictation too, which
-  types straight in and never passes through biblio's own transcript.
-  A capital letter is what makes it safe — an ordinary lowercase word is never
-  touched, so *the bibliography was long* survives untouched. A match has to be
-  close and it has to be the only one: two names equally near means biblio
-  doesn't know which you meant, and a confident wrong name is far worse than a
-  misspelt one. **Tidy up** gets the same list, so it can put back the ones
-  that need the sentence to work out.
-- **A word about your keyboard's mic**, under the button. A browser only gets a
-  small, fast dictation engine that commits words as you say them; your
-  phone&rsquo;s own dictation is the full one, punctuation included, and it
-  types straight into the box. It is free and it is better — biblio would
-  rather say so than pretend otherwise.
-- **The microphone lets go when you stop it.** A recogniser could be left
-  holding it while biblio believed it had stopped — the tab showing a live mic,
-  nothing being heard, and tapping the button making no difference. Only one
-  may hold it now, starting always releases whatever came before, and stopping
-  has a deadline rather than a hope.
-- **Voice typing says when your network is blocking it.** Chrome's dictation is
-  not on the device: it sends the audio to Google and reads the answer back. A
-  work network can block that while the microphone itself works perfectly, so
-  it looked like biblio was broken. It now stops after the second failure and
-  says what happened, instead of holding the mic open and saying nothing.
-- **"Next line"** counts as a spoken break as well as "new line", and a break
-  you ask for closes the sentence it interrupts.
 
 ### For the owner
 
@@ -173,63 +138,29 @@ Newest first. Dates are the day the work landed.
   window open and close itself, and is kept in localStorage because reading
   IndexedDB inside a tap costs the gesture. See
   [docs/user-management/access.md](docs/user-management/access.md).
-- `lib/speechText.ts` is new: utterances plus the silence before each one, in
-  and formatted text out. The punctuation was always there, in the timing — an
-  engine closes a result when somebody stops talking, and the length of that
-  silence says how confident to be that it was a sentence ending. Under 400ms
-  is the engine chopping mid-flow, not a full stop. It also lowercases the
-  capital an engine puts on every result start (keeping "I" and acronyms),
-  which was half of why the raw transcript looked broken.
-- Sentence boundaries come from the engine's own capital letter, not only from
-  the clock. Timing alone was never going to work and a run of sixty
-  unpunctuated words proved it: a streaming engine sends interim text for the
-  next phrase *before* it marks the last one final, so the silence never
-  appears in the event timing and every gap measures as nothing. Every engine
-  capitalises the first word of each result it closes — that is it saying where
-  one thing ended, and it was being thrown away as a stray capital. Guarded
-  two ways: a result closed on a hanging word ("and", "the", "to") continues
-  the sentence whatever the capital says, and an "I" only opens one when there
-  are three words behind it.
-- `startDictation` keeps a module-level singleton and aborts any predecessor.
-  `reset()` no longer restarts the session — it moves a read offset instead,
-  because it is called on every keystroke while the mic is on and a restart per
-  keystroke is a queue of half-born recognisers fighting over one microphone.
-  `stop()` calls `stop()` for the last words and `abort()` 1.5s later if the
-  session has not ended.
+- `lib/transcribe.ts` and `components/VoiceRecorder.tsx` are gone, and with
+  them a week of platform archaeology: result redelivery on Android, sentence
+  boundaries inferred from pause timing and then from the engine's own capital
+  letter, session restarts across pauses, a singleton so two recognisers could
+  not fight over one microphone. All of it was work to make a deliberately
+  small API behave, and none of it closed the gap to the dictation already on
+  the device. `lib/names.ts` is what survives, because that problem is ours
+  rather than the platform's.
+- "Dictated" is now signalled by asking to tidy — the only honest signal left,
+  since text typed by a keyboard's dictation leaves no trace to gate on.
+- The changelog parser no longer treats a blank line between bullets as the end
+  of the list. It has silently eaten notes three times, each found by noticing
+  something missing from the card rather than by anything failing.
 - `/api/tidy` is text in, text out, on the floor model, with a prompt that
   forbids rewriting: punctuation, misheard words and filler, nothing else.
   Never automatic — the same correction is already in the shaping pass at no
   extra cost, and this exists because a transcript that looks broken is one
   nobody tries twice, whatever we promise it will become.
-- Paragraph breaks at 2.2s of silence, and a deliberately conservative question
-  rule: an auxiliary or modal followed by a subject ("can you hear me", "how do
-  you do this"). It misses "how things work", which is a question with no
-  auxiliary to prove it, because the rule that would catch it also turns "what
-  I need is time" into a question. A missing question mark is a small wrong; a
-  confident one in the wrong place reads as a machine that does not understand
-  English.
-- "Period" is deliberately not a spoken mark: it is an ordinary English noun
-  and would wreck any sentence about time. "Full stop" carries no such risk.
 - The shaping call now knows an entry was dictated (`source` reaches
   `buildUserContent`), with a narrow licence: correct a near-homophone only
   where the intended word is unmistakable, leave anything else alone, add
   nothing. Explicitly in scope for "just rephrase" too, which is where a
   misheard word is most visible.
-- `lib/transcribe.ts` no longer accumulates. Walking from `event.resultIndex`
-  and appending anything final to a running string is what every Web Speech
-  example shows, and it is wrong on Android: the same result is delivered final
-  more than once and `resultIndex` does not reliably advance, so each
-  redelivery appended the whole sentence again, one word longer each time.
-  Rebuilding from `event.results` on every event is idempotent. Sessions are
-  also restarted until the speaker stops (Android ends one at every pause),
-  with a stillborn-session guard so a failing engine cannot loop, and
-  non-fatal errors — `no-speech`, `network`, `aborted` — no longer tear the
-  dictation down.
-- `DictationHandle.reset()` disowns the running transcript — the engine will
-  not empty its own result list, so the only way out is to stop reading from
-  it and start a fresh session, which is invisible because that is what happens
-  at every pause anyway. `SILENCE_LIMIT_MS` stops the restart loop after 30s of
-  quiet; restarting forever is a mic that never turns off.
 - `topUpFromGesture` now refuses to prompt when a token is already in hand, and
   keeps a cooldown (45 minutes, six hours after a prompt that failed or was
   dismissed). `rememberAccountHint` is backfilled from the stored profile on
