@@ -9,11 +9,11 @@ import { logAi } from "./usage";
  * Only ever from a tap. The same repair happens for free inside the shaping
  * pass when the entry is kept; this is for seeing it now.
  */
-export async function tidyDictation(text: string): Promise<string> {
+export async function tidyDictation(text: string, names: string[] = []): Promise<string> {
   const res = await fetch("/api/tidy", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ text }),
+    body: JSON.stringify({ text, names: names.slice(0, 60) }),
   });
   const data = (await res.json().catch(() => ({}))) as {
     text?: string;

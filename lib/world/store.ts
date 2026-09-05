@@ -66,3 +66,20 @@ export function unknownNames(members: WorldMember[], names: string[]): string[] 
   }
   return out;
 }
+
+/**
+ * Every name biblio knows, for putting right what a recogniser mangles.
+ *
+ * "biblio" is always in it: it is the word certain to be said in a first
+ * attempt and the one no dictation engine has ever heard of.
+ */
+export async function knownNames(): Promise<string[]> {
+  try {
+    const all = await listWorld();
+    return ["biblio", ...all.flatMap((m) => [m.name, ...(m.aka ?? [])])]
+      .map((n) => n.trim())
+      .filter(Boolean);
+  } catch {
+    return ["biblio"];
+  }
+}

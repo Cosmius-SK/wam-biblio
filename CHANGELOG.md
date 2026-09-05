@@ -106,12 +106,20 @@ Newest first. Dates are the day the work landed.
   stay invisible however many times you reloaded — which looks exactly like a
   fix that never shipped. biblio now asks on arrival and whenever you come back
   to the tab, so the "a newer biblio is ready" notice appears when it is true.
-- **biblio knows its own name.** Every recogniser mishears it — Bibio, Bablio,
-  Babylio — and it is the one word certain to appear in every first attempt.
-  It is put right on the device, before anything else looks at the text.
-  Nothing else is on that list: a general dictionary of confusable words,
-  applied without understanding the sentence, corrects confidently in the
-  wrong direction.
+- **The names you write about get spelled right.** A recogniser has never heard
+  of biblio, or of your son, so it returns the nearest word it does know —
+  *Bibio*, *Deva*, *Velachery* — and it returns it capitalised, because it can
+  tell a name was meant even when it cannot tell which. biblio now puts them
+  back from the list you already have: the people, places and things in Your
+  world, plus its own name. It happens when you leave the box, so it never
+  fights you mid-word, and it works with your phone's own dictation too, which
+  types straight in and never passes through biblio's own transcript.
+  A capital letter is what makes it safe — an ordinary lowercase word is never
+  touched, so *the bibliography was long* survives untouched. A match has to be
+  close and it has to be the only one: two names equally near means biblio
+  doesn't know which you meant, and a confident wrong name is far worse than a
+  misspelt one. **Tidy up** gets the same list, so it can put back the ones
+  that need the sentence to work out.
 - **A word about your keyboard's mic**, under the button. A browser only gets a
   small, fast dictation engine that commits words as you say them; your
   phone&rsquo;s own dictation is the full one, punctuation included, and it

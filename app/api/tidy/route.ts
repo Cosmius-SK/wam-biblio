@@ -47,13 +47,20 @@ const SCHEMA = {
 const MAX_CHARS = 6000;
 
 export async function POST(request: Request) {
-  let body: { text?: unknown };
+  let body: { text?: unknown; names?: unknown };
   try {
-    body = (await request.json()) as { text?: unknown };
+    body = (await request.json()) as { text?: unknown; names?: unknown };
   } catch {
     return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
   }
   const raw = typeof body.text === "string" ? body.text.trim().slice(0, MAX_CHARS) : "";
+  // Names from the writer's own world. A recogniser has never heard of them,
+  // so it returns the nearest word it does know — and only something holding
+  // the list can tell which one was meant. They stay on the device otherwise;
+  // this is the one call they travel with, and only to be spelled correctly.
+  const names = Array.isArray(body.names)
+    ? body.names.filter((n): n is string => typeof n === "string").slice(0, 60).map((n) => n.slice(0, 60))
+    : [];
   if (!raw) return NextResponse.json({ error: "Nothing to tidy." }, { status: 400 });
 
   // With AI off this is honestly unavailable rather than quietly a no-op: the
@@ -70,7 +77,10 @@ export async function POST(request: Request) {
     const res = await structuredCall({
       model: FLOOR_MODEL,
       system: SYSTEM,
-      user: `Transcript:\n"""\n${raw}\n"""`,
+      user:
+        (names.length > 0
+          ? `Names that appear in this person's writing, spelled correctly: ${names.join(", ")}. A recogniser has never heard these, so it returns the nearest word it knows — put them back wherever one is clearly meant, and never force one onto a word that is simply an ordinary word.\n\n`
+          : "") + `Transcript:\n"""\n${raw}\n"""`,
       schema: SCHEMA,
       maxTokens: 2000,
     });

@@ -38,6 +38,8 @@ import { milestoneFor } from "@/lib/mayaObserve";
 import { generateIllustration } from "@/lib/illustrate";
 import { promptWithCast } from "@/lib/world/cast";
 import { tidyDictation } from "@/lib/tidy";
+import { fixNames } from "@/lib/speechText";
+import { knownNames } from "@/lib/world/store";
 import { AI_MODE_COOKIE } from "@/lib/ai/constants";
 
 type Phase = "compose" | "shaping" | "review";
@@ -93,11 +95,16 @@ export default function CaptureComposer() {
   /** Set while the mic is on, so an edit can tell dictation to start over. */
   const voiceRef = useRef<{ reset: () => void } | null>(null);
   const [tidying, setTidying] = useState(false);
+  /** The names biblio knows — Your world, plus its own. */
+  const namesRef = useRef<string[]>(["biblio"]);
   const usedVoiceRef = useRef(false);
   /** Nothing is written back until the stored draft has had its say. */
   const loadedRef = useRef(false);
 
   useEffect(() => setLive(aiIsLive()), []);
+  useEffect(() => {
+    void knownNames().then((n) => (namesRef.current = n));
+  }, []);
 
   // Pick up whatever was left behind. Recent drafts simply reappear in the
   // fields — no dialog, nothing to accept. An old one is offered instead, so a
@@ -364,6 +371,16 @@ export default function CaptureComposer() {
                 voiceRef.current.reset();
               }
             }}
+            onBlur={(e) => {
+              // On leaving the box, not on every keystroke: a phone's own
+              // dictation types straight in here and never passes through
+              // biblio's transcript code, so this is the only place the names
+              // it has never heard of can be put back — and correcting a word
+              // while somebody is still in the middle of typing it is a fight
+              // nobody wins.
+              const fixed = fixNames(e.target.value, namesRef.current);
+              if (fixed !== e.target.value) setText(fixed);
+            }}
             rows={7}
             autoFocus
             placeholder="A thought, a feeling, a fragment…"
@@ -381,7 +398,7 @@ export default function CaptureComposer() {
                 onClick={() => {
                   setTidying(true);
                   setError(null);
-                  void tidyDictation(text)
+                  void tidyDictation(text, namesRef.current)
                     .then((tidied) => {
                       setText(tidied);
                       baseTextRef.current = tidied;
