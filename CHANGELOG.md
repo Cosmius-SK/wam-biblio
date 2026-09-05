@@ -67,7 +67,11 @@ Newest first. Dates are the day the work landed.
   "is it…" ends with a question mark, and you can say **"full stop"**,
   **"comma"**, **"question mark"** or **"new paragraph"** as you speak and have
   them appear as marks rather than words. All of it happens on the device as
-  you talk — free, instant, and it works with the AI turned off.
+  you talk — free, instant, and it works with the AI turned off. Clearing the
+  box and speaking again works too: it used to hand the deleted words straight
+  back with the new ones stuck on the end, because dictation kept everything
+  said since the mic went on. And the mic now turns itself off after half a
+  minute of silence rather than listening until you remember it.
   Three older faults went with it: a dictated thought was repeating itself, each
   copy a word longer, with words run together at the joins; speaking was cut off
   at your first pause; and biblio always assumed an American accent instead of
@@ -78,8 +82,8 @@ Newest first. Dates are the day the work landed.
   a word is corrected only where the intended one is unmistakable from the
   sentence around it. Anything genuinely ambiguous is left exactly as you said
   it.
-- **Google Drive stopped asking to be reconnected every hour.** Nothing was
-  ever disconnected. Google's permission lasts about an hour and can only be
+- **Google Drive stopped interrupting.** It used to ask to be reconnected every
+  hour — nothing was ever disconnected. Google's permission lasts about an hour and can only be
   renewed from a tap — and biblio was renewing it on whichever tap came next,
   which was reliably the one where you were trying to attach a photo, at the
   point where the browser no longer counted it as a tap. It now renews itself
@@ -87,7 +91,9 @@ Newest first. Dates are the day the work landed.
   photo button says so *before* the picker opens — "Google's hour is up — one
   tap lets biblio back in" — rather than failing after you have chosen a
   picture. And where the app is locked, the tap you already make to unlock
-  renews it on the way past, so there is nothing extra to do at all.
+  renews it on the way past — at most once an hour, so Google is not there
+  every time you pick up your phone, and it remembers which account you use so
+  the window resolves and closes itself rather than asking you to choose.
 
 ### For the owner
 
@@ -155,6 +161,16 @@ Newest first. Dates are the day the work landed.
   with a stillborn-session guard so a failing engine cannot loop, and
   non-fatal errors — `no-speech`, `network`, `aborted` — no longer tear the
   dictation down.
+- `DictationHandle.reset()` disowns the running transcript — the engine will
+  not empty its own result list, so the only way out is to stop reading from
+  it and start a fresh session, which is invisible because that is what happens
+  at every pause anyway. `SILENCE_LIMIT_MS` stops the restart loop after 30s of
+  quiet; restarting forever is a mic that never turns off.
+- `topUpFromGesture` now refuses to prompt when a token is already in hand, and
+  keeps a cooldown (45 minutes, six hours after a prompt that failed or was
+  dismissed). `rememberAccountHint` is backfilled from the stored profile on
+  every start, since anyone who signed in before it existed had none and got an
+  account chooser rather than a window that closes itself.
 - `refreshTokenIfStale()` in `lib/drive.ts`, driven by `AutoSync` on arrival,
   on return from the background, and every four minutes while visible. It
   self-gates twice: nothing without Drive connected, nothing while the token

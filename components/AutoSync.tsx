@@ -4,7 +4,8 @@ import { useEffect, useRef } from "react";
 import { onDataChange } from "@/lib/db";
 import { onSessionStart } from "@/lib/session";
 import { autoPull, autoPush, isGoogleConnected } from "@/lib/googleAccount";
-import { isDriveConnected, refreshTokenIfStale } from "@/lib/drive";
+import { isDriveConnected, refreshTokenIfStale, rememberAccountHint } from "@/lib/drive";
+import { getSetting } from "@/lib/db";
 
 /**
  * Invisible driver for Google-account sync: pull when someone arrives, then
@@ -57,6 +58,17 @@ export default function AutoSync() {
         if (on) void refreshTokenIfStale();
       });
     };
+    // Anyone who signed in before the hint existed has none, and without it
+    // Google shows an account chooser instead of resolving the session and
+    // closing itself. Backfill it from the profile already on the device.
+    void getSetting("googleProfile").then((raw) => {
+      try {
+        const email = raw ? (JSON.parse(raw) as { email?: string }).email : undefined;
+        rememberAccountHint(email);
+      } catch {
+        /* nothing to backfill */
+      }
+    });
     keepToken();
     const tokenTimer = window.setInterval(() => {
       if (document.visibilityState === "visible") keepToken();

@@ -17,10 +17,13 @@ export default function VoiceRecorder({
   onStart,
   onTranscript,
   onError,
+  controlRef,
 }: {
   onStart: () => void;
   onTranscript: (spoken: string) => void;
   onError?: (message: string) => void;
+  /** Set while listening, so the composer can tell dictation to start over. */
+  controlRef?: React.MutableRefObject<{ reset: () => void } | null>;
 }) {
   const [supported, setSupported] = useState(true);
   const [listening, setListening] = useState(false);
@@ -30,13 +33,18 @@ export default function VoiceRecorder({
     setSupported(isTranscriptionSupported());
     return () => {
       handleRef.current?.stop();
+      if (controlRef) controlRef.current = null;
       ambient.unduck();
     };
+    // controlRef is a ref the parent owns; it never changes identity and
+    // depending on it would only re-run the unmount cleanup.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const stop = () => {
     handleRef.current?.stop();
     handleRef.current = null;
+    if (controlRef) controlRef.current = null;
     setListening(false);
     ambient.unduck();
   };
@@ -52,6 +60,10 @@ export default function VoiceRecorder({
         stop();
       },
       onEnd: () => {
+        // Includes the mic turning itself off after a long silence, so the
+        // button has to come back up on its own.
+        handleRef.current = null;
+        if (controlRef) controlRef.current = null;
         setListening(false);
         ambient.unduck();
       },
@@ -62,6 +74,7 @@ export default function VoiceRecorder({
       return;
     }
     handleRef.current = handle;
+    if (controlRef) controlRef.current = { reset: () => handle.reset() };
     setListening(true);
   };
 

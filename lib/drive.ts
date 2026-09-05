@@ -285,12 +285,49 @@ export async function refreshTokenIfStale(): Promise<boolean> {
  * Never throws: a token that could not be renewed is a photo button that says
  * so later, not an unlock that failed.
  */
+const PROMPT_KEY = "biblio_drive_prompt_at";
+/** Two prompts inside this window is Google appearing "all the time". */
+const PROMPT_COOLDOWN_MS = 45 * 60_000;
+/** A prompt that failed or was dismissed says this device wants the long way. */
+const PROMPT_BACKOFF_MS = 6 * 60 * 60_000;
+
+function promptedRecently(): boolean {
+  try {
+    const raw = localStorage.getItem(PROMPT_KEY);
+    if (!raw) return false;
+    const { at, ok } = JSON.parse(raw) as { at?: number; ok?: boolean };
+    if (typeof at !== "number") return false;
+    return Date.now() - at < (ok === false ? PROMPT_BACKOFF_MS : PROMPT_COOLDOWN_MS);
+  } catch {
+    return false;
+  }
+}
+
+function notePrompt(ok: boolean): void {
+  try {
+    localStorage.setItem(PROMPT_KEY, JSON.stringify({ at: Date.now(), ok }));
+  } catch {
+    /* private mode */
+  }
+}
+
 export async function topUpFromGesture(): Promise<boolean> {
   if (!driveConfigured()) return false;
+  // A token still in hand needs nothing, and asking anyway is the whole
+  // complaint: Google turning up again when nothing was wrong.
+  if (cachedToken()) return true;
+  // The lock screen comes up after five minutes away, so without a floor on
+  // how often this may ask, "renew it on the unlock tap" becomes "Google every
+  // time you pick up your phone". Once an hour at most, and much less than
+  // that on a device where it did not work — there, the photo button's own
+  // Connect is the honest path and this should stay out of the way.
+  if (promptedRecently()) return false;
   try {
     await getAccessToken(true);
+    notePrompt(true);
     return true;
   } catch {
+    notePrompt(false);
     return false;
   }
 }

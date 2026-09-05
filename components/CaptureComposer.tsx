@@ -89,6 +89,8 @@ export default function CaptureComposer() {
   const [body, setBody] = useState("");
 
   const baseTextRef = useRef("");
+  /** Set while the mic is on, so an edit can tell dictation to start over. */
+  const voiceRef = useRef<{ reset: () => void } | null>(null);
   const usedVoiceRef = useRef(false);
   /** Nothing is written back until the stored draft has had its say. */
   const loadedRef = useRef(false);
@@ -348,7 +350,18 @@ export default function CaptureComposer() {
 
           <textarea
             value={text}
-            onChange={(e) => setText(e.target.value)}
+            onChange={(e) => {
+              setText(e.target.value);
+              // The box belongs to whoever is holding it. Dictation rewrites
+              // the field from a running transcript, so without this an edit
+              // made mid-flow — clearing it and starting again, most of all —
+              // was undone by the next word spoken, with the deleted text
+              // handed back and the new words stuck on the end.
+              if (voiceRef.current) {
+                baseTextRef.current = e.target.value;
+                voiceRef.current.reset();
+              }
+            }}
             rows={7}
             autoFocus
             placeholder="A thought, a feeling, a fragment…"
@@ -361,8 +374,9 @@ export default function CaptureComposer() {
                 baseTextRef.current = text;
                 usedVoiceRef.current = true;
               }}
+              controlRef={voiceRef}
               onTranscript={(spoken) =>
-                setText((baseTextRef.current ? baseTextRef.current + " " : "") + spoken)
+                setText([baseTextRef.current.trim(), spoken.trim()].filter(Boolean).join(" "))
               }
               onError={(msg) =>
                 setError(
